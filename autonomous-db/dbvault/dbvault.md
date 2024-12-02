@@ -194,19 +194,57 @@ We start by creating two DV user accounts:
 
 6. Now, Database Vault is enabled. 
 
-## Task 2: Enable Separation of Duties (SoD)
+## Task 3: Enable Separation of Duties (SoD)
 
 In Autonomous DB, the `ADMIN` user has all privileges, including the privileges required to administer Database Vault security policies. In real life, you may wish to separate security administration, user administration, and database administration into different accounts. From now we will use a DBA account instead of `ADMIN` user because in production that's what you must do.
 
 In the "Prepare your environment" step you created the user `DBA_DEBRA`. This user has the `DBA` role on the Autonomous DB
 
-1. To demonstrate the effects of the DB Vault SoD on a DBA account, open the SQL Worksheet as the *`DBA_DEBRA`* user (as reminder, the password is `WElcome_123#`)
-    
-      ```
-      <copy>WElcome_123#</copy>
-      ```
+1. To demonstrate the effects of the DB Vault separation of duties (SOD) on a DBA account. Open an **incognito** browser window to connect as **`DBA_DEBRA`**. 
 
-2. View `DBA_DEBRA`'s roles
+      - Copy the main portion of the URL (before the `/ords`) and paste it into the incognito browser window. 
+
+         ![](./images/adb-dr_009a.png "Copy the URL and open an incogito browser window to login as SH1_READER.")
+
+      - You will see an incognito window. Paste your URL into the browser window.
+
+         ![](./images/adb-dr_010a.png "Paste the URL into your incognito browser window.")
+
+2. Click **`Go`** for **SQL Developer Web**
+
+       ![](./images/adb-dr_011a.png "Click Go on SQL Developer Web")
+
+3. Expand the **Advanced** setting and enter the following information for **Path**, **Username** and **Password** and click **Sign in**. 
+
+      - Path (lowercase)
+
+         ```
+         <copy>dba_debra</copy>
+         ```
+      - Username (case insensitive)
+
+         ```
+         <copy>dba_debra</copy>
+         ```
+      - Password (case sensitive)
+
+         ```
+         <copy>WElcome_123#</copy>
+         ```
+
+      - The output should look similar to this screenshot. 
+
+      ![](./images/adb-dr_012a.png "Authentication as dba_debra for the path and username.")
+
+4. Once you have authenticated as **`DBA_DEBRA`**, you will choose `SQL` and click **Open**
+
+       ![](./images/adb-dr_014a.png "In SQL, click Go to launch the SQL application")
+
+5. Click the **`X`** to close the tutorial. 
+
+       ![](./images/adb-dr_015a.png "In SQL, click Go to launch the SQL application")
+
+6. View `DBA_DEBRA`'s roles
 
       ```
       <copy>SELECT * FROM session_roles ORDER BY 1;</copy>
@@ -216,7 +254,7 @@ In the "Prepare your environment" step you created the user `DBA_DEBRA`. This us
 
     **Note:** Notice that DBA_DEBRA has several roles, including `PDB_DBA` (the DBA role in an Autonomous DB)
 
-3. Create a test user `DEMO1`
+7. Create a test user `DEMO1`
 
       ```
       <copy>CREATE USER demo1;</copy>
@@ -227,7 +265,7 @@ In the "Prepare your environment" step you created the user `DBA_DEBRA`. This us
 
     **Note:** Notice that `DBA_DEBRA` is not able to create a user, despite having the `DBA` role, **because Database Vault is enabled**!
                 
-4. Let's try altering the user `APPUSER`
+8. Let's try altering the user `APPUSER`
 
       ```
       <copy>ALTER USER appuser IDENTIFIED BY WElcome_123456#;</copy>
@@ -237,9 +275,9 @@ In the "Prepare your environment" step you created the user `DBA_DEBRA`. This us
                 
        **Note:** `DBA_DEBRA` can no longer change a user's passwords!
                 
-5. In fact, **once DV is enabled, it immediately begins enforcing separation of duties** - the user `DBA_DEBRA` loses its ability to create/alter/drop DB user accounts and that privilege is then with the DV account manager role. 
+9. In fact, **once DV is enabled, it immediately begins enforcing separation of duties** - the user `DBA_DEBRA` cannot use theircreate/alter/drop user privileged unless they have the **`DV_ACCTMGR`** role.
 
-6. As you continue with the lab, you will use `SEC_ADMIN_OWEN` and `ACCTS_ADMIN_ACE` for all database vault actions. The duties of database administration (done by `DBA_DEBRA`) are now separate from the duties of user administration (`ACCTS_ADMIN_ACE`) and security administration (`SEC_ADMIN_OWEN`)
+10. As you continue with the lab, you will use `SEC_ADMIN_OWEN` and `ACCTS_ADMIN_ACE` for all database vault actions. The duties of database administration (done by `DBA_DEBRA`) are now separate from the duties of user administration (`ACCTS_ADMIN_ACE`) and security administration (`SEC_ADMIN_OWEN`)
 
 ## Task 3: Create a Simple Realm
 
@@ -249,19 +287,21 @@ A realm is a protected zone inside the database where database schemas, objects,
 
 1. To demonstrate the effects of this realm, it's important to execute the same SQL query from these 3 users before and after creating the realm:
    
-   - To proceed, **open SQL Worksheet in 3 web-browser pages** connected with a different user (*`DBA_DEBRA`*, *`SH1`* and *`APPUSER`*). Open an **incognito** browser window to connect as **`DBA_DEBRA`**. Copy the main portion of the URL (before the `/ords`) and paste it into the incognito browser window. 
+   - To proceed, **open SQL Worksheet in 3 web-browser pages** connected with a different user (*`DBA_DEBRA`*, *`SH1`* and *`APPUSER`*). 
+   
+      - Open an **incognito** browser window to connect as **`DBA_DEBRA`**. Copy the main portion of the URL (before the `/ords`) and paste it into the incognito browser window. 
 
-       ![](./images/adb-dr_009a.png "Copy the URL and open an incogito browser window to login as SH1_READER.")
+         ![](./images/adb-dr_009a.png "Copy the URL and open an incogito browser window to login as SH1_READER.")
 
    - You will see an incognito window. Paste your URL into the browser window.
 
        ![](./images/adb-dr_010a.png "Paste the URL into your incognito browser window.")
 
-   - Click **`Go`** for **SQL Developer Web**
+2. Click **`Go`** for **SQL Developer Web**
 
        ![](./images/adb-dr_011a.png "Click Go on SQL Developer Web")
 
-   - Expand the **Advanced** setting and enter the following information for **Path**, **Username** and **Password** and click **Sign in**. 
+3. Expand the **Advanced** setting and enter the following information for **Path**, **Username** and **Password** and click **Sign in**. 
 
       - Path (lowercase)
 
@@ -285,11 +325,11 @@ A realm is a protected zone inside the database where database schemas, objects,
 
          ![](./images/adb-dr_012a.png "Authentication as dba_debra for the path and username.")
 
-2. Once you have authenticated as **`DBA_DEBRA`**, you will choose `SQL` and click **Open**
+4. Once you have authenticated as **`DBA_DEBRA`**, you will choose `SQL` and click **Open**
 
        ![](./images/adb-dr_014a.png "In SQL, click Go to launch the SQL application")
 
-3. As all three users, run the following command to view the CUSTOMER data. 
+5. As all three users, run the following command to view the CUSTOMER data. 
 
     - Copy/Paste and execute the following query
 
@@ -319,7 +359,7 @@ A realm is a protected zone inside the database where database schemas, objects,
           -	`DBA_DEBRA` because it has the DBA role
           - `APPUSER` because it have the "`READ ANY TABLE`" system privilege
 
-4. Now, let's create a realm to secure `SH1` tables by executing this query below as the *`SEC_ADMIN_OWEN`* user. So, please **open a 4th web-browser window**
+5. Now, let's create a realm to secure `SH1` tables by executing this query below as the *`SEC_ADMIN_OWEN`* user. So, please **open a 4th web-browser window**
 
       ```
       <copy>
@@ -345,7 +385,7 @@ A realm is a protected zone inside the database where database schemas, objects,
        - Now the Realm `PROTECT_SH1` is **created as mandatory and enabled**!
        - The difference between a **mandatory vs regular realm** is regular realms block system privileges (and allows direct object grants) while mandatory realms block direct object grants (even by the object owner) in addition to system privileges
 
-5. Add objects to the realm to protect (here, the `CUSTOMERS` table)
+6. Add objects to the realm to protect (here, the `CUSTOMERS` table)
 
       ```
       <copy>
@@ -370,7 +410,7 @@ A realm is a protected zone inside the database where database schemas, objects,
 
        **Note:** Now the table `CUSTOMERS` is protected and no one can access on it!
 
-6. Check the effect of this realm
+7. Check the effect of this realm
    
       - Execute again the following query in SQL Worsheet of each the 3 users (*`DBA_DEBRA`*, *`SH1`* and *`APPUSER`*)
 
@@ -396,7 +436,7 @@ A realm is a protected zone inside the database where database schemas, objects,
 
        - **Objects in the realm cannot be accessed by any database users**, including the DBA (`DBA_DEBRA`) and the schema owner (`SH1`)!
 
-7. Now, go back to SQL Worksheet as the *`SEC_ADMIN_OWEN`* user and make sure you have an authorized application user (`APPUSER`) in the realm by executing this query
+8. Now, go back to SQL Worksheet as the *`SEC_ADMIN_OWEN`* user and make sure you have an authorized application user (`APPUSER`) in the realm by executing this query
 
       ```
       <copy>
@@ -412,7 +452,7 @@ A realm is a protected zone inside the database where database schemas, objects,
 
    ![](./images/adb-dbv_020.png "Add authorization to the realm ")
 
-8. Re-execute the SQL query to show that only `APPUSER` now can read the data
+9. Re-execute the SQL query to show that only `APPUSER` now can read the data
 
       ```
       <copy>

@@ -74,7 +74,7 @@ Several options are available in this case. From the farthest to the closest to 
 4. Retrieve the new `story-hack` directory.
 
     ```
-    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/wUCGLVTGIyezbgPkjf9GCU8v1vVNH8-bfQOve5X6GZr6xKSYO1NfWzgxHo2Lzb1K/n/oradbclouducm/b/LiveLabs-bucket-prod/o/story-hack.zip</copy>
+    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/9ZlNymO4lYU7Ye-mntD9cUKMVvyFIAuUKpbWOdqg9eloqHHQiQBC0v09lnIOVcmd/n/oradbclouducm/b/LiveLabs-bucket-prod/o/story-hack.zip</copy>
     ```
 5. Unzip the `story-hack.zip` file.
 

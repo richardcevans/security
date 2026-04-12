@@ -1,8 +1,8 @@
 # Identity-aware database access using Oracle Deep Data Security and End Users
 
-Welcome to this **Oracle Data Grants LiveLabs FastLab** workshop.
+Welcome to this **Oracle Deep Data Security LiveLabs** workshop.
 
-LiveLabs FastLab workshops give you clear, step-by-step instructions to help you quickly gain hands-on experience. You will go from beginner to confident user in a short time.
+LiveLabs workshops give you clear, step-by-step instructions to help you quickly gain hands-on experience. You will go from beginner to confident user in a short time.
 
 Estimated Time: 30 minutes
 
@@ -16,7 +16,7 @@ Oracle AI Database 26ai Deep Data Security (Oracle Deep Data Security) solves th
 
 In 30 minutes, you'll see how Deep Data Security can help secure your data in the new Agentic AI world.
 
-## FastLab Introduction
+## Workshop Introduction
 
 ### Prerequisites
 

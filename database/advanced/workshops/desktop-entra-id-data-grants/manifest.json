@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - Identity-Aware Access Control with Oracle Deep Data Security and Microsoft Entra ID",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture of this workshop and what it can do",
+      "publisheddate": "04/12/2026",
+      "filename": "../../intro/intro-entra-id-data-grants.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Using noVNC Remote Desktop",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Identity-Aware Access Control with Oracle Deep Data Security and Microsoft Entra ID",
+      "description": "In this lab you will learn how to configure Microsoft Entra ID authentication and Oracle Deep Data Security data grants for identity-aware database access",
+      "publisheddate": "04/12/2026",
+      "filename": "../../deep-data-security/entra-id-data-grants/entra-id-data-grants.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

@@ -62,6 +62,38 @@ This lab assumes:
 - **Python 3.12** for the Django app
 - Both sample apps are available in `apps/sample-app-springboot/` and `apps/sample-app-django/`
 
+## Task 0: Download lab scripts
+
+1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and `cd` to the livelabs directory.
+
+    ````
+    <copy>cd livelabs</copy>
+    ````
+
+2. Download the bundled script archive for this lab.
+
+    ````
+    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    ````
+
+3. Extract the archive.
+
+    ````
+    <copy>tar xvf dbsec-livelabs-migrate-apps-to-deep-sec.tar.gz</copy>
+    ````
+
+4. Move into the lab directory.
+
+    ````
+    <copy>cd migrate-apps-to-deep-sec</copy>
+    ````
+
+5. List files to confirm the scripts and sample apps are present.
+
+    ````
+    <copy>ls</copy>
+    ````
+
 ## Task 1: Understand the traditional application
 
 Before migrating, let's understand what a traditional application looks like. The "before" state is a typical pattern: a shared service account with `SELECT` granted on the data.

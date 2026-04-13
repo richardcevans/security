@@ -44,6 +44,38 @@ This lab assumes:
 - An **Azure subscription** with permissions to register applications, create app roles, and create users in Microsoft Entra ID
 - The Oracle Database wallet is configured for TLS connections
 
+### Task 0: Download lab scripts
+
+1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and `cd` to the livelabs directory.
+
+    ````
+    <copy>cd livelabs</copy>
+    ````
+
+2. Download the bundled script archive for this lab.
+
+    ````
+    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    ````
+
+3. Extract the archive.
+
+    ````
+    <copy>tar xvf dbsec-livelabs-entra-id-data-grants.tar.gz</copy>
+    ````
+
+4. Move into the lab directory.
+
+    ````
+    <copy>cd entra-id-data-grants</copy>
+    ````
+
+5. List files to confirm the scripts are present.
+
+    ````
+    <copy>ls</copy>
+    ````
+
 ## Part 1: Configure Microsoft Entra ID
 
 ### Task 1: Register the Oracle AI Database with Microsoft Entra ID

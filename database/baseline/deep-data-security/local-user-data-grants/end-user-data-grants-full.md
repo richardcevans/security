@@ -136,6 +136,38 @@ This is important because it creates an **unbroken trust chain**: end user authe
 
 In this lab, you will create two end users and two data roles, bind database roles to those data roles for session capabilities, grant the data roles to the appropriate end users, then attach data grants that define which rows and columns each data role can access or modify.
 
+## Task 0: Download lab scripts
+
+1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and `cd` to the livelabs directory.
+
+    ````
+    <copy>cd livelabs</copy>
+    ````
+
+2. Download the bundled script archive for this lab.
+
+    ````
+    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    ````
+
+3. Extract the archive to expand the scripts directory.
+
+    ````
+    <copy>tar xvf dbsec-livelabs-local-user-data-grants.tar.gz</copy>
+    ````
+
+4. Move into the lab directory.
+
+    ````
+    <copy>cd local-user-data-grants</copy>
+    ````
+
+5. List files to confirm the scripts are present.
+
+    ````
+    <copy>ls</copy>
+    ````
+
 ## Task 1: Create the HR schema and sensitive employee data
 
 > **Script:** 

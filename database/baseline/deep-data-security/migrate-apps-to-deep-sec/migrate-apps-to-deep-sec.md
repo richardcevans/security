@@ -376,17 +376,21 @@ Hide fields the user can't read. Render fields they can't update as read-only. Y
 
 ### Run the migrated apps
 
-```bash
-# Spring Boot (port 8090)
-cd apps/sample-app-springboot
-./start.sh
+Two sample apps ship in this lab under `apps/`:
 
-# Django (port 8091)
-cd apps/sample-app-django
-./start.sh
+- **`apps/sample-app-springboot/`** — Spring Boot 3 + ojdbc11 on port 8090
+- **`apps/sample-app-django/`** — Django + python-oracledb on port 8091 (offline-installable via bundled `wheelhouse/`)
+
+The database side is already done by the lab scripts above. The app code itself only needed **one change** — connect as the logged-in end user instead of a shared service account. Script `07_show_app_migration.sh` displays the before/after diff for both apps, and `08_start_app.sh` starts one of them and curl-tests the Marvin + Emma login flow end-to-end:
+
+```bash
+./07_show_app_migration.sh          # Show the code diff
+./08_start_app.sh                   # Prompts: springboot or django
+# or: ./08_start_app.sh springboot
+# or: ./08_start_app.sh django
 ```
 
-Log in as `marvin/Oracle123` and you see **4 rows** — Marvin himself plus his 3 direct reports. SSN is blank for his reports because the manager grant excludes it.
+Expected login result — Marvin sees **4 rows** (himself + 3 direct reports, SSN hidden for reports), Emma sees **1 row** (only herself, SSN visible).
 
 | EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY | DEPARTMENT\_ID | MANAGER\_ID |
 |---|---|---|---|---|---|---|
@@ -395,11 +399,11 @@ Log in as `marvin/Oracle123` and you see **4 rows** — Marvin himself plus his 
 | 4 | Charlie | Davis | | 95000 | 1 | 2 |
 | 5 | Dana | Lee | | 130000 | 1 | 2 |
 
-Log out, log back in as `emma/Oracle123`, and run the same query. Emma sees **1 row** — herself. Same SSN visibility rules, enforced for a different identity.
+Log out and log back in as the other user to see the same SQL return a different result set.
 
-| EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY | DEPARTMENT\_ID | MANAGER\_ID |
-|---|---|---|---|---|---|---|
-| 3 | Emma | Baker | 333-33-3333 | 120000 | 1 | 2 |
+| As emma | EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY |
+|---|---|---|---|---|---|
+| | 3 | Emma | Baker | 333-33-3333 | 120000 |
 
 **Same SQL. Same app code. Same table. Completely different results — enforced by the database.**
 
@@ -530,7 +534,7 @@ The database kernel enforces these controls before data leaves the SQL engine. N
 ### Try it: Run the security boundary tests
 
 ```bash
-./07_verify_security_boundary.sh    # Test all bypass attempts
+./09_verify_security_boundary.sh    # Test all bypass attempts
 ```
 
 This script runs four tests:
@@ -544,7 +548,7 @@ This script runs four tests:
 When you are done, run the cleanup script to remove all lab objects:
 
 ```bash
-./08_cleanup.sh
+./10_cleanup.sh
 ```
 
 This drops all data grants, end user context, roles, end users, and the HR schema.
@@ -559,8 +563,10 @@ This drops all data grants, end user context, roles, end users, and the HR schem
 | `04_create_role_bindings.sh` | Create `direct_logon_role`, bind CREATE SESSION to data roles |
 | `05_verify_as_marvin.sh` | Connect as Marvin — 4 rows, SSN hidden for reports |
 | `06_verify_as_emma.sh` | Connect as Emma — 1 row, same query |
-| `07_verify_security_boundary.sh` | Test bypass attempts: all fail |
-| `08_cleanup.sh` | Drop everything |
+| `07_show_app_migration.sh` | Show the app-code diff: shared-account → per-user connection |
+| `08_start_app.sh` | Start the Spring Boot or Django sample app; curl-test Marvin + Emma |
+| `09_verify_security_boundary.sh` | Test bypass attempts: all fail |
+| `10_cleanup.sh` | Stop any running apps, drop everything |
 
 ## What You Built
 

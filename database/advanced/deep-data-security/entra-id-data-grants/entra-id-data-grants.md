@@ -55,7 +55,7 @@ This lab assumes:
 2. Download the bundled script archive for this lab.
 
     ````
-    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/_vC6pMGFQLjZ-4ndpRr54m4IKQKHNcSGc7cS4lmkFh8JcsJ3DeYz6nKeMbe88s3Q/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip</copy>
     ````
 
 3. Extract the archive.

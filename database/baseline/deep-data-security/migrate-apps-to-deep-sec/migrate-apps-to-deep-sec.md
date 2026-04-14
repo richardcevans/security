@@ -73,7 +73,7 @@ This lab assumes:
 2. Download the bundled script archive for this lab.
 
     ````
-    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/YF6sMiIiK1t7AgWJPmKSVtb4diy3quwl2cBPx1LLwUIWEjIL0G6fPq1pYRKhGlks/n/oradbclouducm/b/dbsec_public/o/migrate-apps-to-deep-sec.zip</copy>
     ````
 
 3. Extract the archive.

@@ -147,7 +147,7 @@ In this lab, you will create two end users and two data roles, bind database rol
 2. Download the bundled script archive for this lab.
 
     ````
-    <copy>wget <<DOWNLOAD LINK HERE>></copy>
+    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/OIuHGBFC8i5FywR73g7yth9hYlqI_bSU9uKzV_F39z34jRarGx7xEagGtm_nal7b/n/oradbclouducm/b/dbsec_public/o/local-user-data-grants.zip</copy>
     ````
 
 3. Extract the archive to expand the scripts directory.

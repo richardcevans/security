@@ -35,6 +35,13 @@ export PDB_NAME="${PDB_NAME:-pdb1}"
 export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
+if [ -z "${DOMAIN_NAME:-}" ]; then
+  echo -e "\033[0;31mERROR: DOMAIN_NAME is not set.\033[0m"
+  echo -e "  Set it before running this script:"
+  echo -e "  export DOMAIN_NAME=yourtenant.onmicrosoft.com"
+  exit 1
+fi
+
 echo -e "${YELLOW}Creating HR schema and employees...${NC}"
 echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
 echo
@@ -99,15 +106,27 @@ COMMIT;
 
 prompt
 prompt ========================================================================
+prompt Updating user_name to Entra ID email addresses
+prompt ========================================================================
+
+UPDATE hr.employees
+   SET user_name = user_name || '@${DOMAIN_NAME}'
+ WHERE user_name NOT LIKE '%@%';
+
+COMMIT;
+
+prompt
+prompt ========================================================================
 prompt Verify: All 7 Employees Visible (as DBA)
 prompt ========================================================================
 
 col first_name  format a12
 col last_name   format a12
+col user_name   format a45
 col ssn         format a15
 col salary      format 999,999.99
 
-SELECT employee_id, first_name, last_name, ssn, salary, department_id, manager_id
+SELECT employee_id, first_name, last_name, user_name, ssn, salary, manager_id
   FROM hr.employees
  ORDER BY employee_id;
 
@@ -117,7 +136,7 @@ EOF
 echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 9 Completed: HR Schema Created!                                  ${NC}"
-echo -e "${GREEN}      7 employees with SSN, salary, and management hierarchy.                ${NC}"
+echo -e "${GREEN}      7 employees with full Entra ID email addresses as user_name.           ${NC}"
 echo -e "${GREEN}      Next: run 04_create_data_roles_and_grants.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

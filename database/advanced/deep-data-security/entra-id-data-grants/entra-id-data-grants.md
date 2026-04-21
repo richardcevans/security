@@ -258,17 +258,21 @@ Configure the database to accept Entra ID tokens. You need the `APP_ID`, `TENANT
 
 ### Try it
 
-```bash
-./01_configure_db_identity_provider.sh
-```
+Before running, set these environment variables:
 
-This script sets the `identity_provider_type` and `identity_provider_config` parameters in the pluggable database. Before running, set these environment variables:
-
-```bash
-export APP_ID=<your-oracle-db-app-id>
+````
+<copy>export APP_ID=<your-oracle-db-app-id>
 export APP_ID_URI=https://<your-tenant-name>.onmicrosoft.com/<your-oracle-db-app-id>
-export TENANT_ID=<your-tenant-id>
-```
+export TENANT_ID=<your-tenant-id></copy>
+````
+
+Then run:
+
+````
+<copy>./01_configure_db_identity_provider.sh</copy>
+````
+
+This script sets the `identity_provider_type` and `identity_provider_config` parameters in the pluggable database.
 
 The script runs the following as SYS:
 
@@ -289,9 +293,18 @@ To authenticate with Entra ID, the database must use a TLS connection. This task
 
 ### Try it
 
-```bash
-./02_configure_network.sh
-```
+Before running, set these environment variables (in addition to the ones from Task 7):
+
+````
+<copy>export CLIENT_ID=<your-oracle-client-interactive-app-id>
+export PDB_NAME=<your-pdb-name></copy>
+````
+
+Then run:
+
+````
+<copy>./02_configure_network.sh</copy>
+````
 
 This script:
 1. Creates a wallet with a self-signed certificate (if one does not exist)
@@ -299,13 +312,6 @@ This script:
 3. Backs up and updates `sqlnet.ora` with the wallet location
 4. Adds the `hrdb` TNS entry to `tnsnames.ora` with `TOKEN_AUTH=AZURE_INTERACTIVE`
 5. Restarts the listener and registers the database
-
-Before running, set these environment variables (in addition to the ones from Task 7):
-
-```bash
-export CLIENT_ID=<your-oracle-client-interactive-app-id>
-export PDB_NAME=<your-pdb-name>      # defaults to pdb1
-```
 
 The `tnsnames.ora` entry will look like:
 
@@ -333,13 +339,21 @@ When you connect with `sqlplus /@hrdb`, the database launches your browser for E
 
 ### Task 9: Create the HR schema and employee data
 
-Create the HR schema with a `NO AUTHENTICATION` account (schema-only — it cannot log in) and populate it with 7 sample employees.
+Create the HR schema with a `NO AUTHENTICATION` account (schema-only — it cannot log in) and populate it with 7 sample employees. The `user_name` values are set to full Entra ID email addresses — these are what the data grant predicates match against.
 
 ### Try it
 
-```bash
-./03_create_hr_schema.sh
-```
+Before running, set your Entra ID tenant domain (in addition to the variables from Tasks 7–8):
+
+````
+<copy>export DOMAIN_NAME=yourtenant.onmicrosoft.com</copy>
+````
+
+Then run:
+
+````
+<copy>./03_create_hr_schema.sh</copy>
+````
 
 This script creates the HR schema, the `EMPLOYEES` table, and 7 sample rows:
 
@@ -361,9 +375,9 @@ This is the core of Deep Data Security. You create data roles that map to the En
 
 ### Try it
 
-```bash
-./04_create_data_roles_and_grants.sh
-```
+````
+<copy>./04_create_data_roles_and_grants.sh</copy>
+````
 
 This script:
 
@@ -411,9 +425,9 @@ Connect as Marvin via Entra ID and verify the data grants enforce per-user acces
 
 ### Try it
 
-```bash
-./05_verify_as_marvin.sh
-```
+````
+<copy>./05_verify_as_marvin.sh</copy>
+````
 
 This script connects as Marvin using `sqlplus /@hrdb` — which launches the Entra ID browser login. After authentication, it verifies:
 
@@ -437,9 +451,9 @@ Connect as Emma via Entra ID and verify she sees only her own data.
 
 ### Try it
 
-```bash
-./06_verify_as_emma.sh
-```
+````
+<copy>./06_verify_as_emma.sh</copy>
+````
 
 Emma sees **1 row** — herself only. She can view her SSN and salary but can only update her phone number. Same SQL, completely different results.
 
@@ -453,9 +467,9 @@ Test that end users cannot bypass data grants — even through the Entra ID auth
 
 ### Try it
 
-```bash
-./07_verify_security_boundary.sh
-```
+````
+<copy>./07_verify_security_boundary.sh</copy>
+````
 
 This script runs four tests:
 
@@ -472,9 +486,9 @@ Remove all lab objects — Entra ID configuration and database objects.
 
 ### Try it
 
-```bash
-./08_cleanup.sh
-```
+````
+<copy>./08_cleanup.sh</copy>
+````
 
 This script:
 1. Drops all data grants (context grant requires SYS)

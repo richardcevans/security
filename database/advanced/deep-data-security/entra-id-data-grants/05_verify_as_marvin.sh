@@ -34,7 +34,7 @@ echo -e "${PURPLE}NOTE: This will open your browser for Entra ID login.${NC}"
 echo -e "${PURPLE}      Log in as Marvin's Entra ID account.${NC}"
 echo
 
-sqlplus /@hrdb <<EOF
+sqlplus -s /@hrdb <<EOF
 
 set echo off
 set feedback off

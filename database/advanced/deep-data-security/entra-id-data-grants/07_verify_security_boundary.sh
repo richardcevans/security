@@ -47,6 +47,9 @@ sqlplus /@hrdb <<EOF
 
 set echo off
 set feedback on
+set verify off
+set sqlprompt ""
+set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999
@@ -82,6 +85,9 @@ sqlplus /@hrdb <<EOF
 
 set echo off
 set feedback on
+set verify off
+set sqlprompt ""
+set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999
@@ -119,6 +125,9 @@ sqlplus /@hrdb <<EOF
 
 set echo off
 set feedback on
+set verify off
+set sqlprompt ""
+set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999

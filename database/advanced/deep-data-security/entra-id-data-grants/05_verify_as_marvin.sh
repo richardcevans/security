@@ -37,6 +37,10 @@ echo
 sqlplus /@hrdb <<EOF
 
 set echo off
+set feedback off
+set verify off
+set sqlprompt ""
+set sqlcontinue ""
 set serveroutput on
 set lines 160
 set pages 9999

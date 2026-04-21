@@ -137,14 +137,12 @@ END;
 prompt
 prompt ========================================================================
 prompt Step 4: Grant Context Privileges
-prompt  - HR needs UPDATE/CREATE ANY END USER CONTEXT
+prompt  - HR needs UPDATE ANY END USER CONTEXT
 prompt  - employee_context_admin role bridges EXECUTE to data roles
 prompt ========================================================================
 
 prompt GRANT UPDATE ANY END USER CONTEXT TO HR;
 GRANT UPDATE ANY END USER CONTEXT TO HR;
-prompt GRANT CREATE ANY END USER CONTEXT TO HR;
-GRANT CREATE ANY END USER CONTEXT TO HR;
 
 prompt CREATE ROLE IF NOT EXISTS employee_context_admin;
 CREATE ROLE IF NOT EXISTS employee_context_admin;

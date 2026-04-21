@@ -62,6 +62,7 @@ prompt Emma's Active Data Roles
 prompt  - Only HRAPP_EMPLOYEES — no manager role.
 prompt ========================================================================
 
+col role_name format a30
 SELECT ROLE_NAME FROM V\$END_USER_DATA_ROLE;
 
 prompt

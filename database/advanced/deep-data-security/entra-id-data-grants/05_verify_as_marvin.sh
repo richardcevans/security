@@ -66,6 +66,7 @@ prompt  - HRAPP_EMPLOYEES and HRAPP_MANAGERS should be active
 prompt  - Activated automatically from the Entra ID token app roles
 prompt ========================================================================
 
+col role_name format a30
 SELECT ROLE_NAME FROM V\$END_USER_DATA_ROLE;
 
 prompt

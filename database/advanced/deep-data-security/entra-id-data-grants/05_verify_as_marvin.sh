@@ -54,7 +54,7 @@ prompt  - AUTH_METHOD = TOKEN (not PASSWORD)
 prompt ========================================================================
 
 col current_user           format a15
-col authenticated_identity format a40
+col authenticated_identity format a50
 col auth_method            format a15
 
 SELECT

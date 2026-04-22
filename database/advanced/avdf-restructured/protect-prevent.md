@@ -765,8 +765,19 @@ Database Vault is enabled in the **customer_orders** pdb in the livelab environm
         ![AVDF](./images/360-57.png "DV Alerts")
 
     - Click [**Save**]
+    
+- To trigger the alerts on DV realm violations, query ORDERS table as CUSTOMERADMIN as shown in Step 4.
+    
+    - Connect as `CUSTOMERADMIN` to fire select on CO.ORDERS
+    ````
+    <copy>./avs_orders_count_sqlplus.sh CUSTOMERADMIN</copy>
+    ````
+- Click the **Alerts** tab to view the alerts that have occurred   
 
-    **Note:** To see alerts getting triggered, fire the script in Step4 and notice the alerts.
+    ![AVDF](./images/avdf-654.png "View the alerts")
+
+    **Note**: If you don't see them, refresh the page because the system catch the alerts every minute
+
 You may now **proceed to the next lab**.
 </details>
 

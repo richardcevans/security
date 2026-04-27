@@ -68,12 +68,29 @@ prompt  - HR has a PASSWORD — it can log in directly.
 prompt  - This is the typical shared service account pattern.
 prompt ========================================================================
 
-prompt CREATE USER hr IDENTIFIED BY Oracle123;
-CREATE USER hr IDENTIFIED BY Oracle123;
-prompt GRANT CREATE SESSION TO hr;
-GRANT CREATE SESSION TO hr;
-prompt GRANT UNLIMITED TABLESPACE TO hr;
-GRANT UNLIMITED TABLESPACE TO hr;
+DECLARE
+  v_exists      NUMBER;
+  v_backup_name VARCHAR2(30);
+BEGIN
+  SELECT COUNT(*) INTO v_exists FROM dba_users WHERE username = 'HR';
+  IF v_exists > 0 THEN
+    DBMS_OUTPUT.PUT_LINE('WARNING: User HR already exists - skipping CREATE USER.');
+  ELSE
+    EXECUTE IMMEDIATE 'CREATE USER hr IDENTIFIED BY Oracle123';
+    DBMS_OUTPUT.PUT_LINE('Created user HR.');
+  END IF;
+  EXECUTE IMMEDIATE 'GRANT CREATE SESSION TO hr';
+  EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO hr';
+
+  SELECT COUNT(*) INTO v_exists FROM dba_tables
+   WHERE owner = 'HR' AND table_name = 'EMPLOYEES';
+  IF v_exists > 0 THEN
+    v_backup_name := 'EMP_' || TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS');
+    EXECUTE IMMEDIATE 'ALTER TABLE hr.employees RENAME TO ' || v_backup_name;
+    DBMS_OUTPUT.PUT_LINE('Table hr.employees existed and was backed up to hr.' || v_backup_name);
+  END IF;
+END;
+/
 
 prompt
 prompt ========================================================================

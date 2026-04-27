@@ -1,10 +1,10 @@
-# Oracle Deep Data Security for Developers
+# Migrate Applications to Oracle Deep Data Security
 
-Welcome to this **Oracle Deep Data Security LiveLabs** workshop.
+Welcome to this **Oracle Deep Data Security LiveLabs FastLab** workshop.
 
 This lab walks you through migrating an application from traditional Oracle Database users, roles, and grants to Oracle Deep Data Security end users, data roles, and data grants. You will start with a working application that connects as a shared service account, then migrate it — step by step — so the database enforces per-user access with zero application filtering code.
 
-Estimated Time: 45 minutes
+Estimated Time: 30 minutes
 
 ## The Problem with Shared Service Accounts
 
@@ -61,38 +61,6 @@ This lab assumes:
 - **Java 17+** for the Spring Boot app
 - **Python 3.12** for the Django app
 - Both sample apps are available in `apps/sample-app-springboot/` and `apps/sample-app-django/`
-
-## Task 0: Download lab scripts
-
-1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and `cd` to the livelabs directory.
-
-    ````
-    <copy>cd livelabs</copy>
-    ````
-
-2. Download the bundled script archive for this lab.
-
-    ````
-    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/YF6sMiIiK1t7AgWJPmKSVtb4diy3quwl2cBPx1LLwUIWEjIL0G6fPq1pYRKhGlks/n/oradbclouducm/b/dbsec_public/o/migrate-apps-to-deep-sec.zip</copy>
-    ````
-
-3. Extract the archive.
-
-    ````
-    <copy>unzip migrate-apps-to-deep-sec.zip</copy>
-    ````
-
-4. Move into the lab directory.
-
-    ````
-    <copy>cd migrate-apps-to-deep-sec</copy>
-    ````
-
-5. List files to confirm the scripts and sample apps are present.
-
-    ````
-    <copy>ls</copy>
-    ````
 
 ## Task 1: Understand the traditional application
 
@@ -374,16 +342,19 @@ SELECT first_name,
 
 Hide fields the user can't read. Render fields they can't update as read-only. Your UI stays in sync with the data grants automatically — if the DBA tightens a grant tomorrow, your form reacts without a redeploy.
 
-### Sample apps
+### Run the migrated apps
 
-Two sample apps ship in this lab under `apps/`:
+```bash
+# Spring Boot (port 8090)
+cd apps/sample-app-springboot
+./start.sh
 
-- **`apps/sample-app-springboot/`** — Spring Boot 3 + ojdbc11 on port 8090
-- **`apps/sample-app-django/`** — Django + python-oracledb on port 8091 (offline-installable via bundled `wheelhouse/`)
+# Django (port 8091)
+cd apps/sample-app-django
+./start.sh
+```
 
-The database side is already done by the lab scripts above. The app code itself only needed **one change** — connect as the logged-in end user instead of a shared service account. See the `README.md` in each app directory for startup instructions.
-
-Expected login result — Marvin sees **4 rows** (himself + 3 direct reports, SSN hidden for reports), Emma sees **1 row** (only herself, SSN visible).
+Log in as `marvin/Oracle123` and you see **4 rows** — Marvin himself plus his 3 direct reports. SSN is blank for his reports because the manager grant excludes it.
 
 | EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY | DEPARTMENT\_ID | MANAGER\_ID |
 |---|---|---|---|---|---|---|
@@ -392,11 +363,11 @@ Expected login result — Marvin sees **4 rows** (himself + 3 direct reports, SS
 | 4 | Charlie | Davis | | 95000 | 1 | 2 |
 | 5 | Dana | Lee | | 130000 | 1 | 2 |
 
-Log out and log back in as the other user to see the same SQL return a different result set.
+Log out, log back in as `emma/Oracle123`, and run the same query. Emma sees **1 row** — herself. Same SSN visibility rules, enforced for a different identity.
 
-| As emma | EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY |
-|---|---|---|---|---|---|
-| | 3 | Emma | Baker | 333-33-3333 | 120000 |
+| EMPLOYEE\_ID | FIRST\_NAME | LAST\_NAME | SSN | SALARY | DEPARTMENT\_ID | MANAGER\_ID |
+|---|---|---|---|---|---|---|
+| 3 | Emma | Baker | 333-33-3333 | 120000 | 1 | 2 |
 
 **Same SQL. Same app code. Same table. Completely different results — enforced by the database.**
 
@@ -439,139 +410,51 @@ CREATE END USER marvin IDENTIFIED BY Oracle123;
 - Applications that manage their own user credentials
 - Migration from traditional database users where users already have passwords
 
-### Path 2: Connection pool + EndUserSecurityContext
+### Path 2: OAuth2 / Entra ID token-based authentication
 
-This is the production pattern. A single shared pool account holds all database connections. For each request, the application attaches the end user's identity to the connection before executing SQL. The database replaces the pool account's security domain with the end user's — data grants enforce as if the end user connected directly.
+For enterprise applications where users authenticate via an identity provider (Microsoft Entra ID, OCI IAM), the JDBC driver supports an **End User Security Context SPI**. The app never sees the user's database password — it forwards the OAuth2 token.
 
-The pool account needs only two privileges:
+```
+Browser → Entra ID login → App receives JWT → JDBC SPI extracts JWT
+                                                → Request database access token via OAuth2
+                                                  → Database activates data roles from token claims
+```
 
+**Database setup:**
 ```sql
-GRANT CREATE SESSION TO pool_account;
-GRANT CREATE END USER SECURITY CONTEXT TO pool_account;
+-- Data roles map to IAM app roles (no end users needed)
+CREATE DATA ROLE hrapp_managers MAPPED TO 'azure_role=MANAGERS';
 ```
 
-There are two variants depending on whether your users are managed in an IAM system or in the application's own user store.
+**Code change:** Add the `ojdbc-provider-spring` dependency and set JDBC connection properties:
 
-#### Path 2a: IAM-managed users (Entra ID or OCI IAM)
-
-The application holds two tokens per request: the end user's IAM access token and a database-access token the application obtained from IAM for itself (OBO or client credentials). Both are passed to the database, which validates them and activates the matching data roles.
-
-**Database setup** — data roles map to IAM app roles; no `CREATE END USER` required:
-
-```sql
-CREATE DATA ROLE hrapp_employee_role MAPPED TO 'AZURE_ROLE=Employee';
-CREATE DATA ROLE hrapp_manager_role  MAPPED TO 'AZURE_ROLE=Manager';
+```properties
+# application.properties
+oracle.jdbc.provider.endUserSecurityContext=ojdbc-provider-spring-end-user-security-context
+oracle.jdbc.provider.endUserSecurityContext.registrationId=hrapp
 ```
 
-**Java (JDBC):**
+The SPI implementation (`SpringSecurityContextProvider`) automatically:
+1. Extracts the user's JWT from Spring Security's `SecurityContextHolder`
+2. Uses the `hrapp` client registration to request a database access token via OAuth2
+3. Passes both tokens to the JDBC driver
+4. The driver sends them to the database, which activates the corresponding data roles
 
-```java
-// Pool connection — reused across many requests
-Connection conn = pool.getConnection();
+**SPI registration** is automatic via `META-INF/services/oracle.jdbc.spi.EndUserSecurityContextProvider`.
 
-// Attach the end user's identity for this request
-EndUserSecurityContext ctx =
-    EndUserSecurityContext.createWithToken(dbAccessToken, userToken)
-        .withDataRoles(Set.of("hrapp_employee_role"))  // optional: request additional roles
-        .withAttributes(Map.of("region", "EMEA"));     // optional: context key-value pairs
-
-conn.unwrap(OracleConnection.class).setEndUserSecurityContext(ctx);
-
-// SQL now enforces as the IAM end user, not the pool account
-ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM hr.employees");
-
-// Release back to pool — context detaches automatically
-conn.close();
-```
-
-**Python (python-oracledb):**
-
-```python
-# Pool stays open across requests
-pool = oracledb.create_pool(user="app_pool", password="...", dsn="...")
-
-# Per request
-conn = pool.acquire()
-ctx = oracledb.EndUserSecurityContext(
-    token=user_token,
-    db_token=db_access_token
-)
-conn.set_end_user_security_context(ctx)
-
-cursor = conn.cursor()
-cursor.execute("SELECT * FROM hr.employees")
-rows = cursor.fetchall()
-
-conn.close()  # returns to pool; context detaches
-```
-
-#### Path 2b: Locally-managed users (application's own user store)
-
-The application manages its own user directory (a database, LDAP, or similar). End users have matching local accounts in Oracle created without passwords. The application asserts the user's identity using a username and a security context lookup key.
-
-**Database setup** — local end users without passwords:
-
-```sql
--- No IDENTIFIED BY — these accounts are asserted by the application, not authenticated directly
-CREATE END USER "manderson";
-CREATE END USER "ebaker";
-
-GRANT DATA ROLE hrapp_employee_role TO "ebaker";
-GRANT DATA ROLE hrapp_employee_role TO "manderson";
-GRANT DATA ROLE hrapp_manager_role  TO "manderson";
-```
-
-**Java (JDBC):**
-
-```java
-// Pool connection — reused across many requests
-Connection conn = pool.getConnection();
-
-// Assert the end user by name + lookup key (no IAM token needed for the user)
-// dbAccessToken is the application's own token from IAM, authorizing the pool to assert identities
-EndUserSecurityContext ctx =
-    EndUserSecurityContext.createWithUsername(dbAccessToken, "manderson", lookupKey)
-        .withAttributes(Map.of("department", "Engineering"));
-
-conn.unwrap(OracleConnection.class).setEndUserSecurityContext(ctx);
-
-// SQL enforces as manderson, using his locally-granted data roles
-ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM hr.employees");
-
-conn.close();
-```
-
-> **Note:** `withDataRoles()` cannot be used with `createWithUsername()` — the end user's locally-granted data roles are activated automatically.
-
-**Python (python-oracledb):**
-
-```python
-conn = pool.acquire()
-ctx = oracledb.EndUserSecurityContext(
-    username="manderson",
-    db_token=db_access_token,
-    lookup_key=lookup_key
-)
-conn.set_end_user_security_context(ctx)
-
-cursor = conn.cursor()
-cursor.execute("SELECT * FROM hr.employees")
-```
-
-#### How the server handles context switching
-
-The database caches security contexts server-side. When a pooled connection is reused for a different user, the database seamlessly replaces the previous context with the new one. If the next request has no context, the server simply detaches the old one. Inactive contexts are garbage-collected after one hour.
-
-This means your connection pool works exactly as normal — get a connection, set the context, run the query, return the connection. The database handles everything else.
+**Best for:**
+- Enterprise applications with Entra ID or OCI IAM
+- Applications that already use OAuth2 / OpenID Connect
+- Zero-password architectures
 
 ### Which path should I use?
 
 | Scenario | Path | Why |
 |---|---|---|
-| Internal tool, demo, PoC | Direct password (Path 1) | Simplest — no pool, no tokens, no new dependencies |
-| App with its own user table, no IAM | Pool + local users (Path 2b) | Users stay in your store; DB enforces per-user grants |
-| Enterprise app with Entra ID / OCI IAM | Pool + IAM tokens (Path 2a) | No database passwords; roles flow from IAM token claims |
-| Agentic application / copilot | Pool + IAM tokens (Path 2a) | End user identity flows through the agent to the DB kernel |
+| Internal tool, demo, PoC | Direct password | Simplest — zero new dependencies |
+| Existing app with its own user table | Direct password | Map your users to end users |
+| Enterprise app with Entra ID / OCI IAM | OAuth2 SPI | Token-based — no database passwords |
+| Agentic application / copilot | OAuth2 SPI | User identity flows through the agent to the DB |
 
 ## Task 5: Verify the security boundary
 
@@ -599,7 +482,7 @@ The most important outcome of this migration: the application cannot bypass the 
       ```sql
       -- As emma, try to update salary (employee grant only allows phone_number)
       UPDATE hr.employees SET salary = 999999 WHERE employee_id = 3;
-      -- 0 rows updated (silently skipped — no error)
+      -- ORA-01031: insufficient privileges
       ```
 
 4. **Connect without a data grant:**
@@ -615,7 +498,7 @@ The database kernel enforces these controls before data leaves the SQL engine. N
 ### Try it: Run the security boundary tests
 
 ```bash
-./07_verify_security_boundary.sh    # Test all bypass attempts
+./09_verify_security_boundary.sh    # Test all bypass attempts
 ```
 
 This script runs four tests:
@@ -629,7 +512,7 @@ This script runs four tests:
 When you are done, run the cleanup script to remove all lab objects:
 
 ```bash
-./08_cleanup.sh
+./10_cleanup.sh
 ```
 
 This drops all data grants, end user context, roles, end users, and the HR schema.
@@ -644,8 +527,10 @@ This drops all data grants, end user context, roles, end users, and the HR schem
 | `04_create_role_bindings.sh` | Create `direct_logon_role`, bind CREATE SESSION to data roles |
 | `05_verify_as_marvin.sh` | Connect as Marvin — 4 rows, SSN hidden for reports |
 | `06_verify_as_emma.sh` | Connect as Emma — 1 row, same query |
-| `07_verify_security_boundary.sh` | Test bypass attempts: all fail |
-| `08_cleanup.sh` | Drop all lab objects |
+| `07_show_app_migration.sh` | Show before/after app code diff |
+| `08_start_app.sh` | Launch Spring Boot or Django app, curl-test marvin/emma |
+| `09_verify_security_boundary.sh` | Test bypass attempts: all fail |
+| `10_cleanup.sh` | Drop everything |
 
 ## What You Built
 

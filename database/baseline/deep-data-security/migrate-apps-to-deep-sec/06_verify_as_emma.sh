@@ -117,6 +117,6 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Emma sees 1 row — not 7.                                              ${NC}"
 echo -e "${GREEN}      Same query as Marvin. Same app code. Different data.                  ${NC}"
 echo -e "${GREEN}      The database enforces the policy, not the application.                ${NC}"
-echo -e "${GREEN}      Next: run 07_verify_security_boundary.sh                              ${NC}"
+echo -e "${GREEN}      Next: run 07_show_app_migration.sh                              ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HR Employees</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; background: #f5f5f5; }
+        h1 { color: #333; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .user-info { font-size: 0.9rem; color: #555; }
+        .user-info a { color: #c74634; margin-left: 1rem; }
+        table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #c74634; color: white; }
+        tr:hover { background: #f9f9f9; }
+        .api-link { margin-top: 1rem; font-size: 0.9rem; }
+        .api-link a { color: #c74634; }
+        .error { color: #c74634; margin-bottom: 1rem; }
+        .note { color: #888; font-size: 0.85rem; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HR Employees - Oracle Database 26ai</h1>
+        <div class="user-info">
+            Logged in as: <strong>{{ current_user }}</strong>
+            <a href="/logout">Sign out</a>
+        </div>
+    </div>
+    <p class="note">Data filtered by Oracle Deep Data Security data grants for this end user.</p>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if employees %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Job Code</th>
+                <th>Department</th>
+                <th>SSN</th>
+                <th>Phone</th>
+                <th>Salary</th>
+                <th>User Name</th>
+                <th>Manager ID</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employees %}
+            <tr>
+                <td>{{ emp.employee_id }}</td>
+                <td>{{ emp.first_name|default:"" }}</td>
+                <td>{{ emp.last_name|default:"" }}</td>
+                <td>{{ emp.job_code|default:"" }}</td>
+                <td>{{ emp.department_id|default:"" }}</td>
+                <td>{{ emp.ssn|default:"" }}</td>
+                <td>{{ emp.phone_number|default:"" }}</td>
+                <td>{% if emp.salary %}{{ emp.salary|floatformat:0 }}{% endif %}</td>
+                <td>{{ emp.user_name }}</td>
+                <td>{{ emp.manager_id|default:"" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    <div class="api-link">
+        REST API: <a href="/api/employees">/api/employees</a>
+    </div>
+</body>
+</html>

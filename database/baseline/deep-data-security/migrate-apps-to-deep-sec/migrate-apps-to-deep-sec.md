@@ -37,15 +37,28 @@ Same SQL. Zero application filtering. The security is on the grant, not the code
 - An **Oracle AI Database 26ai** instance with a pluggable database (e.g., PDB9)
 - `SYSTEM` or `SYS` access to run the setup scripts
 - Sample app scripts are already present in the working directory
-- **Java 17+** for the Spring Boot app, or **Python 3.12** for the Django app
+- **Java 17+** to run the Spring Boot sample app — install with:
+
+    ```bash
+    <copy>sudo dnf install -y java-17-openjdk</copy>
+    ```
+
+- **Python 3.12+** to run the Django sample app — install with:
+
+    ```bash
+    <copy>sudo dnf install -y python3.12</copy>
+    ```
 
 ## Task 1: See the Problem
 
 Script `01_create_hr_schema.sh` creates the traditional `HR` user (password auth), the `EMPLOYEES` table, and 7 sample rows. Script `02_show_traditional_app.sh` connects as the shared HR service account and queries the table.
 
 ```bash
-./01_create_hr_schema.sh
-./02_show_traditional_app.sh
+<copy>./01_create_hr_schema.sh</copy>
+```
+
+```bash
+<copy>./02_show_traditional_app.sh</copy>
 ```
 
 Look for: all 7 rows returned, all SSN values visible. This is what any application connecting as `hr` sees — regardless of who the logged-in user is.
@@ -62,8 +75,11 @@ This is the core migration. Two scripts replace traditional users, roles, and gr
 | `GRANT SELECT ON hr.employees TO role` | `CREATE DATA GRANT ... WHERE upper(user_name) = upper(ORA_END_USER_CONTEXT.username)` |
 
 ```bash
-./03_migrate_db_objects.sh
-./04_create_role_bindings.sh
+<copy>./03_migrate_db_objects.sh</copy>
+```
+
+```bash
+<copy>./04_create_role_bindings.sh</copy>
 ```
 
 `03_migrate_db_objects.sh` locks the HR schema, creates end users `marvin` and `emma`, creates data roles and data grants with row/column predicates, and creates the end user context. `04_create_role_bindings.sh` creates the `direct_logon_role` database role with `CREATE SESSION` and binds it to the data roles so end users can connect.
@@ -75,8 +91,11 @@ Look for: confirmation that `HR` can no longer log in, that `marvin` and `emma` 
 Connect as each end user and run the same query — no WHERE clause, no filtering code.
 
 ```bash
-./05_verify_as_marvin.sh
-./06_verify_as_emma.sh
+<copy>./05_verify_as_marvin.sh</copy>
+```
+
+```bash
+<copy>./06_verify_as_emma.sh</copy>
 ```
 
 Marvin sees **4 rows** — himself and his 3 direct reports. SSN is hidden for the reports (the manager grant excludes it).
@@ -101,7 +120,7 @@ The database enforced the boundary. No application code involved.
 Script `07_show_app_migration.sh` displays the before/after diff of the application code.
 
 ```bash
-./07_show_app_migration.sh
+<copy>./07_show_app_migration.sh</copy>
 ```
 
 The change is one line — the connection credential source:
@@ -134,26 +153,44 @@ Everything else — SQL queries, JDBC driver, ORM mappings, connection string, H
 
 ## Task 5: Run the Migrated App
 
-Script `08_start_app.sh` launches the Spring Boot or Django app and curl-tests it as both marvin and emma.
+Script `08_start_app.sh` launches the Spring Boot (Java 17+) or Django (Python 3.12+) app and curl-tests it as both marvin and emma. The script will verify the required runtime is installed before starting.
 
 ```bash
-./08_start_app.sh
+<copy>./08_start_app.sh</copy>
 ```
 
-Look for: marvin's request returns 4 rows, emma's returns 1 row. The app code runs `SELECT * FROM hr.employees` — no filters, no branches. The database does the rest.
+Choose **1** for Spring Boot (port 8090) or **2** for Django (port 8091) when prompted. You can also pass the choice directly:
+
+```bash
+<copy>./08_start_app.sh springboot</copy>
+```
+
+```bash
+<copy>./08_start_app.sh django</copy>
+```
+
+Look for: marvin's request returns **4 rows**, emma's returns **1 row**. The app runs `SELECT * FROM hr.employees` with no filters. The database does the rest.
+
+Open the app in your browser and log in as `marvin / Oracle123` or `emma / Oracle123` to see the filtered views yourself.
+
+To stop the app at any time:
+
+```bash
+<copy>./stop_app.sh</copy>
+```
 
 ## Task 6: Test the Security Boundary
 
 Script `09_verify_security_boundary.sh` runs four bypass attempts.
 
 ```bash
-./09_verify_security_boundary.sh
+<copy>./09_verify_security_boundary.sh</copy>
 ```
 
 | Test | Expected result |
 |---|---|
 | Marvin queries Bob's SSN (Bob is not his report) | 0 rows — Bob is invisible to Marvin |
-| Emma updates her salary | 0 rows updated — only `phone_number` is allowed |
+| Emma updates her salary | 0 rows updated — only `phone_number` is writable |
 | Emma updates Marvin's phone number | 0 rows updated — predicate limits to own row |
 | HR tries to log in | Fails — `NO AUTHENTICATION` |
 
@@ -162,7 +199,7 @@ No prompt injection, misconfigured endpoint, or forgotten WHERE clause can bypas
 ## Task 7: Clean Up
 
 ```bash
-./10_cleanup.sh
+<copy>./10_cleanup.sh</copy>
 ```
 
 Drops all data grants, the end user context, data roles, end users, and the HR schema.

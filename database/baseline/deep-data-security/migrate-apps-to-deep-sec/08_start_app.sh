@@ -132,25 +132,35 @@ fi
 echo -e "${GREEN}App is running at http://localhost:$PORT${NC}"
 echo
 
+# Helper: login and return employee count via the JSON API
+_login_and_count() {
+    local user="$1" pass="$2" jar="/tmp/cookies_${user}.txt"
+    rm -f "$jar"
+    # Step 1: GET login page → set CSRF cookie
+    curl -s -c "$jar" "http://localhost:$PORT/login" > /dev/null
+    local csrf
+    csrf=$(awk '/csrftoken/{print $7}' "$jar")
+    # Step 2: POST credentials + CSRF token → set session cookie
+    curl -s -b "$jar" -c "$jar" \
+        -H "Referer: http://localhost:$PORT/login" \
+        -d "username=${user}&password=${pass}&csrfmiddlewaretoken=${csrf}" \
+        -L "http://localhost:$PORT/login" > /dev/null
+    # Step 3: GET JSON API with session cookie → count rows
+    curl -s -b "$jar" "http://localhost:$PORT/api/employees" | grep -c '"employee_id"'
+    rm -f "$jar"
+}
+
 # ---- Test Marvin ----
 echo -e "${YELLOW}Test 1: Login as Marvin (manager + employee)...${NC}"
-echo -e "${CYAN}  curl -L -d 'username=marvin&password=Oracle123' http://localhost:$PORT/login${NC}"
-MARVIN=$(curl -s -c /tmp/cookies_marvin.txt -L -d "username=marvin&password=Oracle123" "http://localhost:$PORT/login")
-MARVIN_ROWS=$(echo "$MARVIN" | grep -c '<tr[^>]*>')
-MARVIN_ROWS=$((MARVIN_ROWS - 1))  # subtract header row
+MARVIN_ROWS=$(_login_and_count marvin Oracle123)
 echo -e "  Marvin sees ${GREEN}${MARVIN_ROWS} row(s)${NC} (expected: 4 — self + 3 direct reports)"
 echo
 
 # ---- Test Emma ----
 echo -e "${YELLOW}Test 2: Login as Emma (employee only)...${NC}"
-echo -e "${CYAN}  curl -L -d 'username=emma&password=Oracle123' http://localhost:$PORT/login${NC}"
-EMMA=$(curl -s -c /tmp/cookies_emma.txt -L -d "username=emma&password=Oracle123" "http://localhost:$PORT/login")
-EMMA_ROWS=$(echo "$EMMA" | grep -c '<tr[^>]*>')
-EMMA_ROWS=$((EMMA_ROWS - 1))
+EMMA_ROWS=$(_login_and_count emma Oracle123)
 echo -e "  Emma sees ${GREEN}${EMMA_ROWS} row(s)${NC} (expected: 1 — only herself)"
 echo
-
-rm -f /tmp/cookies_marvin.txt /tmp/cookies_emma.txt
 
 echo -e "${PURPLE}Open http://localhost:$PORT in your browser and log in as marvin/Oracle123${NC}"
 echo -e "${PURPLE}or emma/Oracle123 to see the filtered views yourself.${NC}"

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Login - HR App</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .login-box { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 320px; }
+        h1 { color: #333; font-size: 1.4rem; margin-top: 0; }
+        label { display: block; margin-top: 1rem; font-size: 0.9rem; color: #555; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 0.6rem; margin-top: 1.5rem; background: #c74634; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        button:hover { background: #a93a2b; }
+        .error { color: #c74634; font-size: 0.85rem; margin-top: 1rem; }
+        .subtitle { color: #888; font-size: 0.85rem; margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>HR Employees</h1>
+        <p class="subtitle">Oracle Database 26ai - End User Login</p>
+        <form method="post" action="/login">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus />
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required />
+            <button type="submit">Sign In</button>
+        </form>
+        <div class="error" th:if="${error}" th:text="${error}"></div>
+    </div>
+</body>
+</html>

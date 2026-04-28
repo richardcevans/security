@@ -63,6 +63,34 @@ if [ ! -d "$APP_DIR" ]; then
     exit 1
 fi
 
+# Preflight: verify the required runtime is available
+case "$CHOICE" in
+    springboot)
+        JAVA_OK=0
+        for candidate in \
+            "${JAVA_HOME:+$JAVA_HOME/bin/java}" \
+            /usr/lib/jvm/java-17-openjdk/bin/java \
+            /usr/lib/jvm/java-17/bin/java \
+            "$(command -v java 2>/dev/null)"; do
+            [ -x "$candidate" ] || continue
+            ver=$("$candidate" -version 2>&1 | awk -F '"' '/version/{print $2}' | cut -d. -f1)
+            [ "${ver:-0}" -ge 17 ] 2>/dev/null && JAVA_OK=1 && break
+        done
+        if [ "$JAVA_OK" -eq 0 ]; then
+            echo -e "${RED}ERROR: Java 17 or later is required for the Spring Boot app.${NC}"
+            echo -e "${RED}       Install it with: sudo dnf install java-17-openjdk${NC}"
+            exit 1
+        fi
+        ;;
+    django)
+        if ! command -v python3.12 >/dev/null 2>&1; then
+            echo -e "${RED}ERROR: Python 3.12 is required for the Django app.${NC}"
+            echo -e "${RED}       Install it with: sudo dnf install python3.12${NC}"
+            exit 1
+        fi
+        ;;
+esac
+
 # Stop any prior instance
 if [ -f "$APP_DIR/app.pid" ]; then
     echo -e "${YELLOW}Stopping previous instance...${NC}"

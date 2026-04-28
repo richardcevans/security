@@ -69,25 +69,26 @@ prompt  - This is the typical shared service account pattern.
 prompt ========================================================================
 
 DECLARE
-  v_exists      NUMBER;
-  v_backup_name VARCHAR2(30);
+  v_exists NUMBER;
 BEGIN
   SELECT COUNT(*) INTO v_exists FROM dba_users WHERE username = 'HR';
   IF v_exists > 0 THEN
-    DBMS_OUTPUT.PUT_LINE('WARNING: User HR already exists - skipping CREATE USER.');
+    -- Restore password auth so script 02 can connect as HR (the "before" state).
+    -- If the fastlab ran first, HR will be NO AUTHENTICATION.
+    EXECUTE IMMEDIATE 'ALTER USER hr IDENTIFIED BY Oracle123';
+    DBMS_OUTPUT.PUT_LINE('HR already existed — restored IDENTIFIED BY Oracle123.');
   ELSE
-    EXECUTE IMMEDIATE 'CREATE USER hr IDENTIFIED BY Oracle123';
+    EXECUTE IMMEDIATE 'CREATE USER hr IDENTIFIED BY Oracle123 DEFAULT TABLESPACE users';
+    EXECUTE IMMEDIATE 'ALTER USER hr QUOTA UNLIMITED ON users';
     DBMS_OUTPUT.PUT_LINE('Created user HR.');
   END IF;
   EXECUTE IMMEDIATE 'GRANT CREATE SESSION TO hr';
-  EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO hr';
 
   SELECT COUNT(*) INTO v_exists FROM dba_tables
    WHERE owner = 'HR' AND table_name = 'EMPLOYEES';
   IF v_exists > 0 THEN
-    v_backup_name := 'EMP_' || TO_CHAR(SYSDATE,'YYYYMMDDHH24MISS');
-    EXECUTE IMMEDIATE 'ALTER TABLE hr.employees RENAME TO ' || v_backup_name;
-    DBMS_OUTPUT.PUT_LINE('Table hr.employees existed and was backed up to hr.' || v_backup_name);
+    EXECUTE IMMEDIATE 'DROP TABLE hr.employees CASCADE CONSTRAINTS';
+    DBMS_OUTPUT.PUT_LINE('Dropped existing hr.employees.');
   END IF;
 END;
 /
@@ -106,6 +107,7 @@ CREATE TABLE hr.employees (
   job_code      VARCHAR2(10),
   department_id NUMBER,
   ssn           VARCHAR2(20),
+  photo         BLOB,
   phone_number  VARCHAR2(30),
   salary        NUMBER(10,2),
   user_name     VARCHAR2(128),
@@ -119,26 +121,33 @@ prompt  - Marvin (employee 2) manages Emma, Charlie, and Dana.
 prompt ========================================================================
 
 -- CEO
-prompt INSERT INTO hr.employees VALUES (1, 'Grace', 'Young', ...);
-INSERT INTO hr.employees VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', '555-100-0001', 235000, 'grace', NULL);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (1, 'Grace', 'Young', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', '555-100-0001', 235000, 'grace', NULL);
 
 -- Manager
-prompt INSERT INTO hr.employees VALUES (2, 'Marvin', 'Morgan', ...);
-INSERT INTO hr.employees VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', '555-100-0002', 175000, 'marvin', 1);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (2, 'Marvin', 'Morgan', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', '555-100-0002', 175000, 'marvin', 1);
 
 -- Marvin's team
-prompt INSERT INTO hr.employees VALUES (3, 'Emma', 'Baker', ...);
-INSERT INTO hr.employees VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', '555-100-0003', 120000, 'emma', 2);
-prompt INSERT INTO hr.employees VALUES (4, 'Charlie', 'Davis', ...);
-INSERT INTO hr.employees VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', '555-100-0004', 95000, 'charlie', 2);
-prompt INSERT INTO hr.employees VALUES (5, 'Dana', 'Lee', ...);
-INSERT INTO hr.employees VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', '555-100-0005', 130000, 'dana', 2);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (3, 'Emma', 'Baker', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', '555-100-0003', 120000, 'emma', 2);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (4, 'Charlie', 'Davis', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', '555-100-0004', 95000, 'charlie', 2);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (5, 'Dana', 'Lee', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', '555-100-0005', 130000, 'dana', 2);
 
 -- Other departments
-prompt INSERT INTO hr.employees VALUES (6, 'Bob', 'Smith', ...);
-INSERT INTO hr.employees VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', '555-100-0006', 145000, 'bob', 1);
-prompt INSERT INTO hr.employees VALUES (7, 'Fiona', 'Chen', ...);
-INSERT INTO hr.employees VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', '555-100-0007', 92000, 'fiona', 1);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (6, 'Bob', 'Smith', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', '555-100-0006', 145000, 'bob', 1);
+prompt INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id) VALUES (7, 'Fiona', 'Chen', ...);
+INSERT INTO hr.employees (employee_id, first_name, last_name, job_code, department_id, ssn, phone_number, salary, user_name, manager_id)
+VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', '555-100-0007', 92000, 'fiona', 1);
 
 prompt COMMIT;
 COMMIT;

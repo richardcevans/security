@@ -109,7 +109,7 @@ fi
 
 export PDB_NAME="${PDB_NAME:-pdb1}"
 export ORACLE_HOST="${ORACLE_HOST:-localhost}"
-export ORACLE_PORT="${ORACLE_PORT:-2484}"
+export ORACLE_PORT="${ORACLE_PORT:-1521}"
 
 echo -e "${YELLOW}Starting $CHOICE on port $PORT...${NC}"
 echo -e "${CYAN}Executing: $APP_DIR/start.sh${NC}"

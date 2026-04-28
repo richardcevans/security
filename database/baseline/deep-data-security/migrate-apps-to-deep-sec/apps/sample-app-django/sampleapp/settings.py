@@ -56,7 +56,7 @@ _port = os.environ.get('ORACLE_PORT', '2484')
 _pdb  = os.environ.get('PDB_NAME',    'pdb1')
 ORACLE_DSN = os.environ.get(
     'ORACLE_DSN',
-    f'(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST={_host})(PORT={_port}))'
+    f'(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={_host})(PORT={_port}))'
     f'(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME={_pdb}))'
-    f'(SECURITY=(SSL_SERVER_DN_MATCH=NO)))'
+    f')'
 )

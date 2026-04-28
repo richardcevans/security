@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,5 +50,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Oracle connection settings
-ORACLE_DSN = '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=dbsec-lab.dbseclabs.com)(PORT=2484))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=pdb9))(SECURITY=(SSL_SERVER_DN_MATCH=NO)))'
+# Oracle connection settings — configurable via environment variables
+_host = os.environ.get('ORACLE_HOST', 'localhost')
+_port = os.environ.get('ORACLE_PORT', '2484')
+_pdb  = os.environ.get('PDB_NAME',    'pdb1')
+ORACLE_DSN = os.environ.get(
+    'ORACLE_DSN',
+    f'(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST={_host})(PORT={_port}))'
+    f'(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME={_pdb}))'
+    f'(SECURITY=(SSL_SERVER_DN_MATCH=NO)))'
+)

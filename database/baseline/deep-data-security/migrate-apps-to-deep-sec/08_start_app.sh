@@ -83,8 +83,16 @@ case "$CHOICE" in
         fi
         ;;
     django)
-        if ! command -v python3.12 >/dev/null 2>&1; then
-            echo -e "${RED}ERROR: Python 3.12 is required for the Django app.${NC}"
+        PYTHON_BIN=""
+        for candidate in python3.12 python3.13 python3.14 python3; do
+            command -v "$candidate" >/dev/null 2>&1 || continue
+            _ver=$("$candidate" --version 2>&1 | awk '{print $2}')
+            _maj=$(echo "$_ver" | cut -d. -f1)
+            _min=$(echo "$_ver" | cut -d. -f2)
+            { [ "$_maj" -eq 3 ] && [ "$_min" -ge 12 ]; } 2>/dev/null && PYTHON_BIN=$(command -v "$candidate") && break
+        done
+        if [ -z "$PYTHON_BIN" ]; then
+            echo -e "${RED}ERROR: Python 3.12 or later is required for the Django app.${NC}"
             echo -e "${RED}       Install it with: sudo dnf install python3.12${NC}"
             exit 1
         fi

@@ -6,6 +6,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 STOPPED=0
+
+# First try PID files
 for APP in sample-app-springboot sample-app-django; do
     PIDFILE="$SCRIPT_DIR/apps/$APP/app.pid"
     if [ -f "$PIDFILE" ]; then
@@ -16,6 +18,20 @@ for APP in sample-app-springboot sample-app-django; do
         STOPPED=1
     fi
 done
+
+# Fallback: kill by process pattern (handles apps started from a different directory)
+if [ "$STOPPED" -eq 0 ]; then
+    if pgrep -f "sample-app-springboot.*\.jar" > /dev/null 2>&1; then
+        pkill -f "sample-app-springboot.*\.jar"
+        echo -e "${GREEN}Stopped Spring Boot app (by process name).${NC}"
+        STOPPED=1
+    fi
+    if pgrep -f "sample-app-django/manage\.py runserver" > /dev/null 2>&1; then
+        pkill -f "sample-app-django/manage\.py runserver"
+        echo -e "${GREEN}Stopped Django app (by process name).${NC}"
+        STOPPED=1
+    fi
+fi
 
 if [ "$STOPPED" -eq 0 ]; then
     echo -e "${YELLOW}No running app found.${NC}"

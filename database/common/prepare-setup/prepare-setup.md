@@ -16,7 +16,11 @@ This lab assumes you have:
 - SSH Keys (optional)
 
 ## Task 1: Download Oracle Resource Manager (ORM) stack zip file
+<<<<<<< HEAD
 1.  Click on the link below to download the Resource Manager zip file you need to build your environment:
+=======
+1. Click on the link below to download the Resource Manager zip file you need to build your environment:
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 <if type="aso">
     - [`dbseclabs-init-vm-aso.zip`](https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/security-library/dbseclabs-v62_init-vm-aso.zip)
@@ -64,7 +68,11 @@ This lab assumes you have:
     - [`dbseclabs-init-vm-ua.zip`](https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/security-library/dbseclabs-v62_init-vm-ua.zip)
 </if>
 
+<<<<<<< HEAD
 2.  Save in your downloads folder
+=======
+2. Save in your downloads folder
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 Now, proceed to deploy your workshop environment using Oracle Resource Manager (ORM) stack where you have 2 options:
 
@@ -97,21 +105,36 @@ Task 2B: Create Stack: Compute Only
                 - *Paste SSH Keys:* Paste the plaintext key strings or
                 - *Choose SSH Key Files:* Drag-n-drop or browse and select valid public keys of openssh format from your computer
 
+<<<<<<< HEAD
 Notes:
+=======
+    Notes:
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 1. This assumes that you already have an RSA-type SSH key pair available on the local system where you will be connecting from. If you don't and for more info on creating and using SSH keys for your specific platform and client, please refer to the guide Generate SSH Keys
 2. If you used the Oracle Cloud Shell to create your key, make sure you paste the pub file in a notepad, and remove any hard returns. The file should be one line or you will not be able to login to your compute instance
 
     - Option (C) - Check *Need Remote Access via SSH?* and *Auto Generate SSH Key Pair* to have the keys auto-generated for you during provisioning. If you select this option you will be provided with the private key post provisioning.
 
+<<<<<<< HEAD
 Depending on the quota you have in your tenancy you can choose from standard Compute shapes or Flex shapes. Please visit the Appendix: Troubleshooting Tips for instructions on checking your quota
+=======
+    Depending on the quota you have in your tenancy you can choose from standard Compute shapes or Flex shapes. Please visit the Appendix: Troubleshooting Tips for instructions on checking your quota
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
     - **Use Flexible Instance Shape with Adjustable OCPU Count?:** Keep the default as checked (unless you plan on using a fixed shape)
     - **Instance Shape:** Keep the default or select from the list of Flex shapes in the dropdown menu (e.g VM.Standard.E4.Flex).
     - **Instance OCPUS:** Accept the default shown. e.g. (**4**) will provision 4 OCPUs and 64GB of memory. You may also elect to reduce or increase the count by selecting from the dropdown. e.g. [2-24]. Please ensure you have the capacity available before increasing.
 
+<<<<<<< HEAD
 If don't have the required quota for Flex Shapes or you prefer to use fixed shapes, follow the instructions below. Otherwise, skip to the next step.
 
 **Use Flexible Instance Shape with Adjustable OCPU Count?:** Unchecked
 **Instance Shape**: Accept the default shown or select from the dropdown. e.g. VM.Standard2.2
+=======
+    If don't have the required quota for Flex Shapes or you prefer to use fixed shapes, follow the instructions below. Otherwise, skip to the next step.
+
+    **Use Flexible Instance Shape with Adjustable OCPU Count?:** Unchecked
+    **Instance Shape**: Accept the default shown or select from the dropdown. e.g. VM.Standard2.2
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 7. For this section we will provision a new VCN with all the appropriate ingress and egress rules needed to run this workshop. If you already have a VCN, make sure it has all of the correct ingress and egress rules and skip to the next section.
 
@@ -146,6 +169,7 @@ This workshop requires a certain number of ports to be available, a requirement 
 | 50002 | Glassfish Application     |
 {: title="Optional Ports - For Apps Access outside of noVNC remote desktop"}
 
+<<<<<<< HEAD
 1.  Go to *Networking >> Virtual Cloud Networks*
 2.  Choose your network
 3.  Under Resources, select Security Lists
@@ -155,6 +179,17 @@ This workshop requires a certain number of ports to be available, a requirement 
     - Source CIDR: 0.0.0.0/0
     - Destination Port Range: *Refer to above table(s)*
 7.  Click the Add Ingress Rules button
+=======
+1. Go to *Networking >> Virtual Cloud Networks*
+2. Choose your network
+3. Under Resources, select Security Lists
+4. Click on Default Security Lists under the Create Security List button
+5. Click Add Ingress Rule button
+6. Enter the following:  
+    - Source CIDR: 0.0.0.0/0
+    - Destination Port Range: *Refer to above table(s)*
+7. Click the Add Ingress Rules button
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 ## Task 3: Review Stack Details  
 
@@ -179,6 +214,12 @@ You may now **proceed to the next lab**.
 
 ## Acknowledgements
 
+<<<<<<< HEAD
 * **Author** - Hakim Loumi, Database Security PM
 * **Contributors** - Rene Fontcha, Master Principal Solutions Architect, NA Technology
 * **Last Updated By/Date** - Shubham Goyal - November 2025
+=======
+* **Author** - Angeline Dhanarani, Database Security PM
+* **Contributors** - Rene Fontcha, Master Principal Solutions Architect, NA Technology
+* **Last Updated By/Date** - Angeline Dhanarani - April 2026
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd

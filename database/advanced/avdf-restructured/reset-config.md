@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Oracle Audit Vault and DB Firewall (AVDF)
 
 ## Introduction
@@ -56,11 +57,40 @@ This lab assumes you have:
     - Click the **Targets** tab
 
     - Click the Target Name **pdb1**
+=======
+# Oracle Database Security Central (Security Central)
+
+## Introduction
+This workshop introduced the key features and capabilities of Security Central. If you would like to repeat the exercises or start fresh, you can reset the lab environment and begin again from the beginning.
+
+*Estimated Lab Time:* 5 minutes
+
+*Version tested in this lab:* Oracle Database Security Central
+<!--
+### Video Preview
+
+Watch a preview of "*LiveLabs - Oracle Database Security Central*" [](youtube:eLEeOLMAEec)
+-->
+
+### Objectives
+- Rest the lab environment
+
+## Task 1: Reset the Security Central Lab Configuration
+
+1. Reset **Golden Gate** configuration for **customer_orders** only!
+
+    - Go back to Security Central Console as *`AVADMIN`*"
+
+    - Click the **Targets** tab
+
+    - Click the Target Name **customer_orders**
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
         ![AVDF](./images/avdf-250.png "Select the Target Name")
 
     - In the section **Audit Data Collection**, select "**/u01/app/oracle/product/ogg/var/lib/data**" and click [**Stop**]
 
+<<<<<<< HEAD
         ![AVDF](./images/avdf-254.png "Stop the Golden Gate Audit Data Collection")
 
     - Refresh the page to be sure that the service is stopped
@@ -71,6 +101,12 @@ This lab assumes you have:
 
         ![AVDF](./images/avdf-256.png "Delete the Golden Gate Audit Data Collection")
 
+=======
+    - Refresh the page to be sure that the service is stopped
+
+    - Select "**/u01/app/oracle/product/ogg/var/lib/data**" Audit Trail and click [**Delete**]
+
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
     - Login to your GoldenGate Web Console
 
         - Open a web browser window to *`https://dbsec-lab:50002`*
@@ -93,7 +129,11 @@ This lab assumes you have:
 
         ![AVDF](./images/avdf-030a.png "Golden Gate - Configuration")
 
+<<<<<<< HEAD
     - Delete the "**Credentials**" for **pdb1** only by clicking on the "**Delete**" button
+=======
+    - Delete the "**Credentials**" for **cust1** only by clicking on the "**Delete**" button
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
         ![AVDF](./images/avdf-257.png "Delete credentials")
 
@@ -105,7 +145,11 @@ This lab assumes you have:
 
         ![AVDF](./images/avdf-033a.png "Select Overview")
 
+<<<<<<< HEAD
     - Stop the "**Extracts**" service for **pdb1** only by clicking on the "**Actions**" button and selecting "**Force Stop**"
+=======
+    - Stop the "**Extracts**" service for **cust1** only by clicking on the "**Actions**" button and selecting "**Force Stop**"
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
         ![AVDF](./images/avdf-259.png "Force Stop the service")
 
@@ -121,6 +165,7 @@ This lab assumes you have:
 
         ![AVDF](./images/avdf-262.png "Confirm the deletion")
 
+<<<<<<< HEAD
 <!--
     - Go back to your terminal session to reset Golden Gate
 
@@ -193,3 +238,13 @@ This lab assumes you have:
 - **Author** - Nazia Zaidi, Audit Vault and Databse Firewall - Product Manager
 - **Contributors** - Hakim Loumi - Hakim Loumi, Database Security - Product Manager
 - **Last Updated By/Date** - Nazia Zaidi, Audit Vault and Databse Firewall - Product Manager - November 2024
+=======
+
+
+2. **Now, the Security Central configuration is correctly reset!**
+
+## Acknowledgements
+- **Author** - Nazia Zaidi, Database Security - Product Manager
+- **Contributors** - Angeline Dhanarani, Database Security - Product Manager
+- **Last Updated By/Date** - Angeline Dhanarani, Database Security - Product Manager - Product Manager - April 2026
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd

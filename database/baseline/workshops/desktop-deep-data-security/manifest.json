@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - Oracle Deep Data Security",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture of this workshop and what it can do",
+      "publisheddate": "04/12/2026",
+      "filename": "../../intro/intro-deep-data-security.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Using noVNC Remote Desktop",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Oracle Deep Data Security",
+      "description": "In this lab you will learn how to leverage Oracle Deep Data Security with end users, data roles, and data grants",
+      "publisheddate": "04/12/2026",
+      "filename": "../../deep-data-security/local-user-data-grants/end-user-data-grants-full.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

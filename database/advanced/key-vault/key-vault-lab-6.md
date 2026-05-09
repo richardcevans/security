@@ -25,7 +25,11 @@ This lab builds on concepts and operations from lab 5. Complete lab 5 first befo
     </copy>
     ````
 
+<<<<<<< HEAD
     ![Key Vault](./images/image-2025-09-27_upload.png "Upload the pre-migration key from the local TDE wallet into the OKV wallet that you created in Lab 5:")
+=======
+    ![Key Vault](./images/okv-ll6-task1-1.png "Upload the pre-migration key from the local TDE wallet into the OKV wallet that you created in Lab 5:")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 2. Set the TDE_CONFIGURATION of the database to "OKV"
 
@@ -37,7 +41,11 @@ This lab builds on concepts and operations from lab 5. Complete lab 5 first befo
     </copy>
     ````
 
+<<<<<<< HEAD
     ![Key Vault](./images/TDE_CONFIG_OKV.png "Set the TDE_CONFIGURATION to 'OKV'")
+=======
+    ![Key Vault](./images/okv-ll6-task1-2.png "Set the TDE_CONFIGURATION to 'OKV'")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 3. To ensure security, delete the local TDE wallet from &lt;WALLET_ROOT&gt;/tde
 
@@ -48,9 +56,17 @@ This lab builds on concepts and operations from lab 5. Complete lab 5 first befo
     </copy>
     ````
 
+<<<<<<< HEAD
     ![Key Vault](./images/image-2025-09-05-delete-wallet-after-upload.png "To ensure security, delete the local TDE wallet from <WALLET_ROOT>/tde:")
+=======
+    ![Key Vault](./images/okv-ll6-task1-3.png "To ensure security, delete the local TDE wallet from <WALLET_ROOT>/tde:")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 ## Acknowledgements
 - **Author** - Shubham Goyal
 - **Contributors** - Peter Wahl, Rahil Mir
+<<<<<<< HEAD
 - **Last Updated By/Date** - Shubham Goyal - March 2026
+=======
+- **Last Updated By/Date** - Shubham Goyal - March 2026
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd

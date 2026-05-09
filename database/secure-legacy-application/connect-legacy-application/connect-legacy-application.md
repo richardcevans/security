@@ -16,6 +16,7 @@ In this lab, you will complete the following tasks:
 
 This lab assumes you have:
 - Oracle Cloud Infrastructure (OCI) tenancy account
+<<<<<<< HEAD
 - Completion of the following previous labs: Configure the Autonomous Database instance
 
 ## Task 1: Setup folders and generate an SSH key-pair.
@@ -23,6 +24,16 @@ This lab assumes you have:
 1. Navigate to the top right of your OCI console and select the terminal icon labelled cloud shell and wait for it to load and setup. Cloud Shell is a free-to-use browser-based terminal accessible from the Oracle Cloud Console that provides access to a Linux shell with pre-authenticated Oracle Cloud Infrastructure CLI and other useful developer tools.
 
     ![Open cloud shell](images/open-cloud-shell.png)
+=======
+- Completion of the following previous lab(s): 
+    - Configure the Autonomous Database instance
+
+## Task 1: Setup folders and generate an SSH key-pair.
+
+1. Navigate to the top right of your OCI console and select the computer icon labelled Developer Tools, then select **Cloud Shell** and wait for it to load and setup. Cloud Shell is a free-to-use browser-based terminal accessible from the Oracle Cloud Console that provides access to a Linux shell with pre-authenticated Oracle Cloud Infrastructure CLI and other useful developer tools.
+
+    ![Open cloud shell](images/sla-011.png "Open Cloud Shell")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 2. Type in the following commands:
 
@@ -49,31 +60,47 @@ This lab assumes you have:
         <copy>chmod 600 myhrappkey</copy>
         ```
 
+<<<<<<< HEAD
     - When prompted if you want a passcode, press enter again to avoid creating one.
 
+=======
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
     - View the key-pair you just created:
 
         ```
         <copy>ls</copy>
         ```
+<<<<<<< HEAD
     - Retrieve the public key and copy/paste it to a clipboard of your choosing. You will need this in future steps:
+=======
+    - Retrieve the public key and copy/paste it to a clipboard where it can be referred to later.
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
         ```
         <copy>cat myhrappkey.pub</copy>
         ```
 
+<<<<<<< HEAD
     - Retrieve the private key and copy/paste it to a clipboard of your choosing. You will need this in future steps:
+=======
+    - Retrieve the private key and copy/paste it to a clipboard clipboard where it can be referred to later.
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
         ```
         <copy>cat myhrappkey</copy>
         ```
 
+<<<<<<< HEAD
 3. Minimize cloud shell. You will need it again for future tasks.
+=======
+3. Minimize cloud shell. It will be needed again for future tasks.
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 ## Task 2: Create the Glassfish application instance.
 
 1. Using the hamburger menu at the top left, navigate to **Compute** and select **Custom Images**.
 
+<<<<<<< HEAD
     ![Navigate to custom image](images/navigate-custom-image.png)
 
 2. Select **Import image**.
@@ -87,6 +114,19 @@ This lab assumes you have:
 4. Once the custom image is available, use the hamburger menu at the top right to navigate to **Compute** and select **Instances**.
 
     ![Navigate to instances](images/navigate-instances.png)
+=======
+    ![Navigate to custom image](images/sla-012.png "Navigate to custom images")
+
+2. Select **Import image**.
+
+3. Fill in the corresponding fields as shown in the image below (use the compartment of your choice) and select **Import image**. Use the following link for the **Object Storage URL**: https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/data-management-library-files/MyHRApp-20221201-final
+
+    ![Create custom image](images/sla-013.png "Create custom image")
+
+4. Once the custom image is available, use the hamburger menu at the top right to navigate to **Compute** and select **Instances**.
+
+    ![Navigate to instances](images/sla-014.png "Navigate to instances")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 5. Select **Create instance**.
 
@@ -95,6 +135,7 @@ This lab assumes you have:
     - **Name**: myhrapp
     - **Create in compartment**: Select a compartment of your choice.
     - **Placement**: Select a placement of your choice.
+<<<<<<< HEAD
     - **Image**: Select **change image**. Change the image source to **Custom images**. **Make sure your compartment is the same as the one you imported the custom image to**. Select the custom Glassfish image you created in the previous steps (this can sometimes take a little bit of time to load).
     - **Shape**: Use the default shape provided.
     - **Networking**: Select **Create new virtual cloud network** and **Create a new public subnet**. Use the name `myhrapp-vcn` and a compartment of your choice. For the CIDR block, use `10.0.0.0/24`. For the public IP address, select **Assign a public IPv4 address**.
@@ -104,6 +145,18 @@ This lab assumes you have:
 7. Select **Create**.
 
     ![Running instance](images/instance-running.png)
+=======
+    - **Image**: Select **change image**. Change the image source to **My images < Custom Images**. **Make sure your compartment is the same as the one you imported the custom image to**. Select the custom Glassfish image you created in the previous steps (this can sometimes take a little bit of time to load).
+    - **Shape**: Use the default shape provided.
+    - **Security**: Skip
+    - **Networking**: Select **Create new virtual cloud network** and **Create a new public subnet**. Use the name `myhrapp-vcn` and a compartment of your choice. For the CIDR block, use `10.0.0.0/24`. For the public IP address, select **Assign a public IPv4 address**.
+    - **Add SSH keys**: Select **Paste public key**. copy and paste the public ssh key you created from your clipboard (make sure its the public key).
+    - **Storage**: Skip
+
+7. Select **Create** and navigate to the instance page.
+
+    ![Running instance](images/sla-015.png "Instance running") 
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
 ## Task 3: Save the ATP TLS connection string in the Glassfish application server's properties file.
 
@@ -119,7 +172,11 @@ This lab assumes you have:
     <copy>ssh -i myhrappkey opc@<PASTE INSTANCE PUBLIC IP ADDRESS HERE></copy>
     ```
 
+<<<<<<< HEAD
     ![SSH into instance](images/ssh-into-instance.png)
+=======
+    ![SSH into instance](images/sla-016.png "SSH into instance")
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd
 
     *Note:* If you are having trouble with your keys, remember that your **myhrapp** directory needs to maintain read and write privileges for the owner. If you are ever running into this issue, copy and paste the following command in your **myhrapp** directory in Cloud Shell to update read and write privileges.
 
@@ -166,6 +223,12 @@ You may now **proceed to the next lab.**
 
 ## Acknowledgements
 
+<<<<<<< HEAD
 - **Author** - Ethan Shmargad, North America Specialists Hub
 - **Creator** - Richard Evans, Senior Principle Product Manager
 - **Last Updated By/Date** - Ethan Shmargad, September 2022
+=======
+- **Author** - Ethan Shmargad, Product Manager
+- **Creator** - Richard Evans, Senior Principle Product Manager
+- **Last Updated By/Date** - Ethan Shmargad, April 2025
+>>>>>>> ecfd685b6409977b9a29d88ace059340a60acbbd

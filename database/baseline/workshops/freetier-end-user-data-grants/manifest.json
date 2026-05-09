@@ -1,0 +1,10 @@
+{
+    "workshoptitle": "LiveLabs - Getting Started with Oracle Deep Data Security",
+    "help": "livelabs-help-database_us@oracle.com",
+    "tutorials": [
+        {
+            "title": "Getting Started with Oracle Deep Data Security",
+            "filename": "../deep-data-security/end-user-data-grants/end-user-data-grants.md"
+        }
+    ]
+}

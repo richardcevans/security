@@ -1,10 +1,10 @@
-# LiveLabs FastLab: Getting Started with Oracle Deep Data Security
+# Getting Started with Oracle Deep Data Security
 
 ## What You Will Learn
 
-Welcome to this **Oracle Deep Data Security LiveLabs FastLab** workshop.
+Welcome to this **Oracle Deep Data Security LiveLabs** workshop.
 
-This FastLab walks you through the key concepts behind Oracle Deep Data Security — why it is critical to securing agentic AI workloads, and how enterprise identity integrates end-to-end with Oracle Database to enforce per-user data access.
+This workshop walks you through the key concepts behind Oracle Deep Data Security — why it is critical to securing agentic AI workloads, and how enterprise identity integrates end-to-end with Oracle Database to enforce per-user data access.
 
 ![Architecture diagram](./images/deepsec-direct-access-architecture.png "Architecture diagram showing Emma connecting through an AI agent to Oracle Database with a data grant enforcing per-user access.")
 
@@ -12,7 +12,7 @@ In this lab, you will create and use new users, roles, and grants available in O
 
 This lab covers the very basics of end users, data roles, and data grants. Emma and Marvin are colleagues at the same company — Emma is an employee and Marvin is her manager. They both query the same HR table, and the database makes sure each of them only ever sees the data appropriate for their role. For more labs and content, go to the [Next Steps](#next-steps) section of this lab. 
 
-Estimated Time: 15 minutes
+Estimated Time: 35 minutes
 
 ## The Challenge
 
@@ -704,7 +704,7 @@ The Trust Chain: **End user authentication → `DATA ROLE` → `DATA GRANT` enfo
 
 This lab used password-based authentication to focus on the Deep Data Security mechanics. In a production environment, end users authenticate through an enterprise identity provider — and their application roles flow in automatically via OAuth token, mapping directly to Oracle data roles.
 
-To see this in action with Microsoft Entra ID, try the next FastLab:
+To see this in action with Microsoft Entra ID, try the next workshop:
 
 * [Oracle Deep Data Security with Microsoft Entra ID](../../../advanced/workshops/freetier-entra-id-data-grants/index.html)
 
@@ -712,7 +712,7 @@ To see this in action with Microsoft Entra ID, try the next FastLab:
 
 * [Oracle AI Database 26ai Documentation](https://docs.oracle.com/en/database/)
 * [Oracle Deep Data Security Configuration Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html)
-* [FastLab: Oracle Deep Data Security with Microsoft Entra ID](../../../advanced/workshops/freetier-entra-id-data-grants/index.html)
+* [Oracle Deep Data Security with Microsoft Entra ID](../../../advanced/workshops/freetier-entra-id-data-grants/index.html)
 
 
 ## Acknowledgements

@@ -6,11 +6,11 @@ Welcome to this **Oracle Deep Data Security LiveLabs FastLab** workshop.
 
 This FastLab walks you through the key concepts behind Oracle Deep Data Security — why it is critical to securing agentic AI workloads, and how enterprise identity integrates end-to-end with Oracle Database to enforce per-user data access.
 
-![Architecture diagram placeholder](./images/deepsec-direct-access-architecture.png "Architecture diagram showing Emma connecting through an AI agent to Oracle Database with a data grant enforcing per-user access.")
+![Architecture diagram](./images/deepsec-direct-access-architecture.png "Architecture diagram showing Emma connecting through an AI agent to Oracle Database with a data grant enforcing per-user access.")
 
-In this lab, you will create and use new users, roles, and grants only available in Oracle AI Database 26ai and higher. With these new capabilities, you will learn how you can secure sensitive data in the Oracle Database regardless of the use case. 
+In this lab, you will create and use new users, roles, and grants available in Oracle AI Database 26ai Enterprise Edition. With these new capabilities, you will learn how you can secure sensitive data in the Oracle Database regardless of the use case. 
 
-This lab covers the very basics of end users, data roles, and data grants. Emma and Marvin are colleagues at the same company — Emma is an employee and Marvin is her manager. They both query the same HR table, and the database makes sure each of them only ever sees the data appropriate for their role. For more labs and content, go to the [Next Steps](#NextSteps) section of this lab. 
+This lab covers the very basics of end users, data roles, and data grants. Emma and Marvin are colleagues at the same company — Emma is an employee and Marvin is her manager. They both query the same HR table, and the database makes sure each of them only ever sees the data appropriate for their role. For more labs and content, go to the [Next Steps](#next-steps) section of this lab. 
 
 Estimated Time: 15 minutes
 
@@ -52,15 +52,23 @@ When an end user authenticates, Oracle Database automatically activates their `D
 
 This lab is a walk-through of the technology. If you wish to follow along, you should have the following environment configured: 
 
-- An **Oracle AI Database 26ai** instance (Autonomous or on-premises)
-- You have access to a DBA account to run the setup tasks. To use a least-privilege approach instead, Task 0 walks you through creating a dedicated administrator.
+- An **Oracle AI Database 26ai Enterprise Edition** instance with the April Release Update (RU)
+- SQL*Plus installed and configured to connect to the pluggable database service `freepdb1`
+- Access to a DBA account to run the setup tasks
 
+Use SQL*Plus for the setup tasks. Connect to `freepdb1` as your DBA user before running Task 0.
+
+```
+<copy>
+sqlplus <dba_user>/<password>@freepdb1
+</copy>
+```
 
 ## Task 0 (Optional): Create a Deep Data Security Administrator
 
-To enforce a least-privilege model, you can create a dedicated `DEEPSEC_ADMIN` user with only the privileges required to complete this lab. Run the following as a database user with the appropriate privileges. 
+To enforce a least-privilege model, you can create a dedicated `DEEPSEC_ADMIN` user with only the privileges required to complete this lab. Run the following as a DBA user in SQL*Plus.
 
-```
+```sql
 <copy>
 CREATE USER deepsec_admin IDENTIFIED BY Oracle123;
 
@@ -78,7 +86,7 @@ GRANT DROP ANY ROLE TO deepsec_admin;
 GRANT GRANT ANY ROLE TO deepsec_admin;
 GRANT SELECT_CATALOG_ROLE TO deepsec_admin;
 
--- Deep Data Security privileges (26ai)
+-- Deep Data Security privileges
 GRANT CREATE END USER TO deepsec_admin;
 GRANT DROP END USER TO deepsec_admin;
 GRANT CREATE DATA ROLE TO deepsec_admin;
@@ -90,13 +98,19 @@ GRANT ADMINISTER ANY DATA GRANT TO deepsec_admin;
 </copy>
 ```
 
-Connect as `deepsec_admin` to run Tasks 1 through 7.
+Connect as `deepsec_admin` to run Tasks 1 through 4.
+
+```
+<copy>
+sqlplus deepsec_admin/Oracle123@freepdb1
+</copy>
+```
 
 ## Task 1: Create the HR Schema and Employee Data
 
 **The Scenario:** You have an AI tool that will query an HR employees table containing sensitive data — Social Security Numbers, salaries, and employee contact information. You want any user to be able to issue a query, a question, and receive only the data they are supposed to see. 
 
-> **Connection:** Run as a DBA user or your Deep Data Security Administrator.
+> **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
 1. Create a schema-only account for the HR data and grant it tablespace quota.
 
@@ -194,7 +208,7 @@ Connect as `deepsec_admin` to run Tasks 1 through 7.
 
 **The Simplest Case:** Before introducing data roles, you will create Emma and Marvin as end users — the new Oracle Database identity type that data grants are built around. This is the foundation of how Deep Data Security works: identity-first access, with no schema ownership required.
 
-> **Connection:** Run as a DBA user or your Deep Data Security Administrator.
+> **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
 1. Create Emma as the new type of database user, an end user. Emma is an employee.
 
@@ -213,7 +227,7 @@ Connect as `deepsec_admin` to run Tasks 1 through 7.
       ```
 ## Task 3: Create Database Roles and Data Roles
 
-> **Connection:** Run as a DBA user or your Deep Data Security Administrator.
+> **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
 1. Create a database role that grants `CREATE SESSION`. This role allows your end users (Emma and Marvin) to open a direct connection to the database through utilities like SQL*Plus and SQLcl. 
 
@@ -272,7 +286,7 @@ Connect as `deepsec_admin` to run Tasks 1 through 7.
 
 ## Task 4: Create Data Grants for Employees and Managers
 
-> **Connection:** Run as a DBA user or your Deep Data Security Administrator.
+> **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
 Next, you will ensure that Emma and Marvin can see all of their own data and update only their phone number. Marvin, as a manager, will also see his direct reports — but with limited column access.
 
@@ -356,7 +370,7 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
 
     ```
     <copy>
-    sqlplus emma/Oracle123@hrdb
+    sqlplus emma/Oracle123@freepdb1
     </copy>
     ```
 
@@ -484,7 +498,7 @@ As you have experienced, Emma has only the privileges necessary to query, update
 
     ```
     <copy>
-    sqlplus marvin/Oracle123@hrdb
+    sqlplus marvin/Oracle123@freepdb1
     </copy>
     ```
 
@@ -621,7 +635,7 @@ Again, both Marvin and Emma have only the privileges necessary to query and upda
 
 ## Task 7 (Optional): Clean Up
 
-If you want to remove everything created in this lab and start fresh, run the following steps as your **DBA user**.
+If you want to remove everything created in this lab and start fresh, run the following steps as your **DBA user** in SQL*Plus.
 
 > **Note:** If you plan to continue with Next Steps, you should skip the Clean Up task because you will use most of these objects in the next lab. 
 
@@ -692,13 +706,13 @@ This lab used password-based authentication to focus on the Deep Data Security m
 
 To see this in action with Microsoft Entra ID, try the next FastLab:
 
-* [Oracle Deep Data Security with Microsoft Entra ID](../data-grants/index.html)
+* [Oracle Deep Data Security with Microsoft Entra ID](../../../advanced/workshops/freetier-entra-id-data-grants/index.html)
 
 ## Learn More
 
 * [Oracle AI Database 26ai Documentation](https://docs.oracle.com/en/database/)
 * [Oracle Deep Data Security Configuration Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html)
-* [FastLab: Oracle Deep Data Security with Microsoft Entra ID](../data-grants/index.html)
+* [FastLab: Oracle Deep Data Security with Microsoft Entra ID](../../../advanced/workshops/freetier-entra-id-data-grants/index.html)
 
 
 ## Acknowledgements

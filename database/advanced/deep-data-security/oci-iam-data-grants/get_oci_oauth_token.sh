@@ -18,8 +18,16 @@ export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-${OCI_REDIRECT_URI}}"
 export OCI_OPEN_BROWSER="${OCI_OPEN_BROWSER:-0}"
 export OCI_HEADLESS="${OCI_HEADLESS:-0}"
 
+DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
+
 normalize_redirect_uri() {
   local first_uri
+  if [[ "$OCI_REDIRECT_URI" == *":8080/"* ]] || [[ "$OCI_REDIRECT_URIS" != *"localhost:8888/callback"* ]]; then
+    echo -e "${YELLOW}Replacing stale OAuth redirect settings with lab defaults.${NC}"
+    OCI_REDIRECT_URIS="$DEFAULT_REDIRECT_URIS"
+    export OCI_REDIRECT_URIS
+  fi
+
   first_uri="${OCI_REDIRECT_URIS%%,*}"
   if [ -n "$OCI_REDIRECT_URIS" ] && [[ ",${OCI_REDIRECT_URIS}," != *",${OCI_REDIRECT_URI},"* ]]; then
     echo -e "${YELLOW}Ignoring stale OCI_REDIRECT_URI=${OCI_REDIRECT_URI}${NC}"
@@ -141,6 +149,51 @@ def prompt_from_tty(prompt):
     except OSError:
         return input(prompt).strip()
 
+def extract_authorization_code(pasted):
+    pasted = pasted.strip()
+    if not pasted:
+        return ""
+
+    if "://" not in pasted and "code=" not in pasted:
+        print("Using pasted value as the authorization code.")
+        return pasted
+
+    parsed_pasted = urllib.parse.urlparse(pasted)
+    query_params = urllib.parse.parse_qs(parsed_pasted.query)
+    fragment_params = urllib.parse.parse_qs(parsed_pasted.fragment)
+    pasted_params = {**fragment_params, **query_params}
+
+    if "error" in pasted_params:
+        error = pasted_params.get("error", [""])[0]
+        description = pasted_params.get("error_description", [""])[0]
+        if description:
+            print(f"ERROR: OCI IAM returned {error}: {description}", file=sys.stderr)
+        else:
+            print(f"ERROR: OCI IAM returned {error}", file=sys.stderr)
+        sys.exit(1)
+
+    returned_state = pasted_params.get("state", [""])[0]
+    if returned_state:
+        if returned_state != state:
+            print("ERROR: The pasted URL has a state value, but it does not match this token request.", file=sys.stderr)
+            print("Start over with a fresh authorization URL from this script.", file=sys.stderr)
+            sys.exit(1)
+        print("Parsed pasted browser URL.")
+        print("  state: matches this token request")
+    else:
+        print("Parsed pasted browser URL.")
+        print("  state: not present in pasted value; continuing because OCI returned an authorization code")
+
+    parsed_code = pasted_params.get("code", [""])[0]
+    if parsed_code:
+        print(f"  code : found authorization code ({len(parsed_code)} characters)")
+        print("  why  : exchanging this one-time code for an OCI IAM OAuth2 access token")
+        return parsed_code
+
+    print("ERROR: The pasted value looked like a URL, but no code= parameter was found.", file=sys.stderr)
+    print("Paste the full redirected URL from the browser address bar, or paste only the code value.", file=sys.stderr)
+    sys.exit(1)
+
 class CallbackHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         return
@@ -251,20 +304,13 @@ if not code:
     if headless:
         print("After login, the browser will redirect to a localhost URL.")
         print("The page may not load. That is expected in headless mode.")
+        print("Paste the entire redirected URL from the browser address bar.")
+        print("The script will parse code=, verify state= when present, and exchange the code for a token.")
     else:
         print("Automatic callback was not captured.")
-    print("Copy the final redirected URL")
-    print("or copy only the code= value from that URL.")
+        print("Copy the final redirected URL, or copy only the code= value from that URL.")
     pasted = prompt_from_tty("Paste redirected URL or authorization code: ")
-    if not pasted:
-        print("ERROR: No authorization code provided.", file=sys.stderr)
-        sys.exit(1)
-    if "code=" in pasted:
-        parsed_pasted = urllib.parse.urlparse(pasted)
-        pasted_params = urllib.parse.parse_qs(parsed_pasted.query)
-        code = pasted_params.get("code", [""])[0]
-    else:
-        code = pasted
+    code = extract_authorization_code(pasted)
 
 if not code:
     print("ERROR: Could not determine authorization code.", file=sys.stderr)

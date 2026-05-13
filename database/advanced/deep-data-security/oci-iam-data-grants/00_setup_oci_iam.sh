@@ -21,14 +21,34 @@ export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
 export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
 export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
+DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
-export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback}"
+export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-$DEFAULT_REDIRECT_URIS}"
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
 export DB_SID="${DB_SID:-FREE}"
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+
+normalize_redirect_uri() {
+  local first_uri
+  if [[ "$OCI_REDIRECT_URI" == *":8080/"* ]] || [[ "$OCI_REDIRECT_URIS" != *"localhost:8888/callback"* ]]; then
+    echo -e "${YELLOW}Replacing stale OAuth redirect settings with lab defaults.${NC}"
+    OCI_REDIRECT_URIS="$DEFAULT_REDIRECT_URIS"
+    export OCI_REDIRECT_URIS
+  fi
+
+  first_uri="${OCI_REDIRECT_URIS%%,*}"
+  if [ -n "$OCI_REDIRECT_URIS" ] && [[ ",${OCI_REDIRECT_URIS}," != *",${OCI_REDIRECT_URI},"* ]]; then
+    echo -e "${YELLOW}Ignoring stale OCI_REDIRECT_URI=${OCI_REDIRECT_URI}${NC}"
+    echo -e "${YELLOW}Using OCI_REDIRECT_URI=${first_uri}${NC}"
+    OCI_REDIRECT_URI="$first_uri"
+    export OCI_REDIRECT_URI
+  fi
+}
+
+normalize_redirect_uri
 
 echo
 echo -e "${GREEN}============================================================================${NC}"

@@ -1061,9 +1061,11 @@ http://localhost:8889/callback
 http://localhost:8890/callback
 ```
 
-If automatic callback capture fails, paste the final redirected URL or the `code` value into the helper.
+If automatic callback capture fails, paste the entire final redirected URL from the browser address bar into the helper. The helper parses the URL, extracts the OAuth2 `code`, verifies `state` when it is present, and explains why it is exchanging that one-time code for an access token. You can also paste only the raw `code` value.
 
-In headless mode, the browser may show an error after redirecting to `localhost`. That is expected. Copy the full redirected URL from the browser address bar, or copy only the `code=` value, and paste it into the helper.
+In headless mode, the browser may show an error after redirecting to `localhost`. That is expected. Copy the full redirected URL from the browser address bar and paste it into the helper.
+
+If your shell still has an old `OCI_REDIRECT_URI` value such as `http://localhost:8080/callback`, the setup and token helper scripts reset it to the first lab redirect URI, normally `http://localhost:8888/callback`.
 
 ## Step 16: Verify Marvin
 
@@ -1488,7 +1490,9 @@ If `06_verify_as_emma.sh` says the token is for Marvin, get a new token and sign
 
 ### `localhost:8080` Shows GlassFish
 
-The current scripts use ports `8888`, `8889`, and `8890`. If your environment still points to `8080`, unset the old variables:
+The current scripts use ports `8888`, `8889`, and `8890`. `00_setup_oci_iam.sh` and `get_oci_oauth_token.sh` automatically ignore a stale `OCI_REDIRECT_URI` such as `http://localhost:8080/callback` and reset the lab redirects to the registered `8888-8890` values.
+
+If you still see `8080`, unset the old variables:
 
 ```bash
 unset OCI_REDIRECT_URI

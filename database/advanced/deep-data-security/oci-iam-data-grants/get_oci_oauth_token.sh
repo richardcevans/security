@@ -303,7 +303,9 @@ if not code:
     print()
     if headless:
         print("After login, the browser will redirect to a localhost URL.")
-        print("The page may not load. That is expected in headless mode.")
+        print("The page may not load, may spin, or may show 'connection refused'.")
+        print("That is expected in headless mode because no server is listening in that browser environment.")
+        print("Do not reload the page. The address bar is the important part.")
         print("Paste the entire redirected URL from the browser address bar.")
         print("The script will parse code=, verify state= when present, and exchange the code for a token.")
     else:

@@ -51,6 +51,7 @@ End users authenticate with OCI IAM. Oracle Database reads the OAuth2 access tok
 - [Security Notes](#security-notes)
 - [Database Parameter Rollback](#database-parameter-rollback)
 - [Audit And Log Locations](#audit-and-log-locations)
+- [Clear Local Tokens](#clear-local-tokens)
 - [Optional: Use A Specific Domain URL](#optional-use-a-specific-domain-url)
 - [Custom Claim Fallback](#custom-claim-fallback)
 - [Troubleshooting](#troubleshooting)
@@ -404,10 +405,10 @@ Anyone who can read the token file can attempt to authenticate as that user unti
 
 Deleting the local token file prevents local reuse from that file, but it does not revoke a token that has already been copied elsewhere.
 
-Remove the local token file:
+Clear local token material with the helper:
 
 ```bash
-rm -f ~/.oci/oci-iam-data-grants/token
+./clear_local_tokens.sh
 ```
 
 Token lifetime is usually about one hour.
@@ -1063,7 +1064,7 @@ http://localhost:8890/callback
 
 If automatic callback capture fails, paste the entire final redirected URL from the browser address bar into the helper. The helper parses the URL, extracts the OAuth2 `code`, verifies `state` when it is present, and explains why it is exchanging that one-time code for an access token. You can also paste only the raw `code` value.
 
-In headless mode, the browser may show an error after redirecting to `localhost`. That is expected. Copy the full redirected URL from the browser address bar and paste it into the helper.
+In headless mode, you can open the authorization URL in a browser on your local laptop. In that case, `localhost` means your laptop, not the lab VM. The browser may show an error after redirecting to `localhost`, because nothing is listening on your laptop callback port. That is expected. Copy the full redirected URL from the laptop browser address bar and paste it into the helper running on the lab VM.
 
 If your shell still has an old `OCI_REDIRECT_URI` value such as `http://localhost:8080/callback`, the setup and token helper scripts reset it to the first lab redirect URI, normally `http://localhost:8888/callback`.
 
@@ -1401,6 +1402,35 @@ resource application id not matched
 
 If Unified Auditing is enabled in your environment, review your local audit policy and audit trail for logon events. This lab does not create or modify Unified Audit policies.
 
+## Clear Local Tokens
+
+Use this when you want to remove the local OAuth2 bearer token before switching users, ending the lab, or sharing the lab host.
+
+```bash
+./clear_local_tokens.sh
+```
+
+The script removes:
+
+- `~/.oci/oci-iam-data-grants/token`
+- the `~/.oci/oci-iam-data-grants` directory, if it is empty after token removal
+
+The script does not remove:
+
+- OCI IAM applications
+- OCI IAM users
+- OCI IAM groups
+- database objects
+- database identity-provider configuration
+- `.oci-iam-data-grants.env`
+- OCI CLI config or API keys
+
+The script cannot unset variables in your parent shell. To clear sensitive exported values from the current terminal, run:
+
+```bash
+unset OCI_CLIENT_SECRET OCI_DB_CLIENT_SECRET OCI_REDIRECT_URI OCI_REDIRECT_URIS
+```
+
 ## Optional: Use A Specific Domain URL
 
 If automatic domain discovery is not allowed by your OCI policies, set `OCI_DOMAIN_URL` before running `00_setup_oci_iam.sh`.
@@ -1547,10 +1577,10 @@ Database cleanup does not remove:
 - network backup files under `$ORACLE_HOME/network/admin`
 - OCI CLI config or API keys
 
-Remove the local token file:
+Clear local token material:
 
 ```bash
-rm -f ~/.oci/oci-iam-data-grants/token
+./clear_local_tokens.sh
 ```
 
 ## Cleanup OCI IAM Objects

@@ -17,6 +17,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 echo
@@ -32,21 +33,32 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 
 echo -e "${YELLOW}Creating HR schema and employees...${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -65019 THEN
+      RAISE;
+    END IF;
+END;
+/
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -55,6 +67,17 @@ prompt ========================================================================
 
 show user;
 show con_name;
+
+prompt DROP USER hr CASCADE;
+BEGIN
+  EXECUTE IMMEDIATE 'DROP USER hr CASCADE';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN
+      RAISE;
+    END IF;
+END;
+/
 
 prompt CREATE USER hr NO AUTHENTICATION;
 CREATE USER hr NO AUTHENTICATION;
@@ -135,6 +158,12 @@ SELECT employee_id, first_name, last_name, user_name, ssn, salary, manager_id
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not create HR schema in ${PDB_NAME}.${NC}"
+    echo -e "${YELLOW}Check ORACLE_SID, PDB_NAME, and the SQL output above.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"

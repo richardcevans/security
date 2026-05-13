@@ -6,7 +6,7 @@
 #
 # Notes       : Task 7 - Verify the security boundary.
 #               Tests that OCI IAM-authenticated end users cannot bypass data grants.
-#               Each test requires a separate OCI IAM browser login.
+#               Each test requires a fresh OAuth2 token from get_oci_oauth_token.sh.
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
@@ -25,22 +25,21 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Task 7: Verify the Security Boundary                                  ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${PURPLE}Each test connects via sqlplus /@hrdb (OCI IAM browser login).${NC}"
-echo -e "${PURPLE}You will need to log in as the appropriate user for each test.${NC}"
+echo -e "${PURPLE}Before each OCI IAM test, run ./get_oci_oauth_token.sh for the requested user.${NC}"
+echo -e "${PURPLE}Each test then connects via sqlplus /@hrdb using TOKEN_AUTH=OAUTH.${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
 # =====================================================================
 # Test 1: Marvin tries to see Bob's SSN (Bob is not his direct report)
 # =====================================================================
 echo -e "${YELLOW}Test 1: Marvin tries to see Bob's SSN...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}Log in as Marvin's OCI IAM account.${NC}"
+echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Marvin first.${NC}"
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -78,7 +77,7 @@ echo
 # =====================================================================
 echo -e "${YELLOW}Test 2: Emma tries to update her own salary...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}Log in as Emma's OCI IAM account.${NC}"
+echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -118,7 +117,7 @@ echo
 # =====================================================================
 echo -e "${YELLOW}Test 3: Emma tries to update Marvin's phone number...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}Log in as Emma's OCI IAM account.${NC}"
+echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -157,15 +156,34 @@ echo
 # Test 4: Try to log in as HR (should fail)
 # =====================================================================
 echo -e "${YELLOW}Test 4: Can the HR schema account still log in?${NC}"
-echo -e "${CYAN}Executing: sqlplus -s hr/******@${PDB_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s hr/${DBUSR_PWD}@${PDB_NAME} <<EOF
+if ! sqlplus -s / as sysdba <<EOF
+set echo off
+set feedback on
+set lines 130
+set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+col username format a15
+col authentication_type format a25
+
+SELECT username, authentication_type
+  FROM dba_users
+ WHERE username = 'HR';
+
 exit;
 EOF
+then
+  echo -e "${RED}ERROR: Could not verify HR authentication type.${NC}"
+  exit 1
+fi
 
 echo
-echo -e "${RED}  Result: HR cannot log in. The schema account has NO AUTHENTICATION.${NC}"
+echo -e "${RED}  Result: HR has NO AUTHENTICATION and cannot be used for direct password login.${NC}"
 echo
 
 # =====================================================================

@@ -17,6 +17,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 echo
@@ -33,11 +34,8 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_SYS="${DBUSR_SYS:-sys}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
-CONN_DISPLAY="${DBUSR_SYSTEM}/******@${PDB_NAME}"
+CONN_DISPLAY="/ as sysdba, then ALTER SESSION SET CONTAINER=${PDB_NAME}"
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Steps 1-5: Create data roles, grants, and context as SYSTEM
@@ -46,12 +44,25 @@ echo -e "${YELLOW}Steps 1-5: Creating data roles, grants, and context...${NC}"
 echo -e "${CYAN}Executing: sqlplus -s ${CONN_DISPLAY}${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -65019 THEN
+      RAISE;
+    END IF;
+END;
+/
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -171,22 +182,30 @@ GRANT direct_logon_role TO hrapp_managers;
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not create data roles, grants, or context in ${PDB_NAME}.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${YELLOW}Creating the data grant on SYS.END_USER_CONTEXT...${NC}"
 echo -e "${PURPLE}NOTE: This must run as SYS because it grants access to a SYS-owned table.${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYS}/******@${PDB_NAME} as sysdba${NC}"
+echo -e "${CYAN}Executing: sqlplus -s ${CONN_DISPLAY}${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Data grant on SYS.END_USER_CONTEXT (requires SYS)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYS}/${DBUSR_PWD}@${PDB_NAME} as sysdba <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -205,6 +224,11 @@ CREATE OR REPLACE DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not create data grant on SYS.END_USER_CONTEXT in ${PDB_NAME}.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${YELLOW}Creating the manager data grant...${NC}"
@@ -214,12 +238,15 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Manager data grant as SYSTEM
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -254,6 +281,11 @@ SELECT grant_name, privilege, grantee, predicate
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not create manager data grant in ${PDB_NAME}.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"

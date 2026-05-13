@@ -18,6 +18,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 echo
@@ -30,24 +31,23 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_SYS="${DBUSR_SYS:-sys}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
-
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 1: Drop the context data grant (requires SYS)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 echo -e "${YELLOW}Step 1: Dropping SYS-owned objects (as SYS)...${NC}"
 echo -e "${PURPLE}NOTE: This must run as SYS because it was created on a SYS-owned table.${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYS}/******@${PDB_NAME} as sysdba${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYS}/${DBUSR_PWD}@${PDB_NAME} as sysdba <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -67,21 +67,28 @@ END;
 
 exit;
 EOF
+then
+    echo
+    echo -e "${YELLOW}Warning: SYS cleanup block reported an error. Continuing with remaining cleanup.${NC}"
+fi
 
 echo
 echo -e "${YELLOW}Step 2: Dropping all remaining lab objects (as DBA)...${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 2: Drop everything else (as DBA user)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -149,6 +156,11 @@ SELECT name, value
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not clean up database lab objects in ${PDB_NAME}.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"

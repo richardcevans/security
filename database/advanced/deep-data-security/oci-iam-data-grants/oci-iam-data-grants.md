@@ -66,6 +66,8 @@ After `oci setup config` is complete, the lab can create the IAM objects for you
 source ./.oci-iam-data-grants.env</copy>
 ````
 
+The setup script discovers the OCI IAM Domain URL automatically and prefers the `Default` identity domain. To use a different domain, set `OCI_DOMAIN_NAME` before running it.
+
 The script creates or reuses:
 
 - DB resource application named `Oracle DB`
@@ -289,7 +291,7 @@ This script runs four tests:
 ## Task 9: Clean Up
 
 ````bash
-<copy>./08_cleanup.sh</copy>
+<copy>./08_cleanup_db.sh</copy>
 ````
 
 The cleanup script:
@@ -299,7 +301,17 @@ The cleanup script:
 3. Drops remaining data grants, end user context, roles, data roles, and the HR schema
 4. Resets `identity_provider_type` and `identity_provider_oauth_config`
 
-OCI IAM cleanup is manual: delete the database application and the `EMPLOYEES` / `MANAGERS` groups only if they were created solely for this lab.
+Then clean up the OCI IAM objects:
+
+````bash
+<copy>./09_cleanup_oci_iam.sh</copy>
+````
+
+The OCI cleanup script deletes the lab-named applications, groups, optional demo users, and custom `group` claim. It asks you to type `DELETE` before removing IAM objects. For unattended cleanup, run:
+
+````bash
+<copy>FORCE=1 ./09_cleanup_oci_iam.sh</copy>
+````
 
 ## Complete Script Sequence
 
@@ -312,7 +324,8 @@ OCI IAM cleanup is manual: delete the database application and the `EMPLOYEES` /
 | `05_verify_as_marvin.sh` | Connect as Marvin via OCI IAM: 4 rows |
 | `06_verify_as_emma.sh` | Connect as Emma via OCI IAM: 1 row |
 | `07_verify_security_boundary.sh` | Test bypass attempts |
-| `08_cleanup.sh` | Drop lab objects and reset identity provider settings |
+| `08_cleanup_db.sh` | Drop lab objects and reset identity provider settings |
+| `09_cleanup_oci_iam.sh` | Delete lab-created OCI IAM apps, groups, users, and custom claim |
 
 ## Key Differences: OCI IAM vs. Direct Password
 

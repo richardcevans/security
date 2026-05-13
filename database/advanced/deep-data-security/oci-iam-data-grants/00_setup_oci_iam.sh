@@ -17,6 +17,7 @@ WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
 
 export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-Oracle DB}"
 export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-Oracle Confidential Client}"
+export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
 export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
 export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
@@ -78,8 +79,17 @@ discover_domain_url() {
     --compartment-id "$tenancy" \
     --all \
     "${oci_global_args[@]}" \
-    --query 'data[?lifecycleState==`ACTIVE`].url | [0]' \
+    --query "data[?lifecycleState==\`ACTIVE\` && displayName==\`${OCI_DOMAIN_NAME}\`].url | [0]" \
     --raw-output)
+
+  if [ -z "$url" ] || [ "$url" = "null" ] || [ "$url" = "None" ]; then
+    url=$(oci iam domain list \
+      --compartment-id "$tenancy" \
+      --all \
+      "${oci_global_args[@]}" \
+      --query 'data[?lifecycleState==`ACTIVE`].url | [0]' \
+      --raw-output)
+  fi
 
   if [ -z "$url" ] || [ "$url" = "null" ] || [ "$url" = "None" ]; then
     echo -e "${RED}ERROR: Could not discover an active OCI IAM domain URL.${NC}" >&2
@@ -99,6 +109,10 @@ domain_cmd() {
 
 raw_request() {
   oci raw-request "$@" "${oci_global_args[@]}"
+}
+
+generate_secret() {
+  LC_ALL=C tr -dc 'A-Za-z0-9_@#%+=:,.~-' </dev/urandom | head -c 48
 }
 
 first_query() {
@@ -145,12 +159,25 @@ get_app_field() {
   first_query "domain_cmd app get --app-id '$app_id' --attribute-sets all" "$q1" "$q2"
 }
 
+set_app_client_secret() {
+  local app_id="$1"
+  local secret="$2"
+
+  domain_cmd app patch \
+    --app-id "$app_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations "[{\"op\":\"replace\",\"path\":\"clientSecret\",\"value\":\"${secret}\"}]" \
+    >/dev/null
+}
+
 create_or_reuse_db_app() {
   local app_id
+  local generated_secret
   app_id=$(find_app_id "$OCI_DB_APP_NAME")
   if [ -n "$app_id" ]; then
     echo -e "${CYAN}  Reusing DB app: ${app_id}${NC}" >&2
   else
+    generated_secret=$(generate_secret)
     app_id=$(domain_cmd app create \
       --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
       --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
@@ -160,6 +187,7 @@ create_or_reuse_db_app() {
       --is-o-auth-client true \
       --is-o-auth-resource true \
       --client-type confidential \
+      --client-secret "$generated_secret" \
       --audience "$OCI_DB_AUDIENCE" \
       --scopes "[{\"value\":\"${OCI_DB_SCOPE_VALUE}\",\"displayName\":\"DB Access\",\"description\":\"Access the DB\",\"requiresConsent\":false}]" \
       --allowed-grants '["client_credentials"]' \
@@ -167,6 +195,7 @@ create_or_reuse_db_app() {
       --attribute-sets all \
       --query 'data.id' \
       --raw-output)
+    DB_APP_CLIENT_SECRET_OVERRIDE="$generated_secret"
     echo -e "${CYAN}  Created DB app: ${app_id}${NC}" >&2
   fi
   printf '%s' "$app_id"
@@ -287,14 +316,27 @@ JSON
 
 echo -e "${PURPLE}Using OCI IAM domain:${NC}"
 echo -e "${CYAN}  OCI_DOMAIN_URL = ${OCI_DOMAIN_URL}${NC}"
+echo -e "${CYAN}  OCI_DOMAIN_NAME = ${OCI_DOMAIN_NAME}${NC}"
 echo -e "${CYAN}  OCI_PROFILE    = ${OCI_PROFILE:-DEFAULT}${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating or reusing DB resource app...${NC}"
+DB_APP_CLIENT_SECRET_OVERRIDE=""
 DB_APP_ID=$(create_or_reuse_db_app)
 DB_APP_CLIENT_ID=$(get_app_field "$DB_APP_ID" 'data.clientId' 'data.client_id')
-DB_APP_CLIENT_SECRET=$(get_app_field "$DB_APP_ID" 'data.clientSecret' 'data.client_secret')
-[ -z "$DB_APP_CLIENT_SECRET" ] && read -r -s -p "DB app client secret was not returned. Paste it from OCI Console: " DB_APP_CLIENT_SECRET && echo
+DB_APP_CLIENT_SECRET="${DB_APP_CLIENT_SECRET_OVERRIDE}"
+if [ -z "$DB_APP_CLIENT_SECRET" ]; then
+  DB_APP_CLIENT_SECRET=$(get_app_field "$DB_APP_ID" 'data.clientSecret' 'data.client_secret')
+fi
+if [ -z "$DB_APP_CLIENT_SECRET" ]; then
+  echo -e "${YELLOW}  Existing DB app did not return a readable client secret. Resetting it automatically...${NC}"
+  DB_APP_CLIENT_SECRET=$(generate_secret)
+  if ! set_app_client_secret "$DB_APP_ID" "$DB_APP_CLIENT_SECRET"; then
+    echo -e "${RED}ERROR: Could not set a client secret on existing DB app ${DB_APP_ID}.${NC}"
+    echo -e "${YELLOW}Delete the existing '${OCI_DB_APP_NAME}' app in OCI IAM, or set its client secret manually and export OCI_DB_CLIENT_SECRET.${NC}"
+    exit 1
+  fi
+fi
 
 echo
 echo -e "${YELLOW}Step 2: Creating or reusing interactive client app...${NC}"

@@ -14,7 +14,15 @@ Then run:
 source ./.oci-iam-data-grants.env
 ```
 
-The script discovers the active identity domain from the tenancy in `~/.oci/config`. If discovery is not allowed by your policies, provide the domain URL explicitly:
+The script discovers the identity domain from the tenancy in `~/.oci/config`. It chooses the `Default` domain by default. To choose another domain by display name:
+
+```bash
+export OCI_DOMAIN_NAME='My Domain'
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
+If discovery is not allowed by your policies, provide the domain URL explicitly:
 
 ```bash
 export OCI_DOMAIN_URL=https://idcs-xxxxxxxx.identity.oraclecloud.com:443

@@ -2,6 +2,36 @@
 
 This lab shows identity-aware database access with OCI IAM OAuth2 and Oracle Deep Data Security. The full walkthrough is in [oci-iam-data-grants.md](./oci-iam-data-grants.md).
 
+## Quick Start
+
+The only OCI-side setup you should have to do manually is configure OCI CLI:
+
+```bash
+oci setup config
+```
+
+Then run the lab setup:
+
+```bash
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+./01_configure_db_identity_provider.sh
+./02_configure_network.sh
+./03_create_hr_schema.sh
+./04_create_data_roles_and_grants.sh
+./05_verify_as_marvin.sh
+./06_verify_as_emma.sh
+./07_verify_security_boundary.sh
+```
+
+`00_setup_oci_iam.sh` discovers the OCI IAM Domain URL automatically. It prefers the `Default` identity domain. To use a different domain name:
+
+```bash
+export OCI_DOMAIN_NAME='My Domain'
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
 ## Install OCI CLI
 
 The verification flow uses `TOKEN_AUTH=OCI_INTERACTIVE`, so the database client needs OCI CLI configuration on the machine where you run `sqlplus /@hrdb`.
@@ -67,7 +97,7 @@ oci setup config
 
 `oci setup config` creates `~/.oci/config` and an API key pair. Upload the generated public key to your OCI user in the Console.
 
-After that, the lab setup script can create the OCI IAM domain objects:
+After that, the lab setup script can create the OCI IAM domain objects. It selects the `Default` identity domain unless you set `OCI_DOMAIN_NAME`:
 
 ```bash
 ./00_setup_oci_iam.sh
@@ -90,7 +120,7 @@ For the normal lab path, you do not collect these manually. Run `./00_setup_oci_
 | Variable | Where it comes from | Notes |
 |---|---|---|
 | `OCI_DB_APP_ID` | Created by `00_setup_oci_iam.sh` as the DB resource app client/application ID | Used as `app_id` in `identity_provider_oauth_config`. |
-| `OCI_DOMAIN_URL` | Discovered from `~/.oci/config` tenancy, or set manually | Domain URL looks like `https://idcs-...identity.oraclecloud.com:443`. |
+| `OCI_DOMAIN_URL` | Discovered from `~/.oci/config` tenancy, preferring the `Default` domain | Domain URL looks like `https://idcs-...identity.oraclecloud.com:443`. Set `OCI_DOMAIN_NAME` to choose another domain by display name. |
 | `OCI_DB_CLIENT_ID` | Created by `00_setup_oci_iam.sh` on the DB app | Stored in `OCI_IAM_DOMAIN_DB_CRED$` so the DB can retrieve signing metadata. |
 | `OCI_DB_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the DB app | Treat it like a password. The env file is written mode `600`. |
 | `OCI_CLIENT_ID` | Created by `00_setup_oci_iam.sh` as the interactive client app ID | Used in `tnsnames.ora` as `OCI_CLIENT_ID`. |
@@ -120,7 +150,8 @@ source ./.oci-iam-data-grants.env
 Cleanup:
 
 ```bash
-./08_cleanup.sh
+./08_cleanup_db.sh
+./09_cleanup_oci_iam.sh
 ```
 
 ## Reference

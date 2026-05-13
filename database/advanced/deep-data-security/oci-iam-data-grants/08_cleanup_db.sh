@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 08_cleanup.sh
+# Script Name : 08_cleanup_db.sh
 #
 # Parameter   : None
 #

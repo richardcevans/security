@@ -16,6 +16,51 @@ export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/oci-iam-data-grants}"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
 export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-${OCI_REDIRECT_URI}}"
 export OCI_OPEN_BROWSER="${OCI_OPEN_BROWSER:-0}"
+export OCI_HEADLESS="${OCI_HEADLESS:-0}"
+
+normalize_redirect_uri() {
+  local first_uri
+  first_uri="${OCI_REDIRECT_URIS%%,*}"
+  if [ -n "$OCI_REDIRECT_URIS" ] && [[ ",${OCI_REDIRECT_URIS}," != *",${OCI_REDIRECT_URI},"* ]]; then
+    echo -e "${YELLOW}Ignoring stale OCI_REDIRECT_URI=${OCI_REDIRECT_URI}${NC}"
+    echo -e "${YELLOW}Using OCI_REDIRECT_URI=${first_uri}${NC}"
+    OCI_REDIRECT_URI="$first_uri"
+    export OCI_REDIRECT_URI
+  fi
+}
+
+usage() {
+  cat <<EOF
+Usage:
+  ./get_oci_oauth_token.sh
+  ./get_oci_oauth_token.sh --headless
+  OCI_OPEN_BROWSER=1 ./get_oci_oauth_token.sh
+
+Options:
+  --headless     Do not listen for the localhost callback. Print the login URL
+                 and prompt for the final redirected URL or code value.
+  -h, --help     Show this help.
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --headless)
+      OCI_HEADLESS=1
+      export OCI_HEADLESS
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}ERROR: Unknown option: $1${NC}" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 for var in OCI_DOMAIN_URL OCI_CLIENT_ID OCI_CLIENT_SECRET OCI_SCOPE OCI_REDIRECT_URI; do
   if [ -z "${!var:-}" ]; then
@@ -24,6 +69,8 @@ for var in OCI_DOMAIN_URL OCI_CLIENT_ID OCI_CLIENT_SECRET OCI_SCOPE OCI_REDIRECT
     exit 1
   fi
 done
+
+normalize_redirect_uri
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo -e "${RED}ERROR: python3 is required.${NC}"
@@ -35,8 +82,8 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Get OCI IAM OAuth2 Access Token                                       ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${PURPLE}This opens OCI IAM in your browser, captures the authorization callback,${NC}"
-echo -e "${PURPLE}and writes the OAuth2 access token for SQL*Plus TOKEN_AUTH=OAUTH.${NC}"
+echo -e "${PURPLE}This starts OCI IAM OAuth2 authorization-code login, captures or accepts${NC}"
+echo -e "${PURPLE}the authorization callback, and writes the access token for SQL*Plus.${NC}"
 echo
 
 python3 - <<'PY'
@@ -58,15 +105,22 @@ client_secret = os.environ["OCI_CLIENT_SECRET"]
 scope = os.environ["OCI_SCOPE"]
 token_dir = os.environ["OCI_TOKEN_DIR"]
 open_browser = os.environ.get("OCI_OPEN_BROWSER", "0").lower() in ("1", "true", "yes", "y")
+headless = os.environ.get("OCI_HEADLESS", "0").lower() in ("1", "true", "yes", "y")
 
 redirect_candidates = []
+raw_redirect_uris = os.environ.get("OCI_REDIRECT_URIS", "")
 for raw_uri in os.environ.get("OCI_REDIRECT_URIS", os.environ["OCI_REDIRECT_URI"]).split(","):
     raw_uri = raw_uri.strip()
     if raw_uri:
         redirect_candidates.append(raw_uri)
 
-if os.environ["OCI_REDIRECT_URI"] not in redirect_candidates:
+if os.environ["OCI_REDIRECT_URI"] not in redirect_candidates and not raw_redirect_uris:
     redirect_candidates.insert(0, os.environ["OCI_REDIRECT_URI"])
+elif os.environ["OCI_REDIRECT_URI"] not in redirect_candidates:
+    print(f"Ignoring stale OCI_REDIRECT_URI not in registered URI list: {os.environ['OCI_REDIRECT_URI']}")
+
+if not redirect_candidates:
+    redirect_candidates = [os.environ["OCI_REDIRECT_URI"]]
 
 server = None
 redirect_uri = None
@@ -76,6 +130,16 @@ path = None
 
 state = base64.urlsafe_b64encode(os.urandom(24)).decode("ascii").rstrip("=")
 result = {}
+
+def prompt_from_tty(prompt):
+    try:
+        with open("/dev/tty", "r", encoding="utf-8") as tty_in:
+            with open("/dev/tty", "w", encoding="utf-8") as tty_out:
+                tty_out.write(prompt)
+                tty_out.flush()
+                return tty_in.readline().strip()
+    except OSError:
+        return input(prompt).strip()
 
 class CallbackHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -107,32 +171,36 @@ class CallbackHandler(BaseHTTPRequestHandler):
 def serve_once(server):
     server.handle_request()
 
-for candidate in redirect_candidates:
-    redirect = urllib.parse.urlparse(candidate)
-    if redirect.scheme != "http" or redirect.hostname not in ("localhost", "127.0.0.1"):
-        continue
+if not headless:
+    for candidate in redirect_candidates:
+        redirect = urllib.parse.urlparse(candidate)
+        if redirect.scheme != "http" or redirect.hostname not in ("localhost", "127.0.0.1"):
+            continue
 
-    candidate_host = redirect.hostname or "localhost"
-    candidate_port = redirect.port or 80
-    candidate_path = redirect.path or "/"
+        candidate_host = redirect.hostname or "localhost"
+        candidate_port = redirect.port or 80
+        candidate_path = redirect.path or "/"
 
-    try:
-        server = HTTPServer((candidate_host, candidate_port), CallbackHandler)
-        redirect_uri = candidate
-        host = candidate_host
-        port = candidate_port
-        path = candidate_path
-        server_thread = threading.Thread(target=serve_once, args=(server,), daemon=True)
-        server_thread.start()
-        break
-    except OSError as exc:
-        print(f"Could not listen on {candidate_host}:{candidate_port}: {exc}")
+        try:
+            server = HTTPServer((candidate_host, candidate_port), CallbackHandler)
+            redirect_uri = candidate
+            host = candidate_host
+            port = candidate_port
+            path = candidate_path
+            server_thread = threading.Thread(target=serve_once, args=(server,), daemon=True)
+            server_thread.start()
+            break
+        except OSError as exc:
+            print(f"Could not listen on {candidate_host}:{candidate_port}: {exc}")
 
 if not redirect_uri:
     redirect_uri = redirect_candidates[0]
     redirect = urllib.parse.urlparse(redirect_uri)
     path = redirect.path or "/"
-    print("Continuing in manual callback mode.")
+    if headless:
+        print("Running in headless mode.")
+    else:
+        print("Continuing in manual callback mode.")
 
 auth_params = urllib.parse.urlencode({
     "client_id": client_id,
@@ -148,7 +216,10 @@ if server:
 else:
     print(f"Manual callback mode for redirect URI {redirect_uri}")
 print()
-if open_browser:
+if headless:
+    print("Open this URL in any browser:")
+    print(auth_url)
+elif open_browser:
     print("Opening browser for OCI IAM login...")
     opened = webbrowser.open(auth_url, new=2)
     if not opened:
@@ -177,10 +248,14 @@ if "error" in result:
 code = result.get("code")
 if not code:
     print()
-    print("Automatic callback was not captured.")
+    if headless:
+        print("After login, the browser will redirect to a localhost URL.")
+        print("The page may not load. That is expected in headless mode.")
+    else:
+        print("Automatic callback was not captured.")
     print("Copy the final redirected URL")
     print("or copy only the code= value from that URL.")
-    pasted = input("Paste redirected URL or authorization code: ").strip()
+    pasted = prompt_from_tty("Paste redirected URL or authorization code: ")
     if not pasted:
         print("ERROR: No authorization code provided.", file=sys.stderr)
         sys.exit(1)

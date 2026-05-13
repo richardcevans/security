@@ -83,7 +83,7 @@ Before starting, confirm you have:
 - The `oracle` OS user or another OS user that can run `sqlplus / as sysdba`.
 - `ORACLE_HOME` set for the database home.
 - A local CDB and PDB. The default lab values are `DB_SID=FREE` and `PDB_NAME=FREEPDB1`.
-- A NoVNC browser or local browser on the lab host for OCI IAM login.
+- A browser for OCI IAM login. NoVNC on the lab host is simplest. A local browser also works with `./get_oci_oauth_token.sh --headless`.
 - OCI CLI configured with a user that can administer the target OCI IAM identity domain.
 
 Check `ORACLE_HOME`:
@@ -443,6 +443,8 @@ Do not expose callback ports externally.
 Do not use a shared browser session without signing out or clearing the browser session between users.
 
 Use a fresh token for each user test.
+
+If you use `--headless`, the helper does not listen on localhost. It prints the authorization URL and waits for you to paste the final redirected URL or the `code` value from the browser.
 
 ## Security Validation Checklist
 
@@ -1019,6 +1021,12 @@ Run the helper:
 ./get_oci_oauth_token.sh
 ```
 
+If you are using a browser on your laptop instead of a browser on the lab host, run headless mode:
+
+```bash
+./get_oci_oauth_token.sh --headless
+```
+
 Expected result:
 
 ```text
@@ -1054,6 +1062,8 @@ http://localhost:8890/callback
 ```
 
 If automatic callback capture fails, paste the final redirected URL or the `code` value into the helper.
+
+In headless mode, the browser may show an error after redirecting to `localhost`. That is expected. Copy the full redirected URL from the browser address bar, or copy only the `code=` value, and paste it into the helper.
 
 ## Step 16: Verify Marvin
 
@@ -1092,6 +1102,12 @@ Run the helper again:
 
 ```bash
 ./get_oci_oauth_token.sh
+```
+
+If you are using a browser on your laptop instead of a browser on the lab host, run headless mode:
+
+```bash
+./get_oci_oauth_token.sh --headless
 ```
 
 Expected result:

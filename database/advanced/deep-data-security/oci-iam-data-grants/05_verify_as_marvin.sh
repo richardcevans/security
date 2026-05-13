@@ -17,7 +17,12 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
+RED='\033[0;31m'
 NC='\033[0m'
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib_token_check.sh"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -31,6 +36,9 @@ echo
 echo -e "${YELLOW}Connecting as Marvin via OCI IAM...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}NOTE: First run ./get_oci_oauth_token.sh and sign in as Marvin.${NC}"
+echo
+
+check_oauth_token "marvin" "EMPLOYEES" "MANAGERS"
 echo
 
 sqlplus -s /@hrdb <<EOF

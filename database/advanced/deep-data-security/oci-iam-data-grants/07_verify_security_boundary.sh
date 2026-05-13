@@ -36,12 +36,19 @@ export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DB_SID="${DB_SID:-FREE}"
 export ORACLE_SID="$DB_SID"
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib_token_check.sh"
+
 # =====================================================================
 # Test 1: Marvin tries to see Bob's SSN (Bob is not his direct report)
 # =====================================================================
 echo -e "${YELLOW}Test 1: Marvin tries to see Bob's SSN...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Marvin first.${NC}"
+echo
+
+check_oauth_token "marvin" "EMPLOYEES" "MANAGERS"
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -82,6 +89,9 @@ echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
 echo
 
+check_oauth_token "emma" "EMPLOYEES"
+echo
+
 sqlplus -s /@hrdb <<EOF
 
 set echo off
@@ -120,6 +130,9 @@ echo
 echo -e "${YELLOW}Test 3: Emma tries to update Marvin's phone number...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
+echo
+
+check_oauth_token "emma" "EMPLOYEES"
 echo
 
 sqlplus -s /@hrdb <<EOF

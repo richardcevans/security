@@ -72,6 +72,8 @@ http://localhost:8890/callback
 
 If the callback cannot be captured automatically, the helper lets you paste either the final redirected URL or just the `code` value.
 
+The verification scripts decode the local token before connecting. `05_verify_as_marvin.sh` requires `sub=marvin` and groups `EMPLOYEES, MANAGERS`; `06_verify_as_emma.sh` requires `sub=emma` and group `EMPLOYEES`.
+
 ### Oracle Linux 9
 
 ```bash

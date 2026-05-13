@@ -1064,7 +1064,9 @@ http://localhost:8890/callback
 
 If automatic callback capture fails, paste the entire final redirected URL from the browser address bar into the helper. The helper parses the URL, extracts the OAuth2 `code`, verifies `state` when it is present, and explains why it is exchanging that one-time code for an access token. You can also paste only the raw `code` value.
 
-In headless mode, you can open the authorization URL in a browser on your local laptop. In that case, `localhost` means your laptop, not the lab VM. The browser may show an error after redirecting to `localhost`, because nothing is listening on your laptop callback port. That is expected. Copy the full redirected URL from the laptop browser address bar and paste it into the helper running on the lab VM.
+In headless mode, you can open the authorization URL in a browser on your local laptop. In that case, `localhost` means your laptop, not the lab VM. After a successful OCI IAM login, the browser should redirect to a URL like `http://localhost:8888/callback?code=...&state=...`. The page may say `This site can't be reached` or `connection refused`, because nothing is listening on your laptop callback port. That is expected. Copy the full redirected URL from the laptop browser address bar and paste it into the helper running on the lab VM.
+
+If the browser silently logs in as the wrong user or reuses an old OCI IAM session, close all OCI IAM browser windows or use a private/incognito window before opening the fresh authorization URL from the helper.
 
 If your shell still has an old `OCI_REDIRECT_URI` value such as `http://localhost:8080/callback`, the setup and token helper scripts reset it to the first lab redirect URI, normally `http://localhost:8888/callback`.
 

@@ -522,7 +522,7 @@ echo -e "${YELLOW}Step 5: Creating group custom claim for access tokens...${NC}"
 create_group_claim
 
 cat > "$ENV_FILE" <<EOF
-export OCI_DB_APP_ID='${DB_APP_CLIENT_ID}'
+export OCI_DB_APP_ID='${DB_APP_ID}'
 export OCI_DB_CLIENT_ID='${DB_APP_CLIENT_ID}'
 export OCI_DB_CLIENT_SECRET='${DB_APP_CLIENT_SECRET}'
 export OCI_DOMAIN_URL='${OCI_DOMAIN_URL}'

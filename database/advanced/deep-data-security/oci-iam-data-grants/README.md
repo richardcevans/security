@@ -254,9 +254,9 @@ For the normal lab path, you do not collect these manually. Run `./00_setup_oci_
 
 | Variable | Where it comes from | Notes |
 |---|---|---|
-| `OCI_DB_APP_ID` | Created by `00_setup_oci_iam.sh` as the DB resource app client/application ID | Used as `app_id` in `identity_provider_oauth_config`. |
+| `OCI_DB_APP_ID` | Created by `00_setup_oci_iam.sh` as the DB resource app id | Used as `app_id` in `identity_provider_oauth_config`; this must match the token's `resource_app_id` claim. |
 | `OCI_DOMAIN_URL` | Discovered from `~/.oci/config` tenancy, preferring the `Default` domain | Domain URL looks like `https://idcs-...identity.oraclecloud.com:443`. Set `OCI_DOMAIN_NAME` to choose another domain by display name. |
-| `OCI_DB_CLIENT_ID` | Created by `00_setup_oci_iam.sh` on the DB app | Stored in `OCI_IAM_DOMAIN_DB_CRED$` so the DB can retrieve signing metadata. |
+| `OCI_DB_CLIENT_ID` | Created by `00_setup_oci_iam.sh` on the DB app | Stored in `OCI_IAM_DOMAIN_DB_CRED$` so the DB can retrieve signing metadata. This is different from `OCI_DB_APP_ID`. |
 | `OCI_DB_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the DB app | Treat it like a password. The env file is written mode `600`. |
 | `OCI_CLIENT_ID` | Created by `00_setup_oci_iam.sh` as the interactive client app ID | Used in `tnsnames.ora` as `OCI_CLIENT_ID`. |
 | `OCI_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the interactive client app | Used by `get_oci_oauth_token.sh` to exchange an authorization code for an OAuth2 access token. |

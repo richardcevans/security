@@ -24,7 +24,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 7: Verify the Security Boundary                                  ${NC}"
+echo -e "${GREEN}      Script 7: Verify the Security Boundary                                ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Each test connects via sqlplus /@hrdb (Entra ID browser login).${NC}"

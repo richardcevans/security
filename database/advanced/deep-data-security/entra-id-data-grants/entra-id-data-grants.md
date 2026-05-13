@@ -31,6 +31,31 @@ Emma   → Entra ID login → Browser auth → AZURE_INTERACTIVE → Database
 
 Same SQL. Zero application filtering. Zero database passwords. The security is on the grant, not the code.
 
+## Table Of Contents
+
+- [What You Will Build](#what-you-will-build)
+- [Prerequisites](#prerequisites)
+- [Important Defaults](#important-defaults)
+- [Do Not Do This](#do-not-do-this)
+- [Security Model](#security-model)
+- [Threat Model](#threat-model)
+- [Security-Critical Claims](#security-critical-claims)
+- [Least Privilege Design](#least-privilege-design)
+- [Secrets And Session Inventory](#secrets-and-session-inventory)
+- [Browser Session Handling](#browser-session-handling)
+- [Security Validation Checklist](#security-validation-checklist)
+- [DBA Production Caution](#dba-production-caution)
+- [Network File Backups And Restore](#network-file-backups-and-restore)
+- [Part 1: Configure Microsoft Entra ID](#part-1-configure-microsoft-entra-id)
+- [Part 2: Configure the Oracle Database](#part-2-configure-the-oracle-database)
+- [Part 3: Create Deep Data Security Objects](#part-3-create-deep-data-security-objects)
+- [Rerun Safety](#rerun-safety)
+- [Database Parameter Rollback](#database-parameter-rollback)
+- [Audit And Log Locations](#audit-and-log-locations)
+- [Troubleshooting](#troubleshooting)
+- [Key Differences: Entra ID vs. Direct Password](#key-differences-entra-id-vs-direct-password)
+- [Learn More](#learn-more)
+
 ## What You Will Build
 
 ![Architecture diagram](./images/architecture.png "Architecture diagram showing Marvin and Emma authenticating through Entra ID to Oracle with data grants enforcing per-user access.")
@@ -46,6 +71,287 @@ This lab assumes:
 - A local browser-capable desktop session, such as NoVNC on the lab host, for `AZURE_INTERACTIVE` browser login
 
 `AZURE_INTERACTIVE` should open the browser automatically when SQLPlus runs in a local graphical session. Use a manual or headless token workaround only as a last resort for environments where a browser cannot be launched from the database client host.
+
+## Important Defaults
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `DB_SID` | `FREE` | Local CDB instance used by the scripts |
+| `PDB_NAME` | `FREEPDB1` | PDB/service used by the lab |
+| `CLIENT_ID` | none | Entra ID client app Application ID for browser authentication |
+| `APP_ID` | none | Entra ID database app Application ID |
+| `APP_ID_URI` | none | Entra ID Application ID URI exposed by the database app |
+| `TENANT_ID` | none | Entra ID Directory tenant ID |
+| `DOMAIN_NAME` | none | Entra username domain used in HR sample rows |
+| `WALLET_DIR` | `$ORACLE_BASE/admin/$ORACLE_SID/wallet` | TCPS wallet location |
+
+Use PDB-specific Entra application names so multiple database labs can coexist in the same tenant:
+
+```text
+Oracle Database 26ai - ${PDB_NAME}
+```
+
+```text
+Oracle Client Interactive - ${PDB_NAME}
+```
+
+The examples below use the default `PDB_NAME=FREEPDB1`.
+
+## Do Not Do This
+
+Do not skip admin consent on the client app API permission.
+
+Do not continue if the verifier says you logged in as the wrong user.
+
+Do not assume the browser will ask for credentials every time. Existing Entra browser sessions can silently sign in as the previous user.
+
+Do not run `02_configure_network.sh` unchanged on production, RAC, Grid Infrastructure, SCAN listener, shared Oracle home, or Data Guard environments.
+
+Do not paste browser tokens, authorization responses, or screenshots with sensitive token values into tickets or chats.
+
+Do not give Marvin or Emma direct object grants on `HR.EMPLOYEES`. Access should come from data roles and data grants.
+
+Do not make the `HR` schema password-authenticated for this lab. It should remain `NO AUTHENTICATION`.
+
+## Security Model
+
+This lab demonstrates database-enforced authorization for externally authenticated users.
+
+Trust boundaries:
+
+| Boundary | Responsibility |
+|---|---|
+| Microsoft Entra ID | Authenticates the user and issues the OAuth2 token |
+| Entra app roles | Carry authorization group/role signals such as `EMPLOYEES` and `MANAGERS` |
+| Oracle Database | Validates the token issuer, audience, tenant, and configured app registration |
+| Data role mapping | Activates database data roles from Entra token app roles |
+| Data grants | Enforce row and column access inside the database |
+| SQLPlus | Client only; it does not enforce the access policy |
+
+The security enforcement point is the database, not SQLPlus and not the application.
+
+## Threat Model
+
+This lab is designed to show protection against:
+
+- an application or user running a broad `SELECT`
+- end users with different Entra app roles running the same SQL
+- accidental overexposure of rows or columns
+- direct database logon without an Entra token that maps to a data role with `CREATE SESSION`
+- application bugs that forget a row predicate or column mask
+
+This lab does not protect against:
+
+- `SYS`, DBA, or highly privileged database administrators
+- a compromised `oracle` OS account
+- a stolen OAuth2 bearer token or browser session cookie
+- a compromised Microsoft Entra administrator
+- a misconfigured Entra app registration or app role assignment
+- a user whose Entra role assignment changed but who still has an already-issued token
+
+## Security-Critical Claims
+
+The Entra token must contain the expected identity and authorization claims.
+
+Expected Marvin signals:
+
+```text
+authenticated identity contains marvin
+```
+
+```text
+roles includes EMPLOYEES
+```
+
+```text
+roles includes MANAGERS
+```
+
+Expected Emma signals:
+
+```text
+authenticated identity contains emma
+```
+
+```text
+roles includes EMPLOYEES
+```
+
+```text
+roles does not include MANAGERS
+```
+
+The database identity-provider configuration must match the Entra database app:
+
+```text
+identity_provider_type=AZURE_AD
+```
+
+```text
+identity_provider_config.app_id=<APP_ID>
+```
+
+```text
+identity_provider_config.tenant_id=<TENANT_ID>
+```
+
+```text
+identity_provider_config.application_id_uri=<APP_ID_URI>
+```
+
+The app role values are authorization-critical. If the token does not contain the expected app role values, Oracle may authenticate the user but fail to activate the mapped data roles.
+
+## Least Privilege Design
+
+End users are not database schemas.
+
+The `HR` schema is created with:
+
+```sql
+NO AUTHENTICATION
+```
+
+The direct logon role grants only:
+
+```sql
+CREATE SESSION
+```
+
+Data access comes from data grants, not normal object grants to Marvin or Emma.
+
+The data roles map to Entra app roles:
+
+```sql
+HRAPP_EMPLOYEES -> azure_role=EMPLOYEES
+```
+
+```sql
+HRAPP_MANAGERS -> azure_role=MANAGERS
+```
+
+Changing Entra app role assignments affects newly issued tokens. To test role changes, close the browser session or use a private/incognito browser window and connect again.
+
+## Secrets And Session Inventory
+
+Sensitive local files, values, and sessions:
+
+| Item | Location | Notes |
+|---|---|---|
+| Entra database app ID | `APP_ID` | Used in database identity-provider config |
+| Entra Application ID URI | `APP_ID_URI` | Token audience/resource identifier |
+| Entra tenant ID | `TENANT_ID` | Token issuer/tenant validation |
+| Entra client app ID | `CLIENT_ID` | Used by `AZURE_INTERACTIVE` browser login |
+| Browser session cookies | Browser profile | Can silently log in as the previous user |
+| TCPS wallet | `$ORACLE_BASE/admin/$ORACLE_SID/wallet` | Contains listener TLS wallet |
+| Network backups | `$ORACLE_HOME/network/admin/*.bak` | May contain old connection descriptors |
+
+This lab does not store an Entra client secret because the interactive client is a public/native client.
+
+## Browser Session Handling
+
+`AZURE_INTERACTIVE` should open the local browser automatically.
+
+When switching from Marvin to Emma:
+
+- close Entra ID browser windows, or
+- sign out of Entra ID, or
+- use a private/incognito browser window
+
+If the browser silently authenticates the wrong user, the verification scripts should fail after login because they check `AUTHENTICATED_IDENTITY`.
+
+## Security Validation Checklist
+
+Before calling the lab complete, verify:
+
+- `00_preflight.sh` has no blocking failures
+- `verify_db_setup.sh` shows `identity_provider_type=AZURE_AD`
+- `verify_db_setup.sh` shows `HRAPP_EMPLOYEES` maps to `azure_role=EMPLOYEES`
+- `verify_db_setup.sh` shows `HRAPP_MANAGERS` maps to `azure_role=MANAGERS`
+- `DIRECT_LOGON_ROLE` has only `CREATE SESSION`
+- `DIRECT_LOGON_ROLE` is granted to both data roles
+- `HR` has `NO AUTHENTICATION`
+- Marvin login activates `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`
+- Emma login activates `HRAPP_EMPLOYEES` only
+- Marvin sees only his authorized rows
+- Emma sees only her own row
+- Emma cannot update salary
+- Emma cannot update Marvin's phone number
+- HR direct login fails
+- Database alert log has no token validation errors after successful login
+
+## DBA Production Caution
+
+This lab is designed for a single-instance lab VM.
+
+`02_configure_network.sh` rewrites these files in `$ORACLE_HOME/network/admin`:
+
+```text
+listener.ora
+```
+
+```text
+sqlnet.ora
+```
+
+```text
+tnsnames.ora
+```
+
+It also restarts the listener.
+
+On production, RAC, Grid Infrastructure, SCAN listener, shared Oracle home, or Data Guard environments, do not run `02_configure_network.sh` as-is. Adapt the listener, wallet, and TNS changes manually with your normal DBA change process.
+
+## Network File Backups And Restore
+
+`02_configure_network.sh` creates backup files before rewriting network configuration.
+
+Backup files are created in:
+
+```text
+$ORACLE_HOME/network/admin
+```
+
+Expected backup files:
+
+```text
+listener.ora.bak
+```
+
+```text
+sqlnet.ora.bak
+```
+
+```text
+tnsnames.ora.bak
+```
+
+To restore `listener.ora`:
+
+```bash
+cp -v "$ORACLE_HOME/network/admin/listener.ora.bak" "$ORACLE_HOME/network/admin/listener.ora"
+```
+
+To restore `sqlnet.ora`:
+
+```bash
+cp -v "$ORACLE_HOME/network/admin/sqlnet.ora.bak" "$ORACLE_HOME/network/admin/sqlnet.ora"
+```
+
+To restore `tnsnames.ora`:
+
+```bash
+cp -v "$ORACLE_HOME/network/admin/tnsnames.ora.bak" "$ORACLE_HOME/network/admin/tnsnames.ora"
+```
+
+Restart the listener after restoring listener files:
+
+```bash
+lsnrctl stop
+```
+
+```bash
+lsnrctl start
+```
 
 ### Task 0: Download lab scripts
 
@@ -99,7 +405,7 @@ Register your Oracle Database as an application in Entra ID so it can accept OAu
 
 4. Select **New registration**:
 
-      - **Name:** Oracle Database 26ai
+      - **Name:** `Oracle Database 26ai - FREEPDB1`
       - **Supported account types:** Accounts in this organizational directory only
       - **Redirect URI:** *leave blank*
       - Click **Register**
@@ -110,7 +416,7 @@ Register your Oracle Database as an application in Entra ID so it can accept OAu
 
 ### Task 2: Create the Application ID URI and scope
 
-After Task 1, you will be on the **Oracle Database 26ai** app registration **Overview** page.
+After Task 1, you will be on the **Oracle Database 26ai - FREEPDB1** app registration **Overview** page.
 
 1. Click on the **Application ID URI** to add one.
 
@@ -213,12 +519,12 @@ Create a second Entra ID application for interactive (browser) authentication. T
 
 2. Register the new application:
 
-      - **Name:** Oracle Client Interactive
+      - **Name:** `Oracle Client Interactive - FREEPDB1`
       - **Supported account types:** Single tenant only - Default Directory
       - **Redirect URI:** `Public client/native (mobile & desktop)` with value `http://localhost`
       - Click **Register**
 
-      ![Azure services](./images/entra-id-page-24.png "Register Oracle Client Interactive")
+      ![Azure services](./images/entra-id-page-24.png "Register Oracle Client Interactive - FREEPDB1")
 
 3. Record the **Application (client) ID** for this app — this is your `CLIENT_ID` for `tnsnames.ora`.
 
@@ -237,9 +543,9 @@ Link the client app to the database app so tokens can flow.
 
       ![Azure services](./images/entra-id-page-27.png "Add an API permission")
 
-2. Click **APIs my organization uses** and search for `Oracle Database 26ai`
+2. Click **APIs my organization uses** and search for `Oracle Database 26ai - FREEPDB1`
 
-      ![Azure services](./images/entra-id-page-28.png "Search for Oracle Database 26ai")
+      ![Azure services](./images/entra-id-page-28.png "Search for Oracle Database 26ai - FREEPDB1")
 
 3. Select **Delegated permissions**, choose `session:scope:connect`, and click **Add permissions**
 
@@ -519,8 +825,17 @@ This script:
 4. Resets `identity_provider_type` and `identity_provider_config`
 
 **Azure cleanup** (manual — done in the Azure portal):
-1. Delete the **Oracle Client Interactive** app registration
-2. Delete the **Oracle Database 26ai** app registration
+1. Delete the **Oracle Client Interactive - FREEPDB1** app registration
+2. Delete the **Oracle Database 26ai - FREEPDB1** app registration
+
+Also remove or review these Entra objects if you created them only for this lab:
+
+- Marvin test user
+- Emma test user
+- App role assignments for Marvin and Emma
+- Admin consent granted to the client app
+
+Database cleanup does not remove browser sessions, Entra app registrations, Entra users, network backup files, or wallet files.
 
 ### Complete script sequence
 
@@ -550,6 +865,195 @@ This script:
 | SQL queries | Identical | Identical |
 
 The data grants are the same in both approaches. The only difference is how the user's identity reaches the database.
+
+## Rerun Safety
+
+| Script | Safe To Rerun? | Notes |
+|---|---|---|
+| `00_preflight.sh` | Yes | Read-only checks. |
+| `01_configure_db_identity_provider.sh` | Yes | Reapplies identity-provider parameters. |
+| `02_configure_network.sh` | Yes in the lab VM | Rewrites network files and restarts listener; use caution outside the lab VM. |
+| `03_create_hr_schema.sh` | Yes, destructive for HR | Drops and recreates `HR`, so lab data is reset. |
+| `04_create_data_roles_and_grants.sh` | Yes | Recreates data roles, grants, context, and direct logon role. |
+| `verify_db_setup.sh` | Yes | Read-only verification. |
+| `05_verify_as_marvin.sh` | Yes | Requires Marvin Entra login. Browser session cache may reuse another user. |
+| `06_verify_as_emma.sh` | Yes | Requires Emma Entra login. Browser session cache may reuse another user. |
+| `07_verify_security_boundary.sh` | Yes | Requires multiple browser logins. |
+| `08_cleanup.sh` | Yes | Removes database-side lab objects and resets identity-provider parameters. |
+
+## Database Parameter Rollback
+
+To manually reset the Entra ID identity-provider parameters, connect locally as `SYSDBA` and switch to the lab PDB:
+
+```bash
+sqlplus / as sysdba
+```
+
+```sql
+ALTER SESSION SET CONTAINER = FREEPDB1;
+```
+
+Then reset the parameters:
+
+```sql
+ALTER SYSTEM RESET IDENTITY_PROVIDER_CONFIG SCOPE=BOTH;
+```
+
+```sql
+ALTER SYSTEM RESET IDENTITY_PROVIDER_TYPE SCOPE=BOTH;
+```
+
+Check the result:
+
+```sql
+SELECT name, value
+  FROM v$parameter
+ WHERE name LIKE 'identity_provider%';
+```
+
+Exit SQLPlus:
+
+```sql
+exit;
+```
+
+## Audit And Log Locations
+
+Listener log:
+
+```text
+$ORACLE_BASE/diag/tnslsnr/<hostname>/listener/alert/log.xml
+```
+
+Find database alert logs with ADRCI:
+
+```bash
+adrci
+```
+
+Inside ADRCI, show homes:
+
+```text
+show homes
+```
+
+Inside ADRCI, select the database home:
+
+```text
+set home diag/rdbms/<db_unique_name>/<instance_name>
+```
+
+Inside ADRCI, show recent alert messages:
+
+```text
+show alert -tail 100
+```
+
+Token validation failures are usually visible in the database alert log. Look for messages containing:
+
+```text
+AZURE_AD
+```
+
+```text
+identity provider
+```
+
+```text
+token
+```
+
+If Unified Auditing is enabled in your environment, review your local audit policy and audit trail for logon events. This lab does not create or modify Unified Audit policies.
+
+## Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| Browser does not open | No GUI session or browser launcher available | Use NoVNC/local desktop; treat manual/headless token flow as last resort |
+| Browser logs in as Marvin when testing Emma | Existing Entra browser session | Close browser windows, sign out, or use private/incognito mode |
+| `ORA-12514` for `FREEPDB1` | PDB service not registered with listener | Rerun `02_configure_network.sh`; verify `lsnrctl status` shows `freepdb1` or `FREEPDB1` |
+| `ORA-01017` after Entra login | Token validation or role/session problem | Check database alert log and rerun `01_configure_db_identity_provider.sh` |
+| No active data roles | Entra app roles missing from token or wrong role values | Confirm Marvin/Emma app role assignments and sign in again |
+| Marvin sees only his own row | `MANAGERS` app role missing or stale token/session | Confirm Marvin has `MANAGERS`, close browser session, rerun `05` |
+| Emma has manager access | Emma assigned `MANAGERS` by mistake or browser reused Marvin | Remove `MANAGERS` from Emma and use private/incognito login |
+| `tnsping hrdb` fails | Network files were not configured or wrong `ORACLE_HOME` | Rerun `02_configure_network.sh`; check `$ORACLE_HOME/network/admin/tnsnames.ora` |
+| HR direct login succeeds | HR was not created with `NO AUTHENTICATION` | Rerun `03_create_hr_schema.sh` |
+
+### Check Listener Services
+
+```bash
+lsnrctl status
+```
+
+Look for the PDB service:
+
+```text
+freepdb1
+```
+
+or:
+
+```text
+FREEPDB1
+```
+
+### Check The `hrdb` TNS Entry
+
+```bash
+tnsping hrdb
+```
+
+The `hrdb` descriptor should contain:
+
+```text
+TOKEN_AUTH = AZURE_INTERACTIVE
+```
+
+```text
+CLIENT_ID = <Oracle Client Interactive - FREEPDB1 application ID>
+```
+
+```text
+AZURE_DB_APP_ID_URI = <Application ID URI>
+```
+
+```text
+TENANT_ID = <Directory tenant ID>
+```
+
+### Check Database Identity Provider Parameters
+
+```bash
+./verify_db_setup.sh
+```
+
+Or check manually:
+
+```bash
+sqlplus / as sysdba
+```
+
+```sql
+ALTER SESSION SET CONTAINER = FREEPDB1;
+```
+
+```sql
+SELECT name, value
+  FROM v$parameter
+ WHERE name IN ('identity_provider_type','identity_provider_config');
+```
+
+### Check Entra App Role Assignments
+
+In the Azure portal, verify the Oracle Database 26ai - FREEPDB1 enterprise application has:
+
+| User | App Role |
+|---|---|
+| Marvin | `EMPLOYEES` |
+| Marvin | `MANAGERS` |
+| Emma | `EMPLOYEES` |
+
+If assignments changed, close existing browser sessions before testing again.
 
 ## Learn More
 

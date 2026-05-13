@@ -32,6 +32,8 @@ echo -e "${GREEN}===============================================================
 echo
 
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 export SECRET_PWD="${SECRET_PWD:-WalletPasswd123}"
 export WALLET_DIR="${ORACLE_BASE}/admin/${ORACLE_SID}/wallet"
 export OCI_AUDIENCE="${OCI_AUDIENCE:-OracleDB}"
@@ -56,6 +58,7 @@ CERT_DN="CN=${FQDN},O=DBSecLab,C=US"
 
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
+echo -e "${CYAN}  ORACLE_SID      = ${ORACLE_SID}${NC}"
 echo -e "${CYAN}  FQDN            = ${FQDN}${NC}"
 echo -e "${CYAN}  CERT_DN         = ${CERT_DN}${NC}"
 echo -e "${CYAN}  PDB_NAME        = ${PDB_NAME}${NC}"
@@ -143,7 +146,7 @@ hrdb =
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "${CERT_DN}")
       (TOKEN_AUTH = ${OCI_TOKEN_AUTH})
-      (TOKEN_LOCATION = ${OCI_TOKEN_DIR})
+      (TOKEN_LOCATION = "${OCI_TOKEN_DIR}")
     )
     (CONNECT_DATA =
       (SERVICE_NAME = ${PDB_NAME})

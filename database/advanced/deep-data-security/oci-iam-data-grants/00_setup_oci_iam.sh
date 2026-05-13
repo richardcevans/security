@@ -27,6 +27,7 @@ export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
+export DB_SID="${DB_SID:-FREE}"
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 echo
@@ -214,6 +215,43 @@ set_app_client_secret() {
     --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
     --operations "[{\"op\":\"replace\",\"path\":\"clientSecret\",\"value\":\"${secret}\"}]" \
     >/dev/null
+}
+
+regenerate_app_client_secret() {
+  local app_id="$1"
+  local body="${WORK_DIR}/regenerate-client-secret-${app_id}.json"
+  local response
+
+  cat > "$body" <<EOF
+{
+  "schemas": [
+    "urn:ietf:params:scim:schemas:oracle:idcs:AppClientSecretRegenerator"
+  ],
+  "appId": "${app_id}"
+}
+EOF
+
+  response=$(raw_request \
+    --http-method POST \
+    --target-uri "${OCI_DOMAIN_URL}/admin/v1/AppClientSecretRegenerator?attributeSets=all" \
+    --request-headers '{"Content-Type":"application/scim+json"}' \
+    --request-body "file://${body}" 2>/dev/null || true)
+
+  RAW_RESPONSE="$response" python3 - <<'PY'
+import json
+import os
+import sys
+
+try:
+    raw = json.loads(os.environ.get("RAW_RESPONSE", "{}"))
+except Exception:
+    sys.exit(0)
+
+data = raw.get("data") or raw
+secret = data.get("clientSecret") or data.get("client_secret")
+if secret:
+    print(secret)
+PY
 }
 
 configure_oauth_client_app() {
@@ -428,10 +466,10 @@ if [ -z "$DB_APP_CLIENT_SECRET" ]; then
 fi
 if [ -z "$DB_APP_CLIENT_SECRET" ]; then
   echo -e "${YELLOW}  Existing DB app did not return a readable client secret. Resetting it automatically...${NC}"
-  DB_APP_CLIENT_SECRET=$(generate_secret)
-  if ! set_app_client_secret "$DB_APP_ID" "$DB_APP_CLIENT_SECRET"; then
+  DB_APP_CLIENT_SECRET=$(regenerate_app_client_secret "$DB_APP_ID")
+  if [ -z "$DB_APP_CLIENT_SECRET" ]; then
     echo -e "${RED}ERROR: Could not set a client secret on existing DB app ${DB_APP_ID}.${NC}"
-    echo -e "${YELLOW}Delete the existing '${OCI_DB_APP_NAME}' app in OCI IAM, or set its client secret manually and export OCI_DB_CLIENT_SECRET.${NC}"
+    echo -e "${YELLOW}Delete the existing '${OCI_DB_APP_NAME}' app in OCI IAM, or regenerate its client secret manually.${NC}"
     exit 1
   fi
 fi
@@ -442,18 +480,12 @@ CLIENT_APP_SECRET_OVERRIDE=""
 CLIENT_APP_ID=$(create_or_reuse_client_app "$DB_APP_ID" "$OCI_SCOPE")
 configure_oauth_client_app "$CLIENT_APP_ID" "$OCI_SCOPE"
 OCI_CLIENT_ID=$(get_app_field "$CLIENT_APP_ID" client_id)
-OCI_CLIENT_SECRET="${CLIENT_APP_SECRET_OVERRIDE}"
+echo -e "${CYAN}  Resetting client app secret for OAuth token exchange...${NC}"
+OCI_CLIENT_SECRET=$(regenerate_app_client_secret "$CLIENT_APP_ID")
 if [ -z "$OCI_CLIENT_SECRET" ]; then
-  OCI_CLIENT_SECRET=$(get_app_field "$CLIENT_APP_ID" client_secret)
-fi
-if [ -z "$OCI_CLIENT_SECRET" ]; then
-  echo -e "${YELLOW}  Existing client app did not return a readable client secret. Resetting it automatically...${NC}"
-  OCI_CLIENT_SECRET=$(generate_secret)
-  if ! set_app_client_secret "$CLIENT_APP_ID" "$OCI_CLIENT_SECRET"; then
-    echo -e "${RED}ERROR: Could not set a client secret on existing client app ${CLIENT_APP_ID}.${NC}"
-    echo -e "${YELLOW}Delete the existing '${OCI_CLIENT_APP_NAME}' app in OCI IAM, or set its client secret manually and export OCI_CLIENT_SECRET.${NC}"
-    exit 1
-  fi
+  echo -e "${RED}ERROR: Could not regenerate client secret for existing client app ${CLIENT_APP_ID}.${NC}"
+  echo -e "${YELLOW}Delete the existing '${OCI_CLIENT_APP_NAME}' app in OCI IAM, or regenerate its client secret manually.${NC}"
+  exit 1
 fi
 
 if [ -z "$DB_APP_CLIENT_ID" ]; then
@@ -501,6 +533,7 @@ export OCI_SCOPE='${OCI_SCOPE}'
 export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
 export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
 export OCI_USERNAME_DOMAIN='${OCI_USERNAME_DOMAIN}'
+export DB_SID='${DB_SID}'
 export PDB_NAME='${PDB_NAME}'
 EOF
 chmod 600 "$ENV_FILE"

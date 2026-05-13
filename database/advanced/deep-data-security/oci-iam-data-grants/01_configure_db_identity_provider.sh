@@ -30,6 +30,8 @@ echo -e "${GREEN}===============================================================
 echo
 
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 
 for var in OCI_DB_APP_ID OCI_DOMAIN_URL OCI_DB_CLIENT_ID OCI_DB_CLIENT_SECRET; do
     if [ -z "${!var}" ]; then
@@ -43,6 +45,7 @@ echo -e "${CYAN}  OCI_DB_APP_ID        = ${OCI_DB_APP_ID}${NC}"
 echo -e "${CYAN}  OCI_DOMAIN_URL       = ${OCI_DOMAIN_URL}${NC}"
 echo -e "${CYAN}  OCI_DB_CLIENT_ID     = ${OCI_DB_CLIENT_ID}${NC}"
 echo -e "${CYAN}  OCI_DB_CLIENT_SECRET = ******${NC}"
+echo -e "${CYAN}  ORACLE_SID           = ${ORACLE_SID}${NC}"
 echo -e "${CYAN}  PDB_NAME             = ${PDB_NAME}${NC}"
 echo
 

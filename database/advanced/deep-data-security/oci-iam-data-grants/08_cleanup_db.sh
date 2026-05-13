@@ -31,6 +31,8 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 1: Drop the context data grant (requires SYS)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----

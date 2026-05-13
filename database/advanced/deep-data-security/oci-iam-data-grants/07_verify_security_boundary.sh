@@ -33,6 +33,8 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 
 # =====================================================================
 # Test 1: Marvin tries to see Bob's SSN (Bob is not his direct report)

@@ -34,8 +34,11 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 
 CONN_DISPLAY="/ as sysdba, then ALTER SESSION SET CONTAINER=${PDB_NAME}"
+echo -e "${CYAN}ORACLE_SID = ${ORACLE_SID}${NC}"
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Steps 1-5: Create data roles, grants, and context as SYSTEM

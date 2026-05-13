@@ -20,6 +20,7 @@ source ./.oci-iam-data-grants.env
 ./02_configure_network.sh
 ./03_create_hr_schema.sh
 ./04_create_data_roles_and_grants.sh
+./verify_db_setup.sh
 ./set_oci_iam_passwords.sh
 ./get_oci_oauth_token.sh   # sign in as Marvin
 ./05_verify_as_marvin.sh
@@ -263,6 +264,7 @@ For the normal lab path, you do not collect these manually. Run `./00_setup_oci_
 | `OCI_SCOPE` | Created by `00_setup_oci_iam.sh`, default `OracleDBDB_ACCESS_SCOPE` | Used in `tnsnames.ora` as `OCI_SCOPE`. |
 | `OCI_REDIRECT_URI` | Created by `00_setup_oci_iam.sh`, default `http://localhost:8888/callback` | Used in the OAuth2 authorization-code flow. |
 | `OCI_USERNAME_DOMAIN` | Optional lab user naming convention | Empty by default, so lab users are `marvin` and `emma`. Set it to `example.com` for `marvin@example.com` / `emma@example.com`. |
+| `DB_SID` | Your Oracle database environment | The CDB instance used for local SYSDBA setup. This lab defaults to `FREE`. |
 | `PDB_NAME` | Your Oracle database environment | The PDB service used for SQL*Plus connections. This lab defaults to `FREEPDB1`. |
 
 ```bash

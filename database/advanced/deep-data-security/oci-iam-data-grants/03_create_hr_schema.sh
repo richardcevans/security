@@ -33,10 +33,13 @@ echo
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
 
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 
 echo -e "${YELLOW}Creating HR schema and employees...${NC}"
+echo -e "${CYAN}ORACLE_SID = ${ORACLE_SID}${NC}"
 echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 

@@ -4,8 +4,8 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 11 - Connect as Marvin via OCI IAM and verify data grants.
-#               Uses sqlplus /@hrdb which triggers OCI_INTERACTIVE browser login.
+# Notes       : Task 5 - Connect as Marvin via OCI IAM and verify data grants.
+#               Uses sqlplus /@hrdb with TOKEN_AUTH=OAUTH and an OCI IAM OAuth2 token.
 #               Marvin authenticates as his OCI IAM identity and sees 4 rows.
 #
 # Modified by         Date         Change
@@ -21,7 +21,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 11: Connect and Verify as Marvin (via OCI IAM)                  ${NC}"
+echo -e "${GREEN}      Task 5: Connect and Verify as Marvin (via OCI IAM)                   ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Marvin has EMPLOYEES and MANAGERS groups in OCI IAM.${NC}"
@@ -30,8 +30,7 @@ echo -e "${PURPLE}Same SQL: SELECT * FROM hr.employees — Marvin sees 4 rows.${
 echo
 echo -e "${YELLOW}Connecting as Marvin via OCI IAM...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}NOTE: This will open your browser for OCI IAM login.${NC}"
-echo -e "${PURPLE}      Log in as Marvin's OCI IAM account.${NC}"
+echo -e "${PURPLE}NOTE: First run ./get_oci_oauth_token.sh and sign in as Marvin.${NC}"
 echo
 
 sqlplus -s /@hrdb <<EOF

@@ -4,7 +4,7 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 13 - Verify the security boundary.
+# Notes       : Task 7 - Verify the security boundary.
 #               Tests that OCI IAM-authenticated end users cannot bypass data grants.
 #               Each test requires a separate OCI IAM browser login.
 #
@@ -22,7 +22,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 13: Verify the Security Boundary                                 ${NC}"
+echo -e "${GREEN}      Task 7: Verify the Security Boundary                                  ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Each test connects via sqlplus /@hrdb (OCI IAM browser login).${NC}"
@@ -32,7 +32,7 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
 # =====================================================================

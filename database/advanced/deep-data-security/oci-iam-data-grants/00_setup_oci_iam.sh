@@ -21,11 +21,12 @@ export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
 export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
 export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
+export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8080/callback}"
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -112,7 +113,9 @@ raw_request() {
 }
 
 generate_secret() {
-  LC_ALL=C tr -dc 'A-Za-z0-9_@#%+=:,.~-' </dev/urandom | head -c 48
+  local secret
+  secret=$(LC_ALL=C tr -dc 'A-Za-z0-9_@#%+=:,.~-' </dev/urandom | head -c 48 || true)
+  printf '%s' "$secret"
 }
 
 first_query() {
@@ -154,9 +157,51 @@ find_user_id() {
 
 get_app_field() {
   local app_id="$1"
-  local q1="$2"
-  local q2="$3"
-  first_query "domain_cmd app get --app-id '$app_id' --attribute-sets all" "$q1" "$q2"
+  local field="$2"
+  local response
+  response=$(domain_cmd app get --app-id "$app_id" --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  APP_RESPONSE="$response" python3 - "$field" <<'PY'
+import json
+import os
+import sys
+
+field = sys.argv[1]
+
+try:
+    raw = json.loads(os.environ.get("APP_RESPONSE", "{}"))
+except Exception:
+    sys.exit(0)
+
+data = raw.get("data") or {}
+
+aliases = {
+    "client_id": [
+        "clientId",
+        "client_id",
+        "clientID",
+        "oauthClientId",
+        "oAuthClientId",
+        "appId",
+        "app_id",
+        "name",
+        "id",
+    ],
+    "client_secret": [
+        "clientSecret",
+        "client_secret",
+        "oauthClientSecret",
+        "oAuthClientSecret",
+    ],
+}
+
+for key in aliases.get(field, [field]):
+    value = data.get(key)
+    if value:
+        print(value)
+        break
+PY
 }
 
 set_app_client_secret() {
@@ -167,6 +212,17 @@ set_app_client_secret() {
     --app-id "$app_id" \
     --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
     --operations "[{\"op\":\"replace\",\"path\":\"clientSecret\",\"value\":\"${secret}\"}]" \
+    >/dev/null
+}
+
+configure_oauth_client_app() {
+  local app_id="$1"
+  local db_scope="$2"
+
+  domain_cmd app patch \
+    --app-id "$app_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations "[{\"op\":\"replace\",\"path\":\"allowedGrants\",\"value\":[\"authorization_code\",\"client_credentials\",\"urn:ietf:params:oauth:grant-type:device_code\"]},{\"op\":\"replace\",\"path\":\"redirectUris\",\"value\":[\"${OCI_REDIRECT_URI}\"]},{\"op\":\"replace\",\"path\":\"allowedScopes\",\"value\":[{\"fqs\":\"${db_scope}\"}]}]" \
     >/dev/null
 }
 
@@ -204,11 +260,13 @@ create_or_reuse_db_app() {
 create_or_reuse_client_app() {
   local app_id="$1"
   local db_scope="$2"
+  local generated_secret
   local client_id
   client_id=$(find_app_id "$OCI_CLIENT_APP_NAME")
   if [ -n "$client_id" ]; then
     echo -e "${CYAN}  Reusing client app: ${client_id}${NC}" >&2
   else
+    generated_secret=$(generate_secret)
     client_id=$(domain_cmd app create \
       --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
       --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
@@ -217,12 +275,15 @@ create_or_reuse_client_app() {
       --active true \
       --is-o-auth-client true \
       --client-type confidential \
-      --allowed-grants '["client_credentials","password","urn:ietf:params:oauth:grant-type:device_code"]' \
+      --client-secret "$generated_secret" \
+      --allowed-grants '["authorization_code","client_credentials","urn:ietf:params:oauth:grant-type:device_code"]' \
       --allowed-scopes "[{\"fqs\":\"${db_scope}\"}]" \
+      --redirect-uris "[\"${OCI_REDIRECT_URI}\"]" \
       --all-url-schemes-allowed true \
       --attribute-sets all \
       --query 'data.id' \
       --raw-output)
+    CLIENT_APP_SECRET_OVERRIDE="$generated_secret"
     echo -e "${CYAN}  Created client app: ${client_id}${NC}" >&2
   fi
   printf '%s' "$client_id"
@@ -252,22 +313,36 @@ create_or_reuse_user() {
   local email="${username}"
   local user_id
 
-  if [[ "$email" != *@* ]] && [ -n "$OCI_USERNAME_DOMAIN" ]; then
-    email="${username}@${OCI_USERNAME_DOMAIN}"
+  if [[ "$email" != *@* ]]; then
+    if [ -n "$OCI_USERNAME_DOMAIN" ]; then
+      email="${username}@${OCI_USERNAME_DOMAIN}"
+    else
+      email="${username}@example.com"
+    fi
   fi
 
   user_id=$(find_user_id "$username")
   if [ -n "$user_id" ]; then
     echo -e "${CYAN}  Reusing user ${username}: ${user_id}${NC}" >&2
   else
-    user_id=$(domain_cmd user create \
+    if ! user_id=$(domain_cmd user create \
       --schemas '["urn:ietf:params:scim:schemas:core:2.0:User"]' \
       --user-name "$username" \
       --name "{\"givenName\":\"${given}\",\"familyName\":\"${family}\"}" \
       --emails "[{\"value\":\"${email}\",\"primary\":true,\"type\":\"work\"}]" \
       --active true \
       --query 'data.id' \
-      --raw-output)
+      --raw-output 2>/dev/null); then
+      echo -e "${RED}ERROR: Could not create user ${username}.${NC}" >&2
+      echo -e "${YELLOW}  Check that the username and generated email are valid: ${email}${NC}" >&2
+      exit 1
+    fi
+
+    if [ -z "$user_id" ] || [ "$user_id" = "null" ] || [ "$user_id" = "None" ]; then
+      echo -e "${RED}ERROR: OCI IAM did not return an id for created user ${username}.${NC}" >&2
+      exit 1
+    fi
+
     echo -e "${CYAN}  Created user ${username}: ${user_id}${NC}" >&2
     echo -e "${YELLOW}  Set or reset this user's password/federated login before verification.${NC}" >&2
   fi
@@ -279,12 +354,18 @@ add_user_to_group() {
   local group_id="$2"
   local username="$3"
   local group="$4"
-  domain_cmd group patch \
+  if domain_cmd group patch \
     --group-id "$group_id" \
     --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
     --operations "[{\"op\":\"add\",\"path\":\"members\",\"value\":[{\"value\":\"${user_id}\",\"type\":\"User\"}]}]" \
-    >/dev/null || true
-  echo -e "${CYAN}  Ensured ${username} is in ${group}${NC}"
+    >/dev/null 2>&1; then
+    echo -e "${CYAN}  Ensured ${username} is in ${group}${NC}"
+  else
+    echo -e "${RED}ERROR: Could not add ${username} to ${group}.${NC}"
+    echo -e "${YELLOW}  User id: ${user_id}${NC}"
+    echo -e "${YELLOW}  Group id: ${group_id}${NC}"
+    exit 1
+  fi
 }
 
 create_group_claim() {
@@ -323,10 +404,10 @@ echo
 echo -e "${YELLOW}Step 1: Creating or reusing DB resource app...${NC}"
 DB_APP_CLIENT_SECRET_OVERRIDE=""
 DB_APP_ID=$(create_or_reuse_db_app)
-DB_APP_CLIENT_ID=$(get_app_field "$DB_APP_ID" 'data.clientId' 'data.client_id')
+DB_APP_CLIENT_ID=$(get_app_field "$DB_APP_ID" client_id)
 DB_APP_CLIENT_SECRET="${DB_APP_CLIENT_SECRET_OVERRIDE}"
 if [ -z "$DB_APP_CLIENT_SECRET" ]; then
-  DB_APP_CLIENT_SECRET=$(get_app_field "$DB_APP_ID" 'data.clientSecret' 'data.client_secret')
+  DB_APP_CLIENT_SECRET=$(get_app_field "$DB_APP_ID" client_secret)
 fi
 if [ -z "$DB_APP_CLIENT_SECRET" ]; then
   echo -e "${YELLOW}  Existing DB app did not return a readable client secret. Resetting it automatically...${NC}"
@@ -340,8 +421,37 @@ fi
 
 echo
 echo -e "${YELLOW}Step 2: Creating or reusing interactive client app...${NC}"
+CLIENT_APP_SECRET_OVERRIDE=""
 CLIENT_APP_ID=$(create_or_reuse_client_app "$DB_APP_ID" "$OCI_SCOPE")
-OCI_CLIENT_ID=$(get_app_field "$CLIENT_APP_ID" 'data.clientId' 'data.client_id')
+configure_oauth_client_app "$CLIENT_APP_ID" "$OCI_SCOPE"
+OCI_CLIENT_ID=$(get_app_field "$CLIENT_APP_ID" client_id)
+OCI_CLIENT_SECRET="${CLIENT_APP_SECRET_OVERRIDE}"
+if [ -z "$OCI_CLIENT_SECRET" ]; then
+  OCI_CLIENT_SECRET=$(get_app_field "$CLIENT_APP_ID" client_secret)
+fi
+if [ -z "$OCI_CLIENT_SECRET" ]; then
+  echo -e "${YELLOW}  Existing client app did not return a readable client secret. Resetting it automatically...${NC}"
+  OCI_CLIENT_SECRET=$(generate_secret)
+  if ! set_app_client_secret "$CLIENT_APP_ID" "$OCI_CLIENT_SECRET"; then
+    echo -e "${RED}ERROR: Could not set a client secret on existing client app ${CLIENT_APP_ID}.${NC}"
+    echo -e "${YELLOW}Delete the existing '${OCI_CLIENT_APP_NAME}' app in OCI IAM, or set its client secret manually and export OCI_CLIENT_SECRET.${NC}"
+    exit 1
+  fi
+fi
+
+if [ -z "$DB_APP_CLIENT_ID" ]; then
+  echo -e "${RED}ERROR: Could not determine DB app OAuth Client ID for app ${DB_APP_ID}.${NC}"
+  echo -e "${YELLOW}Run this to inspect returned fields:${NC}"
+  echo -e "${CYAN}  oci identity-domains app get --endpoint '${OCI_DOMAIN_URL}' --app-id '${DB_APP_ID}' --attribute-sets all${NC}"
+  exit 1
+fi
+
+if [ -z "$OCI_CLIENT_ID" ]; then
+  echo -e "${RED}ERROR: Could not determine interactive client app OAuth Client ID for app ${CLIENT_APP_ID}.${NC}"
+  echo -e "${YELLOW}Run this to inspect returned fields:${NC}"
+  echo -e "${CYAN}  oci identity-domains app get --endpoint '${OCI_DOMAIN_URL}' --app-id '${CLIENT_APP_ID}' --attribute-sets all${NC}"
+  exit 1
+fi
 
 echo
 echo -e "${YELLOW}Step 3: Creating or reusing IAM groups...${NC}"
@@ -368,8 +478,10 @@ export OCI_DB_CLIENT_ID='${DB_APP_CLIENT_ID}'
 export OCI_DB_CLIENT_SECRET='${DB_APP_CLIENT_SECRET}'
 export OCI_DOMAIN_URL='${OCI_DOMAIN_URL}'
 export OCI_CLIENT_ID='${OCI_CLIENT_ID}'
+export OCI_CLIENT_SECRET='${OCI_CLIENT_SECRET}'
 export OCI_AUDIENCE='${OCI_DB_AUDIENCE}'
 export OCI_SCOPE='${OCI_SCOPE}'
+export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
 export OCI_USERNAME_DOMAIN='${OCI_USERNAME_DOMAIN}'
 export PDB_NAME='${PDB_NAME}'
 EOF

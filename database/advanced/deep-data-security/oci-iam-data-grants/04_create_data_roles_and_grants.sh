@@ -4,7 +4,7 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 10 - Create data roles, data grants, and end user context.
+# Notes       : Task 4 - Create data roles, data grants, and end user context.
 #               Data roles use MAPPED TO 'IAM_OAUTH_GROUP=...' for OCI IAM integration.
 #               No CREATE END USER needed — identity comes from the OAuth2 token.
 #
@@ -21,7 +21,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 10: Create Data Roles, Data Grants, and End User Context         ${NC}"
+echo -e "${GREEN}      Task 4: Create Data Roles, Data Grants, and End User Context          ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Data roles use MAPPED TO 'IAM_OAUTH_GROUP=...' for automatic activation${NC}"
@@ -32,7 +32,7 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
 export DBUSR_SYS="${DBUSR_SYS:-sys}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
@@ -257,7 +257,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 10 Completed: Data Roles, Grants, and Context Created!           ${NC}"
+echo -e "${GREEN}      Task 4 Completed: Data Roles, Grants, and Context Created!            ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
 echo -e "${GREEN}  Data roles use MAPPED TO 'IAM_OAUTH_GROUP=...' — no end users needed.          ${NC}"
 echo -e "${GREEN}  When Marvin logs in via OCI IAM as a member of the MANAGERS group,              ${NC}"

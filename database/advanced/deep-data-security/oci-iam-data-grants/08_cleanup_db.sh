@@ -4,7 +4,7 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 14 (Optional) - Clean up.
+# Notes       : Task 8 (Optional) - Clean up database objects.
 #               Drops all data grants, end user context, roles, data roles,
 #               the HR schema, and resets the identity provider parameters.
 #               OCI IAM cleanup (deleting the database application and groups) must be done manually.
@@ -22,14 +22,14 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 14 (Optional): Clean Up - Remove All Lab Objects                 ${NC}"
+echo -e "${GREEN}      Task 8 (Optional): Clean Up Database Lab Objects                      ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
 export DBUSR_SYS="${DBUSR_SYS:-sys}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
@@ -152,7 +152,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 14 Completed: All Database Lab Objects Removed!                  ${NC}"
+echo -e "${GREEN}      Task 8 Completed: Database Lab Objects Removed!                       ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
 echo -e "${GREEN}      OCI IAM cleanup (manual):                                               ${NC}"
 echo -e "${GREEN}      1. Delete the OCI IAM database application if it is lab-only              ${NC}"

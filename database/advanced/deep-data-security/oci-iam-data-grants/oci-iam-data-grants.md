@@ -18,13 +18,13 @@ This lab solves both problems:
 2. **Oracle Deep Data Security** handles authorization with database-enforced row and column policies.
 
 ```text
-Marvin -> OCI IAM login -> OCI_INTERACTIVE -> Database
+Marvin -> OCI IAM OAuth2 login -> TOKEN_AUTH=OAUTH -> Database
                                              |
                                              v
                                     Data grants filter
                                     4 rows: self + team
 
-Emma   -> OCI IAM login -> OCI_INTERACTIVE -> Database
+Emma   -> OCI IAM OAuth2 login -> TOKEN_AUTH=OAUTH -> Database
                                              |
                                              v
                                     Data grants filter
@@ -153,7 +153,7 @@ This script:
 1. Creates a wallet with a self-signed certificate if one does not exist
 2. Backs up and updates `listener.ora` to add a TCPS endpoint on port 2484
 3. Backs up and updates `sqlnet.ora` with the wallet location
-4. Adds the `hrdb` TNS entry to `tnsnames.ora` with `TOKEN_AUTH=OCI_INTERACTIVE`
+4. Adds the `hrdb` TNS entry to `tnsnames.ora` with `TOKEN_AUTH=OAUTH`
 5. Restarts the listener and registers the database
 
 The `tnsnames.ora` entry will look like:
@@ -165,7 +165,8 @@ hrdb =
     (SECURITY =
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "CN=<hostname>,O=DBSecLab,C=US")
-      (TOKEN_AUTH = OCI_INTERACTIVE)
+      (TOKEN_AUTH = OAUTH)
+      (TOKEN_LOCATION = ~/.oci/oci-iam-data-grants)
       (OCI_IAM_URL = <domain-url>)
       (OCI_CLIENT_ID = <interactive-client-id>)
       (OCI_AUDIENCE = OracleDB)
@@ -331,7 +332,7 @@ The OCI cleanup script deletes the lab-named applications, groups, optional demo
 
 | Aspect | Direct Password | OCI IAM |
 |---|---|---|
-| Authentication | `CREATE END USER marvin IDENTIFIED BY Oracle123` | OCI IAM OAuth2 token via `OCI_INTERACTIVE` |
+| Authentication | `CREATE END USER marvin IDENTIFIED BY Oracle123` | OCI IAM OAuth2 token via `TOKEN_AUTH=OAUTH` |
 | Data role activation | `GRANT DATA ROLE ... TO marvin` | `MAPPED TO 'IAM_OAUTH_GROUP=MANAGERS'` |
 | End user creation | Required | Not needed; identity comes from the token |
 | Connection string | `sqlplus marvin/Oracle123@pdb1` | `sqlplus /@hrdb` |

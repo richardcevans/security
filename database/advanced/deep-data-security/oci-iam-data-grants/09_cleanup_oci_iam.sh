@@ -21,6 +21,40 @@ export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export DELETE_DEMO_USERS="${DELETE_DEMO_USERS:-1}"
 export FORCE="${FORCE:-0}"
 
+usage() {
+  cat <<EOF
+Usage: ./09_cleanup_oci_iam.sh [options]
+
+Options:
+  -f, --force, --DELETE   Skip the DELETE confirmation prompt
+  -h, --help              Show this help
+
+Environment:
+  OCI_DOMAIN_URL          Optional identity domain URL
+  OCI_DOMAIN_NAME         Domain display name, default: Default
+  DELETE_DEMO_USERS       Delete marvin/emma users, default: 1
+  FORCE                   Set to 1 to skip confirmation
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -f|--force|--DELETE)
+      FORCE=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}ERROR: Unknown option: $1${NC}"
+      usage
+      exit 1
+      ;;
+  esac
+  shift
+done
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 9: Clean Up OCI IAM Lab Objects                                  ${NC}"
@@ -139,10 +173,30 @@ find_user_id() {
 }
 
 find_group_claim_id() {
-  first_query \
-    "raw_request --http-method GET --target-uri '${OCI_DOMAIN_URL}/admin/v1/CustomClaims?filter=name%20eq%20%22group%22'" \
-    'data.Resources[0].id' \
-    'data.resources[0].id'
+  local response
+  response=$(raw_request \
+    --http-method GET \
+    --target-uri "${OCI_DOMAIN_URL}/admin/v1/CustomClaims?filter=name%20eq%20%22group%22" \
+    2>/dev/null || true)
+
+  if [ -z "$response" ]; then
+    return
+  fi
+
+  printf '%s' "$response" | python3 -c '
+import json
+import sys
+
+try:
+    raw = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+
+data = raw.get("data") or {}
+resources = data.get("Resources") or data.get("resources") or []
+if resources:
+    print(resources[0].get("id", ""))
+'
 }
 
 delete_app() {
@@ -154,8 +208,17 @@ delete_app() {
     return
   fi
 
+  echo -e "${YELLOW}  Deactivating app ${name}: ${app_id}${NC}"
+  domain_cmd app patch \
+    --app-id "$app_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations '[{"op":"replace","path":"active","value":false}]' \
+    >/dev/null 2>&1 || true
+
   echo -e "${YELLOW}  Deleting app ${name}: ${app_id}${NC}"
-  domain_cmd app delete --app-id "$app_id" --force >/dev/null || true
+  if ! domain_cmd app delete --app-id "$app_id" --force >/dev/null 2>&1; then
+    echo -e "${RED}  Could not delete app: ${name}${NC}"
+  fi
 }
 
 delete_group() {
@@ -168,7 +231,9 @@ delete_group() {
   fi
 
   echo -e "${YELLOW}  Deleting group ${name}: ${group_id}${NC}"
-  domain_cmd group delete --group-id "$group_id" --force >/dev/null || true
+  if ! domain_cmd group delete --group-id "$group_id" --force >/dev/null 2>&1; then
+    echo -e "${RED}  Could not delete group: ${name}${NC}"
+  fi
 }
 
 delete_user() {
@@ -181,7 +246,9 @@ delete_user() {
   fi
 
   echo -e "${YELLOW}  Deleting user ${name}: ${user_id}${NC}"
-  domain_cmd user delete --user-id "$user_id" --force >/dev/null || true
+  if ! domain_cmd user delete --user-id "$user_id" --force >/dev/null 2>&1; then
+    echo -e "${RED}  Could not delete user: ${name}${NC}"
+  fi
 }
 
 delete_group_claim() {
@@ -193,10 +260,12 @@ delete_group_claim() {
   fi
 
   echo -e "${YELLOW}  Deleting custom claim group: ${claim_id}${NC}"
-  raw_request \
+  if ! raw_request \
     --http-method DELETE \
     --target-uri "${OCI_DOMAIN_URL}/admin/v1/CustomClaims/${claim_id}" \
-    >/dev/null || true
+    >/dev/null 2>&1; then
+    echo -e "${RED}  Could not delete custom claim: group${NC}"
+  fi
 }
 
 echo -e "${PURPLE}This will delete OCI IAM lab objects in:${NC}"

@@ -4,7 +4,7 @@
 #
 # Parameter   : None (uses environment variables)
 #
-# Notes       : Task 7 - Configure the database identity provider parameters.
+# Notes       : Task 1 - Configure the database identity provider parameters.
 #               Sets identity_provider_type and identity_provider_oauth_config for
 #               OCI IAM OAuth2 authentication and creates the OCI IAM domain credential.
 #
@@ -12,9 +12,8 @@
 #               OCI_DOMAIN_URL         - OCI IAM identity domain URL
 #               OCI_DB_CLIENT_ID       - Client ID from the database app OAuth config
 #               OCI_DB_CLIENT_SECRET   - Client secret from the database app OAuth config
-#               PDB_NAME               - Pluggable database name (default: pdb1)
-#               DBUSR_SYS              - SYS username (default: sys)
-#               DBUSR_PWD              - SYS password (default: Oracle123)
+#               PDB_NAME               - Pluggable database name (default: FREEPDB1)
+#               Uses local OS authentication as SYSDBA.
 # =========================================================================================
 
 GREEN='\033[0;32m'
@@ -26,13 +25,11 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 7: Configure Database Identity Provider for OCI IAM              ${NC}"
+echo -e "${GREEN}      Task 1: Configure Database Identity Provider for OCI IAM              ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
-export PDB_NAME="${PDB_NAME:-pdb1}"
-export DBUSR_SYS="${DBUSR_SYS:-sys}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 for var in OCI_DB_APP_ID OCI_DOMAIN_URL OCI_DB_CLIENT_ID OCI_DB_CLIENT_SECRET; do
     if [ -z "${!var}" ]; then
@@ -50,15 +47,28 @@ echo -e "${CYAN}  PDB_NAME             = ${PDB_NAME}${NC}"
 echo
 
 echo -e "${YELLOW}Setting OCI IAM identity provider parameters and credential (as SYS)...${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYS}/******@${PDB_NAME} as sysdba${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYS}/${DBUSR_PWD}@${PDB_NAME} as sysdba <<EOF
+if ! sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 160
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -65019 THEN
+      RAISE;
+    END IF;
+END;
+/
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -117,10 +127,16 @@ SELECT name, value
 
 exit;
 EOF
+then
+    echo
+    echo -e "${RED}ERROR: Could not configure OCI IAM identity provider in ${PDB_NAME}.${NC}"
+    echo -e "${YELLOW}Check that ORACLE_SID is set and that the ${PDB_NAME} PDB exists.${NC}"
+    exit 1
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 7 Completed: OCI IAM Identity Provider Configured!               ${NC}"
+echo -e "${GREEN}      Task 1 Completed: OCI IAM Identity Provider Configured!               ${NC}"
 echo -e "${GREEN}      Next: run 02_configure_network.sh                                     ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

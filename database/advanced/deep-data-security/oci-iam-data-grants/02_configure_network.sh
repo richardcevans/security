@@ -4,16 +4,18 @@
 #
 # Parameter   : None (uses environment variables)
 #
-# Notes       : Task 8 - Configure TCPS listener, sqlnet.ora, and tnsnames.ora.
-#               Creates wallet, configures TLS, and adds OCI_INTERACTIVE
-#               connection descriptor for OCI IAM browser-based authentication.
+# Notes       : Task 2 - Configure TCPS listener, sqlnet.ora, and tnsnames.ora.
+#               Creates wallet, configures TLS, and adds an OAuth2 token
+#               connection descriptor for OCI IAM authentication.
 #
-# Environment : PDB_NAME        - Pluggable database name (default: pdb1)
+# Environment : PDB_NAME        - Pluggable database name and service name (default: FREEPDB1)
 #               SECRET_PWD      - Wallet password (default: WalletPasswd123)
 #               OCI_DOMAIN_URL  - OCI IAM identity domain URL
 #               OCI_CLIENT_ID   - Interactive/client app client ID
 #               OCI_AUDIENCE    - OAuth audience (default: OracleDB)
 #               OCI_SCOPE       - OAuth scope (default: OracleDBDB_ACCESS_SCOPE)
+#               OCI_TOKEN_AUTH  - Client token auth mode (default: OAUTH)
+#               OCI_TOKEN_DIR   - Directory containing OAuth2 token file
 # =========================================================================================
 
 GREEN='\033[0;32m'
@@ -25,15 +27,17 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 8: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora         ${NC}"
+echo -e "${GREEN}      Task 2: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora         ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export SECRET_PWD="${SECRET_PWD:-WalletPasswd123}"
 export WALLET_DIR="${ORACLE_BASE}/admin/${ORACLE_SID}/wallet"
 export OCI_AUDIENCE="${OCI_AUDIENCE:-OracleDB}"
 export OCI_SCOPE="${OCI_SCOPE:-OracleDBDB_ACCESS_SCOPE}"
+export OCI_TOKEN_AUTH="${OCI_TOKEN_AUTH:-OAUTH}"
+export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/oci-iam-data-grants}"
 
 if [ -z "${OCI_DOMAIN_URL:-}" ]; then
     echo -e "${RED}ERROR: OCI_DOMAIN_URL is not set.${NC}"
@@ -59,6 +63,8 @@ echo -e "${CYAN}  OCI_DOMAIN_URL  = ${OCI_DOMAIN_URL}${NC}"
 echo -e "${CYAN}  OCI_CLIENT_ID   = ${OCI_CLIENT_ID}${NC}"
 echo -e "${CYAN}  OCI_AUDIENCE    = ${OCI_AUDIENCE}${NC}"
 echo -e "${CYAN}  OCI_SCOPE       = ${OCI_SCOPE}${NC}"
+echo -e "${CYAN}  OCI_TOKEN_AUTH  = ${OCI_TOKEN_AUTH}${NC}"
+echo -e "${CYAN}  OCI_TOKEN_DIR   = ${OCI_TOKEN_DIR}${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating wallet directory and certificate...${NC}"
@@ -136,11 +142,8 @@ hrdb =
     (SECURITY =
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "${CERT_DN}")
-      (TOKEN_AUTH = OCI_INTERACTIVE)
-      (OCI_IAM_URL = ${OCI_DOMAIN_URL})
-      (OCI_CLIENT_ID = ${OCI_CLIENT_ID})
-      (OCI_AUDIENCE = ${OCI_AUDIENCE})
-      (OCI_SCOPE = ${OCI_SCOPE})
+      (TOKEN_AUTH = ${OCI_TOKEN_AUTH})
+      (TOKEN_LOCATION = ${OCI_TOKEN_DIR})
     )
     (CONNECT_DATA =
       (SERVICE_NAME = ${PDB_NAME})
@@ -156,19 +159,82 @@ lsnrctl stop
 lsnrctl start
 
 sqlplus -s / as sysdba <<EOF
+set serveroutput on
+whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -65019 THEN
+      RAISE;
+    END IF;
+END;
+/
+
+ALTER SYSTEM SET local_listener =
+  '(ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
+     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+   )'
+  SCOPE = BOTH;
+
 ALTER SYSTEM REGISTER;
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+ALTER SYSTEM SET local_listener =
+  '(ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
+     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+   )'
+  SCOPE = BOTH;
+
+DECLARE
+  service_missing EXCEPTION;
+  PRAGMA EXCEPTION_INIT(service_missing, -44304);
+BEGIN
+  BEGIN
+    DBMS_SERVICE.START_SERVICE('${PDB_NAME}');
+  EXCEPTION
+    WHEN service_missing THEN
+      DBMS_SERVICE.CREATE_SERVICE(
+        service_name => '${PDB_NAME}',
+        network_name => '${PDB_NAME}'
+      );
+      DBMS_SERVICE.START_SERVICE('${PDB_NAME}');
+    WHEN OTHERS THEN
+      IF SQLCODE NOT IN (-44305, -44311) THEN
+        RAISE;
+      END IF;
+  END;
+END;
+/
+
+ALTER SYSTEM REGISTER;
+
+ALTER SESSION SET CONTAINER = CDB\$ROOT;
+ALTER SYSTEM REGISTER;
+
+prompt
+prompt Registered database services:
+col name format a40
+SELECT name FROM v\$services ORDER BY name;
+
 exit;
 EOF
 
 echo
 
-echo -e "${YELLOW}Step 6: Testing connectivity with tnsping...${NC}"
+echo -e "${YELLOW}Step 6: Checking listener services and testing connectivity...${NC}"
+echo
+lsnrctl services | sed -n "/Service \\\"${PDB_NAME}\\\"/,/Service/p"
 echo
 tnsping hrdb
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 8 Completed: Network Configured for OCI IAM Authentication!      ${NC}"
+echo -e "${GREEN}      Task 2 Completed: Network Configured for OCI IAM Authentication!      ${NC}"
 echo -e "${GREEN}      Next: run 03_create_hr_schema.sh                                      ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

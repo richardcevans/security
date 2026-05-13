@@ -4,7 +4,7 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 9 - Create the HR schema and employee data.
+# Notes       : Task 3 - Create the HR schema and employee data.
 #               Creates HR with NO AUTHENTICATION (schema-only) and
 #               populates the EMPLOYEES table with 7 sample rows.
 #
@@ -21,7 +21,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 9: Create the HR Schema and Employee Data                        ${NC}"
+echo -e "${GREEN}      Task 3: Create the HR Schema and Employee Data                        ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}HR is created with NO AUTHENTICATION — it is a schema-only account.${NC}"
@@ -31,7 +31,7 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
@@ -138,7 +138,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 9 Completed: HR Schema Created!                                  ${NC}"
+echo -e "${GREEN}      Task 3 Completed: HR Schema Created!                                  ${NC}"
 echo -e "${GREEN}      7 employees with OCI IAM user names as user_name.                     ${NC}"
 echo -e "${GREEN}      Next: run 04_create_data_roles_and_grants.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"

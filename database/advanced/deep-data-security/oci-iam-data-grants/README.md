@@ -19,7 +19,9 @@ source ./.oci-iam-data-grants.env
 ./02_configure_network.sh
 ./03_create_hr_schema.sh
 ./04_create_data_roles_and_grants.sh
+./get_oci_oauth_token.sh   # sign in as Marvin
 ./05_verify_as_marvin.sh
+./get_oci_oauth_token.sh   # sign in as Emma
 ./06_verify_as_emma.sh
 ./07_verify_security_boundary.sh
 ```
@@ -34,7 +36,24 @@ source ./.oci-iam-data-grants.env
 
 ## Install OCI CLI
 
-The verification flow uses `TOKEN_AUTH=OCI_INTERACTIVE`, so the database client needs OCI CLI configuration on the machine where you run `sqlplus /@hrdb`.
+OCI CLI is used by `00_setup_oci_iam.sh` to create the lab's OCI IAM objects. Runtime database login uses an OCI IAM OAuth2 access token from authorization-code flow, written by `get_oci_oauth_token.sh`.
+
+## OAuth2 Browser Login Helper
+
+`sqlplus /@hrdb` reads an OAuth2 token file; it does not open the browser itself. Use the helper first:
+
+```bash
+./get_oci_oauth_token.sh
+sqlplus /@hrdb
+```
+
+The helper opens OCI IAM in a browser, listens on the configured localhost redirect URI, exchanges the returned authorization code for an OAuth2 access token, and writes:
+
+```text
+~/.oci/oci-iam-data-grants/token
+```
+
+If the browser runs on a different machine and the localhost callback cannot be captured automatically, the helper prints the login URL and lets you paste either the final redirected URL or just the `code` value.
 
 ### Oracle Linux 9
 
@@ -111,6 +130,91 @@ export OCI_CONFIG_FILE=/home/oracle/.oci/config
 export OCI_PROFILE=DEFAULT
 ```
 
+## OCI IAM Setup Details
+
+`00_setup_oci_iam.sh` creates or reuses these OCI IAM objects:
+
+- DB resource app: `Oracle DB`
+- OAuth client app: `Oracle Confidential Client`
+- DB audience: `OracleDB`
+- DB scope: `DB_ACCESS_SCOPE`
+- Fully qualified scope: `OracleDBDB_ACCESS_SCOPE`
+- Groups: `EMPLOYEES`, `MANAGERS`
+- Demo users by default: `marvin`, `emma`
+- Group assignments: `marvin` in `EMPLOYEES` and `MANAGERS`; `emma` in `EMPLOYEES`
+- Custom access-token claim named `group` with value `$user.groups.*.display`
+- Environment file: `.oci-iam-data-grants.env`
+
+If identity-domain discovery is not allowed by your policies, provide the domain URL explicitly:
+
+```bash
+export OCI_DOMAIN_URL=https://idcs-xxxxxxxx.identity.oraclecloud.com:443
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
+By default, the lab uses simple usernames:
+
+```text
+marvin
+emma
+```
+
+To use email-style usernames instead:
+
+```bash
+export OCI_USERNAME_DOMAIN=example.com
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
+If you already have users and do not want the script to create Marvin and Emma:
+
+```bash
+export CREATE_DEMO_USERS=0
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
+Then manually add your test users to the created groups:
+
+| User | Groups |
+|---|---|
+| manager user | `EMPLOYEES`, `MANAGERS` |
+| employee user | `EMPLOYEES` |
+
+Make sure `HR.EMPLOYEES.USER_NAME` matches `ORA_END_USER_CONTEXT.username`.
+
+## Custom Claim Fallback
+
+Some tenancies do not allow `oci raw-request` to create identity-domain custom claims. If `00_setup_oci_iam.sh` prints a warning, create this custom access-token claim in OCI IAM:
+
+```json
+{
+  "schemas": [
+    "urn:ietf:params:scim:schemas:oracle:idcs:CustomClaim"
+  ],
+  "name": "group",
+  "value": "$user.groups.*.display",
+  "expression": true,
+  "mode": "always",
+  "tokenType": "AT",
+  "allScopes": true
+}
+```
+
+This claim is required because database data roles map to OCI IAM group display names:
+
+```sql
+CREATE OR REPLACE DATA ROLE hrapp_employees
+  MAPPED TO 'IAM_OAUTH_GROUP=EMPLOYEES';
+
+CREATE OR REPLACE DATA ROLE hrapp_managers
+  MAPPED TO 'IAM_OAUTH_GROUP=MANAGERS';
+```
+
+Without the `group` claim in the OAuth2 access token, authentication can succeed while data roles do not activate.
+
 ## Required Lab Variables
 
 For the normal lab path, you do not collect these manually. Run `./00_setup_oci_iam.sh`; it creates the OCI IAM applications, groups, optional demo users, custom group claim, and writes `.oci-iam-data-grants.env`.
@@ -124,10 +228,12 @@ For the normal lab path, you do not collect these manually. Run `./00_setup_oci_
 | `OCI_DB_CLIENT_ID` | Created by `00_setup_oci_iam.sh` on the DB app | Stored in `OCI_IAM_DOMAIN_DB_CRED$` so the DB can retrieve signing metadata. |
 | `OCI_DB_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the DB app | Treat it like a password. The env file is written mode `600`. |
 | `OCI_CLIENT_ID` | Created by `00_setup_oci_iam.sh` as the interactive client app ID | Used in `tnsnames.ora` as `OCI_CLIENT_ID`. |
+| `OCI_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the interactive client app | Used by `get_oci_oauth_token.sh` to exchange an authorization code for an OAuth2 access token. |
 | `OCI_AUDIENCE` | Created by `00_setup_oci_iam.sh`, default `OracleDB` | Used in `tnsnames.ora` as `OCI_AUDIENCE`. |
 | `OCI_SCOPE` | Created by `00_setup_oci_iam.sh`, default `OracleDBDB_ACCESS_SCOPE` | Used in `tnsnames.ora` as `OCI_SCOPE`. |
+| `OCI_REDIRECT_URI` | Created by `00_setup_oci_iam.sh`, default `http://localhost:8080/callback` | Used in the OAuth2 authorization-code flow. |
 | `OCI_USERNAME_DOMAIN` | Optional lab user naming convention | Empty by default, so lab users are `marvin` and `emma`. Set it to `example.com` for `marvin@example.com` / `emma@example.com`. |
-| `PDB_NAME` | Your Oracle database environment | The net service name or PDB service used for SQL*Plus connections, for example `pdb1`. |
+| `PDB_NAME` | Your Oracle database environment | The PDB service used for SQL*Plus connections. This lab defaults to `FREEPDB1`. |
 
 ```bash
 source ./.oci-iam-data-grants.env
@@ -142,7 +248,9 @@ source ./.oci-iam-data-grants.env
 ./02_configure_network.sh
 ./03_create_hr_schema.sh
 ./04_create_data_roles_and_grants.sh
+./get_oci_oauth_token.sh
 ./05_verify_as_marvin.sh
+./get_oci_oauth_token.sh
 ./06_verify_as_emma.sh
 ./07_verify_security_boundary.sh
 ```
@@ -152,6 +260,14 @@ Cleanup:
 ```bash
 ./08_cleanup_db.sh
 ./09_cleanup_oci_iam.sh
+```
+
+To skip the OCI IAM cleanup confirmation prompt:
+
+```bash
+./09_cleanup_oci_iam.sh -f
+# or
+./09_cleanup_oci_iam.sh --DELETE
 ```
 
 ## Reference

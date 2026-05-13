@@ -4,8 +4,8 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 12 - Connect as Emma via OCI IAM and verify data grants.
-#               Uses sqlplus /@hrdb which triggers OCI_INTERACTIVE browser login.
+# Notes       : Task 6 - Connect as Emma via OCI IAM and verify data grants.
+#               Uses sqlplus /@hrdb with TOKEN_AUTH=OAUTH and an OCI IAM OAuth2 token.
 #               Emma has only the EMPLOYEES group — sees 1 row (self only).
 #
 # Modified by         Date         Change
@@ -21,7 +21,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 12: Connect and Verify as Emma (via OCI IAM)                    ${NC}"
+echo -e "${GREEN}      Task 6: Connect and Verify as Emma (via OCI IAM)                     ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Emma has only the EMPLOYEES group in OCI IAM.${NC}"
@@ -30,8 +30,7 @@ echo -e "${PURPLE}Same SQL: SELECT * FROM hr.employees — Emma sees 1 row.${NC}
 echo
 echo -e "${YELLOW}Connecting as Emma via OCI IAM...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}NOTE: This will open your browser for OCI IAM login.${NC}"
-echo -e "${PURPLE}      Log in as Emma's OCI IAM account.${NC}"
+echo -e "${PURPLE}NOTE: First run ./get_oci_oauth_token.sh and sign in as Emma.${NC}"
 echo
 
 sqlplus -s /@hrdb <<EOF

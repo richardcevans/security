@@ -39,7 +39,7 @@ This lab assumes:
 
 - An **Oracle AI Database 26ai** instance with a TCPS listener on port 2484
 - `SYSTEM` and `SYS` access to a pluggable database, such as PDB1
-- An **OCI IAM identity domain** where you can create or reuse an OAuth2 database application, users, and groups
+- An **OCI IAM identity domain** where the OCI CLI user can administer applications, users, and groups
 - Oracle Database client support for OCI IAM token authentication
 - OCI CLI configuration available for the interactive client user, unless you use the default OCI config/profile
 - The Oracle Database wallet is configured for TLS connections
@@ -57,42 +57,42 @@ ls</copy>
 
 ## Part 1: Configure OCI IAM
 
-### Task 1: Create or Reuse an OCI IAM Database Application
+### Task 1: Create OCI IAM Applications, Groups, Users, and Claims
 
-In your OCI IAM identity domain, create or reuse the OAuth2 application that represents Oracle AI Database 26ai.
+After `oci setup config` is complete, the lab can create the IAM objects for you:
 
-Record these values:
+````bash
+<copy>./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env</copy>
+````
 
-| Value | Used by |
-|---|---|
-| Application ID | `OCI_DB_APP_ID` |
-| Domain URL | `OCI_DOMAIN_URL` |
-| OAuth client ID | `OCI_DB_CLIENT_ID` |
-| OAuth client secret | `OCI_DB_CLIENT_SECRET` |
+The script creates or reuses:
 
-The database uses `OCI_DB_APP_ID` and `OCI_DOMAIN_URL` to validate OAuth2 token claims. It uses the client ID and secret in a database credential named `OCI_IAM_DOMAIN_DB_CRED$` to retrieve signing metadata from the identity domain.
+- DB resource application named `Oracle DB`
+- Interactive client application named `Oracle Confidential Client`
+- `EMPLOYEES` and `MANAGERS` groups
+- Marvin and Emma users by default
+- A custom access-token claim named `group`, populated from `$user.groups.*.display`
+- `.oci-iam-data-grants.env`
 
-### Task 2: Create OCI IAM Groups
-
-Create two OCI IAM groups in the same identity domain:
-
-| Group | Purpose |
-|---|---|
-| `EMPLOYEES` | Users can see and update limited fields on their own row |
-| `MANAGERS` | Managers can see direct reports, with SSN excluded |
-
-Add the users for the lab:
+Default group membership:
 
 | User | Groups |
 |---|---|
-| Marvin | `EMPLOYEES`, `MANAGERS` |
-| Emma | `EMPLOYEES` |
+| `marvin` | `EMPLOYEES`, `MANAGERS` |
+| `emma` | `EMPLOYEES` |
 
-The database data roles in this lab map directly to these group names with `IAM_OAUTH_GROUP=...`.
+To use email-style usernames instead:
 
-### Task 3: Configure the Client for OCI Interactive Authentication
+````bash
+<copy>export OCI_USERNAME_DOMAIN=example.com
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env</copy>
+````
 
-The `hrdb` TNS alias created later uses `TOKEN_AUTH=OCI_INTERACTIVE`. By default, the Oracle client uses the default OCI CLI config file and `DEFAULT` profile. If you want to use a different config file or profile, export:
+That makes the HR sample rows use `marvin@example.com` and `emma@example.com`.
+
+If you use a non-default OCI CLI config file or profile, export these first:
 
 ````bash
 <copy>export OCI_CONFIG_FILE=/home/oracle/.oci/config
@@ -101,18 +101,14 @@ export OCI_PROFILE=DEFAULT</copy>
 
 ## Part 2: Configure the Oracle Database
 
-### Task 4: Set Database Identity Provider Parameters
+### Task 2: Set Database Identity Provider Parameters
 
 Configure the database to accept OCI IAM OAuth2 tokens.
 
-Before running, set these environment variables:
+Before running, load the environment file from Task 1:
 
 ````bash
-<copy>export OCI_DB_APP_ID=<your-oci-iam-database-application-id>
-export OCI_DOMAIN_URL=<your-oci-iam-domain-url>
-export OCI_DB_CLIENT_ID=<database-app-oauth-client-id>
-export OCI_DB_CLIENT_SECRET=<database-app-oauth-client-secret>
-export PDB_NAME=<your-pdb-name></copy>
+<copy>source ./.oci-iam-data-grants.env</copy>
 ````
 
 Then run:
@@ -142,7 +138,7 @@ END;
 /
 ```
 
-### Task 5: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora
+### Task 3: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora
 
 OCI IAM token authentication requires a TLS connection. This task configures the TCPS listener, wallet, and connection descriptor.
 
@@ -168,6 +164,10 @@ hrdb =
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "CN=<hostname>,O=DBSecLab,C=US")
       (TOKEN_AUTH = OCI_INTERACTIVE)
+      (OCI_IAM_URL = <domain-url>)
+      (OCI_CLIENT_ID = <interactive-client-id>)
+      (OCI_AUDIENCE = OracleDB)
+      (OCI_SCOPE = OracleDBDB_ACCESS_SCOPE)
     )
     (CONNECT_DATA =
       (SERVICE_NAME = <pdb>)
@@ -179,11 +179,11 @@ When you connect with `sqlplus /@hrdb`, the Oracle client uses OCI IAM interacti
 
 ## Part 3: Create Deep Data Security Objects
 
-### Task 6: Create the HR Schema and Employee Data
+### Task 4: Create the HR Schema and Employee Data
 
 Create the HR schema with a `NO AUTHENTICATION` account and populate it with 7 sample employees. The `user_name` values must match the usernames returned in `ORA_END_USER_CONTEXT.username` for your OCI IAM users. For many identity domains this is the user's email address.
 
-Before running, set the username domain used by the lab users:
+If you use email-style OCI IAM usernames, set the username domain before running `00_setup_oci_iam.sh`. If you use the default `marvin` and `emma` usernames, no domain is required.
 
 ````bash
 <copy>export OCI_USERNAME_DOMAIN=example.com</copy>
@@ -207,7 +207,7 @@ This script creates the HR schema, the `EMPLOYEES` table, and 7 sample rows:
 | Bob Smith | SALES_REP | 2 | Grace |
 | Fiona Chen | HR_REP | 3 | Grace |
 
-### Task 7: Create Data Roles, Data Grants, and End User Context
+### Task 5: Create Data Roles, Data Grants, and End User Context
 
 This is the core of Deep Data Security. You create data roles that map to OCI IAM groups, then attach data grants that define row and column access.
 
@@ -251,7 +251,7 @@ CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
 
 ## Part 4: Verify the Policies
 
-### Task 8: Connect and Verify as Marvin
+### Task 6: Connect and Verify as Marvin
 
 ````bash
 <copy>./05_verify_as_marvin.sh</copy>
@@ -265,7 +265,7 @@ Log in as Marvin when prompted by OCI IAM. The script verifies:
 4. `SELECT * FROM hr.employees` returns 4 rows: Marvin and his 3 direct reports
 5. SSN is visible for Marvin's own row and excluded for direct reports
 
-### Task 9: Connect and Verify as Emma
+### Task 7: Connect and Verify as Emma
 
 ````bash
 <copy>./06_verify_as_emma.sh</copy>
@@ -273,7 +273,7 @@ Log in as Marvin when prompted by OCI IAM. The script verifies:
 
 Log in as Emma when prompted by OCI IAM. Emma sees 1 row: herself only. She can view her SSN and salary but can update only her phone number.
 
-### Task 10: Verify the Security Boundary
+### Task 8: Verify the Security Boundary
 
 ````bash
 <copy>./07_verify_security_boundary.sh</copy>
@@ -286,7 +286,7 @@ This script runs four tests:
 3. Emma tries to update Marvin's phone number: 0 rows updated, because the predicate limits Emma to her own row
 4. HR tries to log in directly: fails, because HR was created with `NO AUTHENTICATION`
 
-## Task 11: Clean Up
+## Task 9: Clean Up
 
 ````bash
 <copy>./08_cleanup.sh</copy>

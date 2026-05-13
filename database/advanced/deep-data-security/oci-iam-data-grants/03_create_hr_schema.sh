@@ -35,12 +35,7 @@ export PDB_NAME="${PDB_NAME:-pdb1}"
 export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
-if [ -z "${OCI_USERNAME_DOMAIN:-}" ]; then
-  echo -e "\033[0;31mERROR: OCI_USERNAME_DOMAIN is not set.\033[0m"
-  echo -e "  Set it before running this script:"
-  echo -e "  export OCI_USERNAME_DOMAIN=example.com"
-  exit 1
-fi
+export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 
 echo -e "${YELLOW}Creating HR schema and employees...${NC}"
 echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
@@ -109,9 +104,17 @@ prompt ========================================================================
 prompt Updating user_name to OCI IAM user names
 prompt ========================================================================
 
+-- If OCI_USERNAME_DOMAIN is set, convert marvin to marvin@example.com.
+-- If it is empty, keep simple OCI IAM usernames such as marvin and emma.
 UPDATE hr.employees
-   SET user_name = user_name || '@${OCI_USERNAME_DOMAIN}'
- WHERE user_name NOT LIKE '%@%';
+   SET user_name =
+       CASE
+         WHEN '${OCI_USERNAME_DOMAIN}' IS NOT NULL
+          AND LENGTH('${OCI_USERNAME_DOMAIN}') > 0
+          AND user_name NOT LIKE '%@%'
+         THEN user_name || '@${OCI_USERNAME_DOMAIN}'
+         ELSE user_name
+       END;
 
 COMMIT;
 
@@ -136,7 +139,7 @@ EOF
 echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 9 Completed: HR Schema Created!                                  ${NC}"
-echo -e "${GREEN}      7 employees with full OCI IAM user names as user_name.           ${NC}"
+echo -e "${GREEN}      7 employees with OCI IAM user names as user_name.                     ${NC}"
 echo -e "${GREEN}      Next: run 04_create_data_roles_and_grants.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

@@ -10,8 +10,10 @@
 #
 # Environment : PDB_NAME        - Pluggable database name (default: pdb1)
 #               SECRET_PWD      - Wallet password (default: WalletPasswd123)
-#               OCI_CONFIG_FILE - Optional OCI config file path
-#               OCI_PROFILE     - Optional OCI config profile name
+#               OCI_DOMAIN_URL  - OCI IAM identity domain URL
+#               OCI_CLIENT_ID   - Interactive/client app client ID
+#               OCI_AUDIENCE    - OAuth audience (default: OracleDB)
+#               OCI_SCOPE       - OAuth scope (default: OracleDBDB_ACCESS_SCOPE)
 # =========================================================================================
 
 GREEN='\033[0;32m'
@@ -30,21 +32,33 @@ echo
 export PDB_NAME="${PDB_NAME:-pdb1}"
 export SECRET_PWD="${SECRET_PWD:-WalletPasswd123}"
 export WALLET_DIR="${ORACLE_BASE}/admin/${ORACLE_SID}/wallet"
+export OCI_AUDIENCE="${OCI_AUDIENCE:-OracleDB}"
+export OCI_SCOPE="${OCI_SCOPE:-OracleDBDB_ACCESS_SCOPE}"
+
+if [ -z "${OCI_DOMAIN_URL:-}" ]; then
+    echo -e "${RED}ERROR: OCI_DOMAIN_URL is not set.${NC}"
+    echo -e "${YELLOW}Run ./00_setup_oci_iam.sh and source ./.oci-iam-data-grants.env first.${NC}"
+    exit 1
+fi
+
+if [ -z "${OCI_CLIENT_ID:-}" ]; then
+    echo -e "${RED}ERROR: OCI_CLIENT_ID is not set.${NC}"
+    echo -e "${YELLOW}Run ./00_setup_oci_iam.sh and source ./.oci-iam-data-grants.env first.${NC}"
+    exit 1
+fi
 
 FQDN=$(hostname -f)
 CERT_DN="CN=${FQDN},O=DBSecLab,C=US"
-OCI_CONFIG_LINE=""
-OCI_PROFILE_LINE=""
-[ -n "${OCI_CONFIG_FILE:-}" ] && OCI_CONFIG_LINE="      (OCI_CONFIG_FILE = ${OCI_CONFIG_FILE})"
-[ -n "${OCI_PROFILE:-}" ] && OCI_PROFILE_LINE="      (OCI_PROFILE = ${OCI_PROFILE})"
 
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  FQDN            = ${FQDN}${NC}"
 echo -e "${CYAN}  CERT_DN         = ${CERT_DN}${NC}"
 echo -e "${CYAN}  PDB_NAME        = ${PDB_NAME}${NC}"
-echo -e "${CYAN}  OCI_CONFIG_FILE = ${OCI_CONFIG_FILE:-<default>}${NC}"
-echo -e "${CYAN}  OCI_PROFILE     = ${OCI_PROFILE:-DEFAULT}${NC}"
+echo -e "${CYAN}  OCI_DOMAIN_URL  = ${OCI_DOMAIN_URL}${NC}"
+echo -e "${CYAN}  OCI_CLIENT_ID   = ${OCI_CLIENT_ID}${NC}"
+echo -e "${CYAN}  OCI_AUDIENCE    = ${OCI_AUDIENCE}${NC}"
+echo -e "${CYAN}  OCI_SCOPE       = ${OCI_SCOPE}${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating wallet directory and certificate...${NC}"
@@ -123,8 +137,10 @@ hrdb =
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "${CERT_DN}")
       (TOKEN_AUTH = OCI_INTERACTIVE)
-${OCI_CONFIG_LINE}
-${OCI_PROFILE_LINE}
+      (OCI_IAM_URL = ${OCI_DOMAIN_URL})
+      (OCI_CLIENT_ID = ${OCI_CLIENT_ID})
+      (OCI_AUDIENCE = ${OCI_AUDIENCE})
+      (OCI_SCOPE = ${OCI_SCOPE})
     )
     (CONNECT_DATA =
       (SERVICE_NAME = ${PDB_NAME})

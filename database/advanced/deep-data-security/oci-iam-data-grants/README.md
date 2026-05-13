@@ -67,42 +67,47 @@ oci setup config
 
 `oci setup config` creates `~/.oci/config` and an API key pair. Upload the generated public key to your OCI user in the Console.
 
-If you use a non-default profile or config file, export these before running `02_configure_network.sh`:
+After that, the lab setup script can create the OCI IAM domain objects:
+
+```bash
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
+```
+
+If you use a non-default OCI CLI profile or config file, export these first:
 
 ```bash
 export OCI_CONFIG_FILE=/home/oracle/.oci/config
 export OCI_PROFILE=DEFAULT
 ```
 
-The generated `hrdb` TNS entry will include those values when present.
-
 ## Required Lab Variables
 
-Before running the database setup scripts, collect these values from OCI IAM and your database environment.
+For the normal lab path, you do not collect these manually. Run `./00_setup_oci_iam.sh`; it creates the OCI IAM applications, groups, optional demo users, custom group claim, and writes `.oci-iam-data-grants.env`.
 
 ### Where to Find Each Value
 
 | Variable | Where it comes from | Notes |
 |---|---|---|
-| `OCI_DB_APP_ID` | OCI Console -> Identity & Security -> Domains -> your domain -> Integrated applications -> your database confidential application | Use the database application identifier/client application value that appears in the token as `resource_app_id`. This is the value configured as `app_id` in `identity_provider_oauth_config`. |
-| `OCI_DOMAIN_URL` | OCI Console -> Identity & Security -> Domains -> your domain -> Overview | Copy the Domain URL. It looks like `https://idcs-...identity.oraclecloud.com:443`. This must match the token issuer/domain. |
-| `OCI_DB_CLIENT_ID` | OCI Console -> Domains -> your domain -> Integrated applications -> your database confidential application -> OAuth configuration | Copy the OAuth Client ID for the database confidential application. The database stores this in `OCI_IAM_DOMAIN_DB_CRED$` so it can retrieve signing metadata. |
-| `OCI_DB_CLIENT_SECRET` | Same OAuth configuration page as `OCI_DB_CLIENT_ID` | Use Show secret / Copy secret. Treat it like a password. |
-| `OCI_USERNAME_DOMAIN` | Your lab user naming convention | Use the domain suffix that makes the sample rows match `ORA_END_USER_CONTEXT.username`, for example `example.com` if Marvin logs in as `marvin@example.com`. |
+| `OCI_DB_APP_ID` | Created by `00_setup_oci_iam.sh` as the DB resource app client/application ID | Used as `app_id` in `identity_provider_oauth_config`. |
+| `OCI_DOMAIN_URL` | Discovered from `~/.oci/config` tenancy, or set manually | Domain URL looks like `https://idcs-...identity.oraclecloud.com:443`. |
+| `OCI_DB_CLIENT_ID` | Created by `00_setup_oci_iam.sh` on the DB app | Stored in `OCI_IAM_DOMAIN_DB_CRED$` so the DB can retrieve signing metadata. |
+| `OCI_DB_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the DB app | Treat it like a password. The env file is written mode `600`. |
+| `OCI_CLIENT_ID` | Created by `00_setup_oci_iam.sh` as the interactive client app ID | Used in `tnsnames.ora` as `OCI_CLIENT_ID`. |
+| `OCI_AUDIENCE` | Created by `00_setup_oci_iam.sh`, default `OracleDB` | Used in `tnsnames.ora` as `OCI_AUDIENCE`. |
+| `OCI_SCOPE` | Created by `00_setup_oci_iam.sh`, default `OracleDBDB_ACCESS_SCOPE` | Used in `tnsnames.ora` as `OCI_SCOPE`. |
+| `OCI_USERNAME_DOMAIN` | Optional lab user naming convention | Empty by default, so lab users are `marvin` and `emma`. Set it to `example.com` for `marvin@example.com` / `emma@example.com`. |
 | `PDB_NAME` | Your Oracle database environment | The net service name or PDB service used for SQL*Plus connections, for example `pdb1`. |
 
 ```bash
-export OCI_DB_APP_ID=<your-oci-iam-database-application-id>
-export OCI_DOMAIN_URL=<your-oci-iam-domain-url>
-export OCI_DB_CLIENT_ID=<database-app-oauth-client-id>
-export OCI_DB_CLIENT_SECRET=<database-app-oauth-client-secret>
-export OCI_USERNAME_DOMAIN=<domain-used-in-lab-usernames>
-export PDB_NAME=<your-pdb-name>
+source ./.oci-iam-data-grants.env
 ```
 
 ## Script Order
 
 ```bash
+./00_setup_oci_iam.sh
+source ./.oci-iam-data-grants.env
 ./01_configure_db_identity_provider.sh
 ./02_configure_network.sh
 ./03_create_hr_schema.sh

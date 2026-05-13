@@ -12,6 +12,8 @@
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
 
+set -euo pipefail
+
 # Define colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -48,7 +50,7 @@ echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Marvin first.${NC}"
 echo
 
-check_oauth_token "marvin" "EMPLOYEES" "MANAGERS"
+check_oauth_token "marvin" "EMPLOYEES" "MANAGERS" || exit 1
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -89,7 +91,7 @@ echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
 echo
 
-check_oauth_token "emma" "EMPLOYEES"
+check_oauth_token "emma" "EMPLOYEES" || exit 1
 echo
 
 sqlplus -s /@hrdb <<EOF
@@ -132,7 +134,7 @@ echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}Run ./get_oci_oauth_token.sh and log in as Emma first.${NC}"
 echo
 
-check_oauth_token "emma" "EMPLOYEES"
+check_oauth_token "emma" "EMPLOYEES" || exit 1
 echo
 
 sqlplus -s /@hrdb <<EOF

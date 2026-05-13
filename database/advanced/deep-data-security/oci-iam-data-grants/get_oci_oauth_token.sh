@@ -13,7 +13,9 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/oci-iam-data-grants}"
-export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8080/callback}"
+export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
+export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-${OCI_REDIRECT_URI}}"
+export OCI_OPEN_BROWSER="${OCI_OPEN_BROWSER:-0}"
 
 for var in OCI_DOMAIN_URL OCI_CLIENT_ID OCI_CLIENT_SECRET OCI_SCOPE OCI_REDIRECT_URI; do
   if [ -z "${!var:-}" ]; then
@@ -54,17 +56,23 @@ domain = os.environ["OCI_DOMAIN_URL"].rstrip("/")
 client_id = os.environ["OCI_CLIENT_ID"]
 client_secret = os.environ["OCI_CLIENT_SECRET"]
 scope = os.environ["OCI_SCOPE"]
-redirect_uri = os.environ["OCI_REDIRECT_URI"]
 token_dir = os.environ["OCI_TOKEN_DIR"]
+open_browser = os.environ.get("OCI_OPEN_BROWSER", "0").lower() in ("1", "true", "yes", "y")
 
-redirect = urllib.parse.urlparse(redirect_uri)
-if redirect.scheme != "http" or redirect.hostname not in ("localhost", "127.0.0.1"):
-    print(f"ERROR: OCI_REDIRECT_URI must be a localhost HTTP URL, got: {redirect_uri}", file=sys.stderr)
-    sys.exit(1)
+redirect_candidates = []
+for raw_uri in os.environ.get("OCI_REDIRECT_URIS", os.environ["OCI_REDIRECT_URI"]).split(","):
+    raw_uri = raw_uri.strip()
+    if raw_uri:
+        redirect_candidates.append(raw_uri)
 
-host = redirect.hostname or "localhost"
-port = redirect.port or 80
-path = redirect.path or "/"
+if os.environ["OCI_REDIRECT_URI"] not in redirect_candidates:
+    redirect_candidates.insert(0, os.environ["OCI_REDIRECT_URI"])
+
+server = None
+redirect_uri = None
+host = None
+port = None
+path = None
 
 state = base64.urlsafe_b64encode(os.urandom(24)).decode("ascii").rstrip("=")
 result = {}
@@ -99,13 +107,31 @@ class CallbackHandler(BaseHTTPRequestHandler):
 def serve_once(server):
     server.handle_request()
 
-server = None
-try:
-    server = HTTPServer((host, port), CallbackHandler)
-    server_thread = threading.Thread(target=serve_once, args=(server,), daemon=True)
-    server_thread.start()
-except OSError as exc:
-    print(f"Could not listen on {host}:{port}: {exc}")
+for candidate in redirect_candidates:
+    redirect = urllib.parse.urlparse(candidate)
+    if redirect.scheme != "http" or redirect.hostname not in ("localhost", "127.0.0.1"):
+        continue
+
+    candidate_host = redirect.hostname or "localhost"
+    candidate_port = redirect.port or 80
+    candidate_path = redirect.path or "/"
+
+    try:
+        server = HTTPServer((candidate_host, candidate_port), CallbackHandler)
+        redirect_uri = candidate
+        host = candidate_host
+        port = candidate_port
+        path = candidate_path
+        server_thread = threading.Thread(target=serve_once, args=(server,), daemon=True)
+        server_thread.start()
+        break
+    except OSError as exc:
+        print(f"Could not listen on {candidate_host}:{candidate_port}: {exc}")
+
+if not redirect_uri:
+    redirect_uri = redirect_candidates[0]
+    redirect = urllib.parse.urlparse(redirect_uri)
+    path = redirect.path or "/"
     print("Continuing in manual callback mode.")
 
 auth_params = urllib.parse.urlencode({
@@ -122,13 +148,17 @@ if server:
 else:
     print(f"Manual callback mode for redirect URI {redirect_uri}")
 print()
-print("Opening browser for OCI IAM login...")
-opened = webbrowser.open(auth_url, new=2)
-if not opened:
-    print("Could not open a browser automatically. Open this URL manually:")
-    print(auth_url)
+if open_browser:
+    print("Opening browser for OCI IAM login...")
+    opened = webbrowser.open(auth_url, new=2)
+    if not opened:
+        print("Could not open a browser automatically. Open this URL manually:")
+        print(auth_url)
+    else:
+        print("If the browser did not open, use this URL:")
+        print(auth_url)
 else:
-    print("If the browser did not open, use this URL:")
+    print("Open this URL in the NoVNC browser:")
     print(auth_url)
 print()
 
@@ -148,7 +178,7 @@ code = result.get("code")
 if not code:
     print()
     print("Automatic callback was not captured.")
-    print("If your browser is on another machine, copy the final redirected URL")
+    print("Copy the final redirected URL")
     print("or copy only the code= value from that URL.")
     pasted = input("Paste redirected URL or authorization code: ").strip()
     if not pasted:
@@ -165,34 +195,48 @@ if not code:
     print("ERROR: Could not determine authorization code.", file=sys.stderr)
     sys.exit(1)
 
-token_body = urllib.parse.urlencode({
-    "grant_type": "authorization_code",
-    "code": code,
-    "redirect_uri": redirect_uri,
-}).encode("utf-8")
-
-basic = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
-request = urllib.request.Request(
-    f"{domain}/oauth2/v1/token",
-    data=token_body,
-    headers={
-        "Authorization": f"Basic {basic}",
+def post_token_request(strip_padding=False):
+    form = {
+        "grant_type": "authorization_code",
+        "code": code,
+    }
+    headers = {
         "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
         "Accept": "application/json",
-    },
-    method="POST",
-)
+    }
 
-try:
-    with urllib.request.urlopen(request, timeout=60) as response:
-        token_response = json.loads(response.read().decode("utf-8"))
-except urllib.error.HTTPError as exc:
-    detail = exc.read().decode("utf-8", errors="replace")
-    print(f"ERROR: OCI IAM token exchange failed: HTTP {exc.code}", file=sys.stderr)
-    print(detail, file=sys.stderr)
-    sys.exit(1)
-except Exception as exc:
-    print(f"ERROR: OCI IAM token exchange failed: {exc}", file=sys.stderr)
+    basic = base64.urlsafe_b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
+    if strip_padding:
+        basic = basic.rstrip("=")
+    headers["Authorization"] = f"Basic {basic}"
+
+    request = urllib.request.Request(
+        f"{domain}/oauth2/v1/token",
+        data=urllib.parse.urlencode(form).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        return {
+            "_http_error": exc.code,
+            "_detail": detail,
+        }
+
+token_response = post_token_request(strip_padding=False)
+if token_response.get("_http_error"):
+    detail = token_response.get("_detail", "")
+    if "decode Client Header" in detail or "decode client header" in detail.lower():
+        token_response = post_token_request(strip_padding=True)
+
+if token_response.get("_http_error"):
+    print(f"ERROR: OCI IAM token exchange failed: HTTP {token_response['_http_error']}", file=sys.stderr)
+    print(token_response.get("_detail", ""), file=sys.stderr)
+    print("Hint: rerun ./00_setup_oci_iam.sh, source ./.oci-iam-data-grants.env, then retry with a fresh authorization URL.", file=sys.stderr)
     sys.exit(1)
 
 access_token = token_response.get("access_token")

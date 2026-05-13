@@ -21,7 +21,8 @@ export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
 export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
 export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
-export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8080/callback}"
+export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
+export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback}"
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
@@ -114,7 +115,7 @@ raw_request() {
 
 generate_secret() {
   local secret
-  secret=$(LC_ALL=C tr -dc 'A-Za-z0-9_@#%+=:,.~-' </dev/urandom | head -c 48 || true)
+  secret=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48 || true)
   printf '%s' "$secret"
 }
 
@@ -218,11 +219,20 @@ set_app_client_secret() {
 configure_oauth_client_app() {
   local app_id="$1"
   local db_scope="$2"
+  local redirect_json
+  redirect_json=$(REDIRECT_URIS="$OCI_REDIRECT_URIS" python3 - <<'PY'
+import json
+import os
+
+uris = [uri.strip() for uri in os.environ["REDIRECT_URIS"].split(",") if uri.strip()]
+print(json.dumps(uris))
+PY
+)
 
   domain_cmd app patch \
     --app-id "$app_id" \
     --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
-    --operations "[{\"op\":\"replace\",\"path\":\"allowedGrants\",\"value\":[\"authorization_code\",\"client_credentials\",\"urn:ietf:params:oauth:grant-type:device_code\"]},{\"op\":\"replace\",\"path\":\"redirectUris\",\"value\":[\"${OCI_REDIRECT_URI}\"]},{\"op\":\"replace\",\"path\":\"allowedScopes\",\"value\":[{\"fqs\":\"${db_scope}\"}]}]" \
+    --operations "[{\"op\":\"replace\",\"path\":\"allowedGrants\",\"value\":[\"authorization_code\",\"client_credentials\",\"urn:ietf:params:oauth:grant-type:device_code\"]},{\"op\":\"replace\",\"path\":\"redirectUris\",\"value\":${redirect_json}},{\"op\":\"replace\",\"path\":\"allowedScopes\",\"value\":[{\"fqs\":\"${db_scope}\"}]}]" \
     >/dev/null
 }
 
@@ -278,7 +288,14 @@ create_or_reuse_client_app() {
       --client-secret "$generated_secret" \
       --allowed-grants '["authorization_code","client_credentials","urn:ietf:params:oauth:grant-type:device_code"]' \
       --allowed-scopes "[{\"fqs\":\"${db_scope}\"}]" \
-      --redirect-uris "[\"${OCI_REDIRECT_URI}\"]" \
+      --redirect-uris "$(REDIRECT_URIS="$OCI_REDIRECT_URIS" python3 - <<'PY'
+import json
+import os
+
+uris = [uri.strip() for uri in os.environ["REDIRECT_URIS"].split(",") if uri.strip()]
+print(json.dumps(uris))
+PY
+)" \
       --all-url-schemes-allowed true \
       --attribute-sets all \
       --query 'data.id' \
@@ -482,6 +499,7 @@ export OCI_CLIENT_SECRET='${OCI_CLIENT_SECRET}'
 export OCI_AUDIENCE='${OCI_DB_AUDIENCE}'
 export OCI_SCOPE='${OCI_SCOPE}'
 export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
+export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
 export OCI_USERNAME_DOMAIN='${OCI_USERNAME_DOMAIN}'
 export PDB_NAME='${PDB_NAME}'
 EOF

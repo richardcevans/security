@@ -15,10 +15,12 @@ Then run the lab setup:
 ```bash
 ./00_setup_oci_iam.sh
 source ./.oci-iam-data-grants.env
+./verify_oci_iam_setup.sh
 ./01_configure_db_identity_provider.sh
 ./02_configure_network.sh
 ./03_create_hr_schema.sh
 ./04_create_data_roles_and_grants.sh
+./set_oci_iam_passwords.sh
 ./get_oci_oauth_token.sh   # sign in as Marvin
 ./05_verify_as_marvin.sh
 ./get_oci_oauth_token.sh   # sign in as Emma
@@ -47,13 +49,27 @@ OCI CLI is used by `00_setup_oci_iam.sh` to create the lab's OCI IAM objects. Ru
 sqlplus /@hrdb
 ```
 
-The helper opens OCI IAM in a browser, listens on the configured localhost redirect URI, exchanges the returned authorization code for an OAuth2 access token, and writes:
+The helper prints the OCI IAM authorization URL, listens on an available localhost redirect URI, exchanges the returned authorization code for an OAuth2 access token, and writes:
 
 ```text
 ~/.oci/oci-iam-data-grants/token
 ```
 
-If the browser runs on a different machine and the localhost callback cannot be captured automatically, the helper prints the login URL and lets you paste either the final redirected URL or just the `code` value.
+By default, the helper does not launch the browser process itself; this keeps NoVNC terminal input stable. Open the printed URL in the NoVNC browser. To let the helper try to open the browser automatically:
+
+```bash
+OCI_OPEN_BROWSER=1 ./get_oci_oauth_token.sh
+```
+
+The setup script registers these localhost callback URIs on the OCI IAM client app and the helper uses whichever port is free:
+
+```text
+http://localhost:8888/callback
+http://localhost:8889/callback
+http://localhost:8890/callback
+```
+
+If the callback cannot be captured automatically, the helper lets you paste either the final redirected URL or just the `code` value.
 
 ### Oracle Linux 9
 
@@ -185,6 +201,20 @@ Then manually add your test users to the created groups:
 
 Make sure `HR.EMPLOYEES.USER_NAME` matches `ORA_END_USER_CONTEXT.username`.
 
+To set or reset passwords for the demo users from the command line:
+
+```bash
+./set_oci_iam_passwords.sh
+```
+
+To set one user:
+
+```bash
+./set_oci_iam_passwords.sh --user marvin
+```
+
+The script prompts securely by default. You can pass `--password`, but that may leave the password in shell history.
+
 ## Custom Claim Fallback
 
 Some tenancies do not allow `oci raw-request` to create identity-domain custom claims. If `00_setup_oci_iam.sh` prints a warning, create this custom access-token claim in OCI IAM:
@@ -231,7 +261,7 @@ For the normal lab path, you do not collect these manually. Run `./00_setup_oci_
 | `OCI_CLIENT_SECRET` | Created by `00_setup_oci_iam.sh` on the interactive client app | Used by `get_oci_oauth_token.sh` to exchange an authorization code for an OAuth2 access token. |
 | `OCI_AUDIENCE` | Created by `00_setup_oci_iam.sh`, default `OracleDB` | Used in `tnsnames.ora` as `OCI_AUDIENCE`. |
 | `OCI_SCOPE` | Created by `00_setup_oci_iam.sh`, default `OracleDBDB_ACCESS_SCOPE` | Used in `tnsnames.ora` as `OCI_SCOPE`. |
-| `OCI_REDIRECT_URI` | Created by `00_setup_oci_iam.sh`, default `http://localhost:8080/callback` | Used in the OAuth2 authorization-code flow. |
+| `OCI_REDIRECT_URI` | Created by `00_setup_oci_iam.sh`, default `http://localhost:8888/callback` | Used in the OAuth2 authorization-code flow. |
 | `OCI_USERNAME_DOMAIN` | Optional lab user naming convention | Empty by default, so lab users are `marvin` and `emma`. Set it to `example.com` for `marvin@example.com` / `emma@example.com`. |
 | `PDB_NAME` | Your Oracle database environment | The PDB service used for SQL*Plus connections. This lab defaults to `FREEPDB1`. |
 
@@ -248,6 +278,7 @@ source ./.oci-iam-data-grants.env
 ./02_configure_network.sh
 ./03_create_hr_schema.sh
 ./04_create_data_roles_and_grants.sh
+./set_oci_iam_passwords.sh
 ./get_oci_oauth_token.sh
 ./05_verify_as_marvin.sh
 ./get_oci_oauth_token.sh

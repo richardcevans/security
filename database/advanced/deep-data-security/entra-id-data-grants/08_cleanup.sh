@@ -4,7 +4,7 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 14 (Optional) - Clean up.
+# Notes       : Script 8 (Optional) - Clean up.
 #               Drops all data grants, end user context, roles, data roles,
 #               the HR schema, and resets the identity provider parameters.
 #               Azure cleanup (deleting app registrations) must be done manually.
@@ -12,6 +12,8 @@
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -22,32 +24,34 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 14 (Optional): Clean Up - Remove All Lab Objects                 ${NC}"
+echo -e "${GREEN}      Script 8 (Optional): Clean Up Database Lab Objects                    ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_SYS="${DBUSR_SYS:-sys}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 1: Drop the context data grant (requires SYS)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 echo -e "${YELLOW}Step 1: Dropping the context data grant (as SYS)...${NC}"
 echo -e "${PURPLE}NOTE: This must run as SYS because it was created on a SYS-owned table.${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYS}/******@${PDB_NAME} as sysdba${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYS}/${DBUSR_PWD}@${PDB_NAME} as sysdba <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -55,25 +59,35 @@ prompt Dropping Data Grant on SYS.END_USER_CONTEXT
 prompt ========================================================================
 
 prompt DROP DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT;
-DROP DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT;
+BEGIN
+  EXECUTE IMMEDIATE 'DROP DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT';
+  DBMS_OUTPUT.PUT_LINE('Dropped: hr.EMPLOYEE_CONTEXT_GRANT');
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Not found or already removed: hr.EMPLOYEE_CONTEXT_GRANT');
+END;
+/
 
 exit;
 EOF
 
 echo
 echo -e "${YELLOW}Step 2: Dropping all remaining lab objects (as DBA)...${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 2: Drop everything else (as DBA user)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -82,22 +96,26 @@ prompt  - DROP USER hr CASCADE removes the schema, ctx_pkg package,
 prompt    the employees table, and all dependent objects.
 prompt ========================================================================
 
-prompt DROP DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS;
-DROP DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS;
-prompt DROP DATA GRANT hr.HRAPP_MANAGER_ACCESS;
-DROP DATA GRANT hr.HRAPP_MANAGER_ACCESS;
-prompt DROP END USER CONTEXT HR.EMP_CTX;
-DROP END USER CONTEXT HR.EMP_CTX;
-prompt DROP ROLE employee_context_admin;
-DROP ROLE employee_context_admin;
-prompt DROP ROLE direct_logon_role;
-DROP ROLE direct_logon_role;
-prompt DROP DATA ROLE HRAPP_EMPLOYEES;
-DROP DATA ROLE HRAPP_EMPLOYEES;
-prompt DROP DATA ROLE HRAPP_MANAGERS;
-DROP DATA ROLE HRAPP_MANAGERS;
-prompt DROP USER hr CASCADE;
-DROP USER hr CASCADE;
+DECLARE
+  PROCEDURE run_sql(p_sql VARCHAR2, p_label VARCHAR2) IS
+  BEGIN
+    EXECUTE IMMEDIATE p_sql;
+    DBMS_OUTPUT.PUT_LINE('Dropped: ' || p_label);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Not found or already removed: ' || p_label);
+  END;
+BEGIN
+  run_sql('DROP DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS', 'hr.HRAPP_EMPLOYEES_ACCESS');
+  run_sql('DROP DATA GRANT hr.HRAPP_MANAGER_ACCESS', 'hr.HRAPP_MANAGER_ACCESS');
+  run_sql('DROP END USER CONTEXT HR.EMP_CTX', 'HR.EMP_CTX');
+  run_sql('DROP ROLE employee_context_admin', 'employee_context_admin');
+  run_sql('DROP ROLE direct_logon_role', 'direct_logon_role');
+  run_sql('DROP DATA ROLE HRAPP_EMPLOYEES', 'HRAPP_EMPLOYEES');
+  run_sql('DROP DATA ROLE HRAPP_MANAGERS', 'HRAPP_MANAGERS');
+  run_sql('DROP USER hr CASCADE', 'hr');
+END;
+/
 
 prompt
 prompt ========================================================================
@@ -105,9 +123,21 @@ prompt Step 3: Reset Identity Provider Parameters
 prompt ========================================================================
 
 prompt ALTER SYSTEM RESET IDENTITY_PROVIDER_CONFIG SCOPE=BOTH;
-ALTER SYSTEM RESET IDENTITY_PROVIDER_CONFIG SCOPE=BOTH;
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER SYSTEM RESET IDENTITY_PROVIDER_CONFIG SCOPE=BOTH';
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('IDENTITY_PROVIDER_CONFIG was not set.');
+END;
+/
 prompt ALTER SYSTEM RESET IDENTITY_PROVIDER_TYPE SCOPE=BOTH;
-ALTER SYSTEM RESET IDENTITY_PROVIDER_TYPE SCOPE=BOTH;
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER SYSTEM RESET IDENTITY_PROVIDER_TYPE SCOPE=BOTH';
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('IDENTITY_PROVIDER_TYPE was not set.');
+END;
+/
 
 prompt
 prompt ========================================================================
@@ -144,7 +174,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 14 Completed: All Database Lab Objects Removed!                  ${NC}"
+echo -e "${GREEN}      Script 8 Completed: All Database Lab Objects Removed!                 ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
 echo -e "${GREEN}      Azure cleanup (manual):                                               ${NC}"
 echo -e "${GREEN}      1. Delete the Oracle Client Interactive app registration              ${NC}"

@@ -4,13 +4,15 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 13 - Verify the security boundary.
+# Notes       : Task 7 - Verify the security boundary.
 #               Tests that Entra ID-authenticated end users cannot bypass data grants.
 #               Each test requires a separate Entra ID browser login.
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -22,17 +24,21 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 13: Verify the Security Boundary                                 ${NC}"
+echo -e "${GREEN}      Task 7: Verify the Security Boundary                                  ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Each test connects via sqlplus /@hrdb (Entra ID browser login).${NC}"
+echo -e "${PURPLE}The browser should open automatically in a local desktop or NoVNC session.${NC}"
 echo -e "${PURPLE}You will need to log in as the appropriate user for each test.${NC}"
+echo -e "${PURPLE}If the browser reuses the wrong Entra session, close browser windows${NC}"
+echo -e "${PURPLE}or use a private/incognito window before retrying.${NC}"
+echo -e "${PURPLE}Manual/headless token workflows are a last resort for non-GUI clients.${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
 
 # =====================================================================
@@ -53,6 +59,7 @@ set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
@@ -91,6 +98,7 @@ set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
@@ -131,6 +139,7 @@ set sqlcontinue ""
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
@@ -160,9 +169,17 @@ echo -e "${YELLOW}Test 4: Can the HR schema account still log in?${NC}"
 echo -e "${CYAN}Executing: sqlplus -s hr/******@${PDB_NAME}${NC}"
 echo
 
-sqlplus -s hr/${DBUSR_PWD}@${PDB_NAME} <<EOF
+set +e
+sqlplus -L -s hr/${DBUSR_PWD}@${PDB_NAME} <<EOF
 exit;
 EOF
+hr_status=$?
+set -e
+
+if [ "$hr_status" -eq 0 ]; then
+  echo -e "${RED}ERROR: HR login succeeded, but HR should be NO AUTHENTICATION.${NC}"
+  exit 1
+fi
 
 echo
 echo -e "${RED}  Result: HR cannot log in. The schema account has NO AUTHENTICATION.${NC}"

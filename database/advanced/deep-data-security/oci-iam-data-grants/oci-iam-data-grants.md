@@ -37,12 +37,15 @@ Same SQL. Zero application filtering. Zero database passwords. The security is o
 
 This lab assumes:
 
-- An **Oracle AI Database 26ai** instance with a TCPS listener on port 2484
-- `SYSTEM` and `SYS` access to a pluggable database, such as PDB1
+- An **Oracle AI Database 26ai April 2026 Release Update (RU)** instance
+- The `oracle` OS user, or another OS user that can run `sqlplus / as sysdba`
+- A local CDB and PDB. The default script values are `DB_SID=FREE` and `PDB_NAME=FREEPDB1`
 - An **OCI IAM identity domain** where the OCI CLI user can administer applications, users, and groups
 - Oracle Database client support for OCI IAM token authentication
 - OCI CLI configuration available for the interactive client user, unless you use the default OCI config/profile
-- The Oracle Database wallet is configured for TLS connections
+- A browser for OCI IAM login. NoVNC on the lab host is simplest; a local laptop browser works with `./get_oci_oauth_token.sh --headless`
+
+SQLPlus does not open the OCI IAM browser login directly in this lab. Run `./get_oci_oauth_token.sh` first so the helper can perform the OAuth2 authorization-code flow and write the access token where SQLPlus can read it.
 
 ## Task 0: Download Lab Scripts
 
@@ -56,6 +59,14 @@ ls</copy>
 ````
 
 ## Part 1: Configure OCI IAM
+
+### Task 0: Run DBA preflight checks
+
+Before creating IAM objects or changing database network files, verify the local database, listener tools, OCI CLI, and callback ports.
+
+````bash
+<copy>./00_preflight.sh</copy>
+````
 
 ### Task 1: Create OCI IAM Applications, Groups, Users, and Claims
 
@@ -178,7 +189,7 @@ hrdb =
   )
 ```
 
-When you connect with `sqlplus /@hrdb`, the Oracle client uses OCI IAM interactive authentication.
+When you connect with `sqlplus /@hrdb`, the Oracle client reads the OAuth2 token file from `TOKEN_LOCATION`. Get that token first with `./get_oci_oauth_token.sh`.
 
 ## Part 3: Create Deep Data Security Objects
 
@@ -254,13 +265,31 @@ CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
 
 ## Part 4: Verify the Policies
 
-### Task 6: Connect and Verify as Marvin
+### Task 6: Get an OAuth2 token for Marvin
+
+Run the helper and sign in as Marvin.
+
+````bash
+<copy>./get_oci_oauth_token.sh</copy>
+````
+
+If you are using a browser on your laptop instead of a browser on the lab host, use headless mode:
+
+````bash
+<copy>./get_oci_oauth_token.sh --headless</copy>
+````
+
+In headless mode, open the printed authorization URL in your browser. After successful login, the browser redirects to a URL like `http://localhost:8888/callback?code=...&state=...`. The page may say `This site can't be reached`; that is expected. Copy the full URL from the browser address bar and paste it into the helper.
+
+If the browser silently logs in as the wrong user, close OCI IAM browser windows or use a private/incognito window before opening a fresh authorization URL.
+
+### Task 7: Connect and Verify as Marvin
 
 ````bash
 <copy>./05_verify_as_marvin.sh</copy>
 ````
 
-Log in as Marvin when prompted by OCI IAM. The script verifies:
+The script verifies that the local token is for Marvin before connecting, then verifies:
 
 1. `CURRENT_USER = XS$NULL`
 2. `AUTHENTICATED_IDENTITY` is Marvin's OCI IAM identity
@@ -268,15 +297,29 @@ Log in as Marvin when prompted by OCI IAM. The script verifies:
 4. `SELECT * FROM hr.employees` returns 4 rows: Marvin and his 3 direct reports
 5. SSN is visible for Marvin's own row and excluded for direct reports
 
-### Task 7: Connect and Verify as Emma
+### Task 8: Clear Marvin's local token and get an OAuth2 token for Emma
+
+````bash
+<copy>./clear_local_tokens.sh</copy>
+````
+
+Run the helper again and sign in as Emma.
+
+````bash
+<copy>./get_oci_oauth_token.sh</copy>
+````
+
+Use `--headless` only when the browser is running somewhere other than the lab host.
+
+### Task 9: Connect and Verify as Emma
 
 ````bash
 <copy>./06_verify_as_emma.sh</copy>
 ````
 
-Log in as Emma when prompted by OCI IAM. Emma sees 1 row: herself only. She can view her SSN and salary but can update only her phone number.
+The script verifies that the local token is for Emma before connecting. Emma sees 1 row: herself only. She can view her SSN and salary but can update only her phone number.
 
-### Task 8: Verify the Security Boundary
+### Task 10: Verify the Security Boundary
 
 ````bash
 <copy>./07_verify_security_boundary.sh</copy>
@@ -289,7 +332,17 @@ This script runs four tests:
 3. Emma tries to update Marvin's phone number: 0 rows updated, because the predicate limits Emma to her own row
 4. HR tries to log in directly: fails, because HR was created with `NO AUTHENTICATION`
 
-## Task 9: Clean Up
+## Task 11: Clean Up Local Tokens
+
+Remove the local OAuth2 bearer token from the lab host:
+
+````bash
+<copy>./clear_local_tokens.sh</copy>
+````
+
+This does not delete OCI IAM objects or database configuration.
+
+## Task 12: Clean Up Database Objects
 
 ````bash
 <copy>./08_cleanup_db.sh</copy>
@@ -311,17 +364,23 @@ Then clean up the OCI IAM objects:
 The OCI cleanup script deletes the lab-named applications, groups, optional demo users, and custom `group` claim. It asks you to type `DELETE` before removing IAM objects. For unattended cleanup, run:
 
 ````bash
-<copy>FORCE=1 ./09_cleanup_oci_iam.sh</copy>
+<copy>./09_cleanup_oci_iam.sh -f</copy>
 ````
 
 ## Complete Script Sequence
 
 | Script | Purpose |
 |---|---|
+| `00_preflight.sh` | Check local database, listener tools, OCI CLI, and callback ports |
+| `00_setup_oci_iam.sh` | Create or reuse OCI IAM apps, groups, users, and custom claim |
 | `01_configure_db_identity_provider.sh` | Set `identity_provider_type`, `identity_provider_oauth_config`, and `OCI_IAM_DOMAIN_DB_CRED$` |
 | `02_configure_network.sh` | Create wallet, configure TCPS listener, `sqlnet.ora`, and `tnsnames.ora` |
 | `03_create_hr_schema.sh` | Create HR schema with employee data |
 | `04_create_data_roles_and_grants.sh` | Create data roles mapped to OCI IAM groups, data grants, and context |
+| `verify_db_setup.sh` | Verify database-side identity provider, data roles, grants, and HR rows |
+| `verify_oci_iam_setup.sh` | Verify OCI IAM apps, groups, users, membership, and custom claim |
+| `get_oci_oauth_token.sh` | Get OCI IAM OAuth2 access token for SQLPlus |
+| `clear_local_tokens.sh` | Remove local OAuth2 token material |
 | `05_verify_as_marvin.sh` | Connect as Marvin via OCI IAM: 4 rows |
 | `06_verify_as_emma.sh` | Connect as Emma via OCI IAM: 1 row |
 | `07_verify_security_boundary.sh` | Test bypass attempts |

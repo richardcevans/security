@@ -17,6 +17,12 @@ data-management-library/autonomous-database/autonomous-data-warehouse_PRIOR TO S
 data-management-library/autonomous-database/shared/adb-auto-scaling/images/send to Nilay.png
 *.bak
 
+# Deep Data Security lab-generated secrets and scratch files
+**/.oci-iam-data-grants.env
+**/.oci-iam-setup/
+**/custom-claim-group.json
+**/02_entra_demo.log
+
 # Unused images folder
 **/unused_images/
 

@@ -4,13 +4,15 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 10 - Create data roles, data grants, and end user context.
+# Notes       : Task 4 - Create data roles, data grants, and end user context.
 #               Data roles use MAPPED TO 'azure_role=...' for Entra ID integration.
 #               No CREATE END USER needed — identity comes from the OAuth2 token.
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -21,7 +23,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 10: Create Data Roles, Data Grants, and End User Context         ${NC}"
+echo -e "${GREEN}      Task 4: Create Data Roles, Data Grants, and End User Context          ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Data roles use MAPPED TO 'azure_role=...' for automatic activation${NC}"
@@ -32,12 +34,11 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_SYS="${DBUSR_SYS:-sys}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
-CONN_DISPLAY="${DBUSR_SYSTEM}/******@${PDB_NAME}"
+CONN_DISPLAY="/ as sysdba"
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Steps 1-5: Create data roles, grants, and context as SYSTEM
@@ -46,12 +47,15 @@ echo -e "${YELLOW}Steps 1-5: Creating data roles, grants, and context...${NC}"
 echo -e "${CYAN}Executing: sqlplus -s ${CONN_DISPLAY}${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -175,18 +179,21 @@ EOF
 echo
 echo -e "${YELLOW}Creating the data grant on SYS.END_USER_CONTEXT...${NC}"
 echo -e "${PURPLE}NOTE: This must run as SYS because it grants access to a SYS-owned table.${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYS}/******@${PDB_NAME} as sysdba${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Data grant on SYS.END_USER_CONTEXT (requires SYS)
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYS}/${DBUSR_PWD}@${PDB_NAME} as sysdba <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -214,12 +221,15 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Manager data grant as SYSTEM
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -257,7 +267,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 10 Completed: Data Roles, Grants, and Context Created!           ${NC}"
+echo -e "${GREEN}      Task 4 Completed: Data Roles, Grants, and Context Created!            ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
 echo -e "${GREEN}  Data roles use MAPPED TO 'azure_role=...' — no end users needed.          ${NC}"
 echo -e "${GREEN}  When Marvin logs in via Entra ID with the MANAGERS app role,              ${NC}"

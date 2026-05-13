@@ -4,13 +4,15 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 9 - Create the HR schema and employee data.
+# Notes       : Task 3 - Create the HR schema and employee data.
 #               Creates HR with NO AUTHENTICATION (schema-only) and
 #               populates the EMPLOYEES table with 7 sample rows.
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -21,7 +23,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 9: Create the HR Schema and Employee Data                        ${NC}"
+echo -e "${GREEN}      Task 3: Create the HR Schema and Employee Data                        ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}HR is created with NO AUTHENTICATION — it is a schema-only account.${NC}"
@@ -31,9 +33,9 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
-export DBUSR_SYSTEM="${DBUSR_SYSTEM:-system}"
-export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 if [ -z "${DOMAIN_NAME:-}" ]; then
   echo -e "\033[0;31mERROR: DOMAIN_NAME is not set.\033[0m"
@@ -43,15 +45,18 @@ if [ -z "${DOMAIN_NAME:-}" ]; then
 fi
 
 echo -e "${YELLOW}Creating HR schema and employees...${NC}"
-echo -e "${CYAN}Executing: sqlplus -s ${DBUSR_SYSTEM}/******@${PDB_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -s / as sysdba${NC}"
 echo
 
-sqlplus -s ${DBUSR_SYSTEM}/${DBUSR_PWD}@${PDB_NAME} <<EOF
+sqlplus -s / as sysdba <<EOF
 
 set echo off
 set serveroutput on
 set lines 130
 set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 prompt
 prompt ========================================================================
@@ -62,6 +67,15 @@ show user;
 show con_name;
 
 prompt CREATE USER hr NO AUTHENTICATION;
+BEGIN
+  EXECUTE IMMEDIATE 'DROP USER hr CASCADE';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -1918 THEN
+      RAISE;
+    END IF;
+END;
+/
 CREATE USER hr NO AUTHENTICATION;
 prompt GRANT UNLIMITED TABLESPACE TO hr;
 GRANT UNLIMITED TABLESPACE TO hr;
@@ -135,7 +149,7 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 9 Completed: HR Schema Created!                                  ${NC}"
+echo -e "${GREEN}      Task 3 Completed: HR Schema Created!                                  ${NC}"
 echo -e "${GREEN}      7 employees with full Entra ID email addresses as user_name.           ${NC}"
 echo -e "${GREEN}      Next: run 04_create_data_roles_and_grants.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"

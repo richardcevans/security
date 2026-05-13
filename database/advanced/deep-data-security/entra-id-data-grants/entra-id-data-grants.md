@@ -39,10 +39,13 @@ Same SQL. Zero application filtering. Zero database passwords. The security is o
 
 This lab assumes:
 
-- An **Oracle AI Database 26ai** instance with TCPS listener on port 2484
-- `SYSTEM` and `SYS` access to a pluggable database (e.g., PDB1)
+- An **Oracle AI Database 26ai April 2026 Release Update (RU)** instance
+- The `oracle` OS user, or another OS user that can run `sqlplus / as sysdba`
+- A local CDB and PDB. The default script values are `DB_SID=FREE` and `PDB_NAME=FREEPDB1`
 - An **Azure subscription** with permissions to register applications, create app roles, and create users in Microsoft Entra ID
-- The Oracle Database wallet is configured for TLS connections
+- A local browser-capable desktop session, such as NoVNC on the lab host, for `AZURE_INTERACTIVE` browser login
+
+`AZURE_INTERACTIVE` should open the browser automatically when SQLPlus runs in a local graphical session. Use a manual or headless token workaround only as a last resort for environments where a browser cannot be launched from the database client host.
 
 ### Task 0: Download lab scripts
 
@@ -252,7 +255,17 @@ Link the client app to the database app so tokens can flow.
 
 ## Part 2: Configure the Oracle Database
 
-### Task 7: Set database identity provider parameters
+### Script 0: Run DBA preflight checks
+
+Before changing database or network files, verify the local database, listener, wallet tools, and browser-launch environment.
+
+````
+<copy>./00_preflight.sh</copy>
+````
+
+Fix any blocking failures before continuing. A warning about browser launch means `AZURE_INTERACTIVE` may not be able to open a browser from this shell; use a local desktop or NoVNC session when possible.
+
+### Script 1: Set database identity provider parameters
 
 Configure the database to accept Entra ID tokens. You need the `APP_ID`, `TENANT_ID`, and `APP_ID_URI` from Tasks 1-2.
 
@@ -272,7 +285,7 @@ Then run:
 <copy>./01_configure_db_identity_provider.sh</copy>
 ````
 
-This script sets the `identity_provider_type` and `identity_provider_config` parameters in the pluggable database.
+This script connects locally as `SYSDBA`, switches to `PDB_NAME`, and sets the `identity_provider_type` and `identity_provider_config` parameters in the pluggable database.
 
 The script runs the following as SYS:
 
@@ -287,17 +300,18 @@ ALTER SYSTEM SET identity_provider_config =
 }' SCOPE = BOTH;
 ```
 
-### Task 8: Configure TCPS listener, sqlnet.ora, and tnsnames.ora
+### Script 2: Configure TCPS listener, sqlnet.ora, and tnsnames.ora
 
 To authenticate with Entra ID, the database must use a TLS connection. This task configures the TCPS listener, wallet, and connection descriptor.
 
 ### Try it
 
-Before running, set these environment variables (in addition to the ones from Task 7):
+Before running, set these environment variables (in addition to the ones from Script 1):
 
 ````
 <copy>export CLIENT_ID=<your-oracle-client-interactive-app-id>
-export PDB_NAME=<your-pdb-name></copy>
+export DB_SID=FREE
+export PDB_NAME=FREEPDB1</copy>
 ````
 
 Then run:
@@ -333,17 +347,17 @@ hrdb =
   )
 ```
 
-When you connect with `sqlplus /@hrdb`, the database launches your browser for Entra ID login.
+When you connect with `sqlplus /@hrdb`, the Oracle client launches your browser for Entra ID login. If the browser silently signs in as the wrong user, close all Entra ID browser windows or use a private/incognito window before retrying.
 
 ## Part 3: Create Deep Data Security Objects
 
-### Task 9: Create the HR schema and employee data
+### Script 3: Create the HR schema and employee data
 
 Create the HR schema with a `NO AUTHENTICATION` account (schema-only — it cannot log in) and populate it with 7 sample employees. The `user_name` values are set to full Entra ID email addresses — these are what the data grant predicates match against.
 
 ### Try it
 
-Before running, set your Entra ID tenant domain (in addition to the variables from Tasks 7–8):
+Before running, set your Entra ID tenant domain (in addition to the variables from Scripts 1-2):
 
 ````
 <copy>export DOMAIN_NAME=yourtenant.onmicrosoft.com</copy>
@@ -369,7 +383,7 @@ This script creates the HR schema, the `EMPLOYEES` table, and 7 sample rows:
 
 > **Key difference from the direct-auth lab:** HR is created with `NO AUTHENTICATION` from the start — there is no shared service account to migrate away from.
 
-### Task 10: Create data roles, data grants, and end user context
+### Script 4: Create data roles, data grants, and end user context
 
 This is the core of Deep Data Security. You create data roles that map to the Entra ID app roles, then attach data grants that define row and column access.
 
@@ -419,7 +433,15 @@ This script:
 
 5. **Creates context grants and role bindings** — `CREATE SESSION` via database role, context access via data grant on `SYS.END_USER_CONTEXT`.
 
-### Task 11: Connect and verify as Marvin
+### Verify database setup
+
+Before testing end-user logon, confirm the database identity provider parameters, data roles, direct logon role, data grants, and HR rows.
+
+````
+<copy>./verify_db_setup.sh</copy>
+````
+
+### Script 5: Connect and verify as Marvin
 
 Connect as Marvin via Entra ID and verify the data grants enforce per-user access.
 
@@ -429,7 +451,7 @@ Connect as Marvin via Entra ID and verify the data grants enforce per-user acces
 <copy>./05_verify_as_marvin.sh</copy>
 ````
 
-This script connects as Marvin using `sqlplus /@hrdb` — which launches the Entra ID browser login. After authentication, it verifies:
+This script connects as Marvin using `sqlplus /@hrdb`, which should launch the Entra ID browser login automatically on a local desktop or NoVNC session. After authentication, it verifies:
 
 1. **Identity:** `CURRENT_USER = XS$NULL`, `AUTHENTICATED_IDENTITY = marvin@<your-tenant>.onmicrosoft.com`
 2. **Active data roles:** `HRAPP_EMPLOYEES`, `HRAPP_MANAGERS` (plus default roles)
@@ -445,7 +467,7 @@ This script connects as Marvin using `sqlplus /@hrdb` — which launches the Ent
 
 Same query as the direct-auth lab. Same results. The only difference is **how** Marvin authenticated — via Entra ID instead of a database password.
 
-### Task 12: Connect and verify as Emma
+### Script 6: Connect and verify as Emma
 
 Connect as Emma via Entra ID and verify she sees only her own data.
 
@@ -455,13 +477,13 @@ Connect as Emma via Entra ID and verify she sees only her own data.
 <copy>./06_verify_as_emma.sh</copy>
 ````
 
-Emma sees **1 row** — herself only. She can view her SSN and salary but can only update her phone number. Same SQL, completely different results.
+Emma sees **1 row** — herself only. She can view her SSN and salary but can only update her phone number. Same SQL, completely different results. If the browser reuses Marvin's Entra session, close the browser or use a private/incognito window and rerun the script.
 
 | EMPLOYEE\_ID | FIRST\_NAME | SSN | SALARY |
 |---|---|---|---|
 | 3 | Emma | 333-33-3333 | 120000 |
 
-### Task 13: Verify the security boundary
+### Script 7: Verify the security boundary
 
 Test that end users cannot bypass data grants — even through the Entra ID authentication path.
 
@@ -480,9 +502,9 @@ This script runs four tests:
 
 No prompt injection, misconfigured endpoint, or application bug can circumvent these controls. The enforcement is in the database kernel.
 
-### Task 14 (Optional): Clean up
+### Script 8 (Optional): Clean up
 
-Remove all lab objects — Entra ID configuration and database objects.
+Remove database-side lab objects and reset the database identity-provider parameters.
 
 ### Try it
 
@@ -504,10 +526,12 @@ This script:
 
 | Script | Purpose |
 |---|---|
+| `00_preflight.sh` | Check local database, listener tools, and browser-launch readiness |
 | `01_configure_db_identity_provider.sh` | Set identity\_provider\_type and identity\_provider\_config |
 | `02_configure_network.sh` | Create wallet, configure TCPS listener, sqlnet.ora, tnsnames.ora |
 | `03_create_hr_schema.sh` | Create HR schema (NO AUTHENTICATION) with employee data |
 | `04_create_data_roles_and_grants.sh` | Create data roles (MAPPED TO azure\_role), data grants, context |
+| `verify_db_setup.sh` | Verify database-side identity provider, data roles, grants, and HR rows |
 | `05_verify_as_marvin.sh` | Connect as Marvin via Entra ID — 4 rows |
 | `06_verify_as_emma.sh` | Connect as Emma via Entra ID — 1 row |
 | `07_verify_security_boundary.sh` | Test bypass attempts — all fail |

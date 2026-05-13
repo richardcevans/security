@@ -4,13 +4,15 @@
 #
 # Parameter   : None
 #
-# Notes       : Task 11 - Connect as Marvin via Entra ID and verify data grants.
+# Notes       : Task 5 - Connect as Marvin via Entra ID and verify data grants.
 #               Uses sqlplus /@hrdb which triggers AZURE_INTERACTIVE browser login.
 #               Marvin authenticates as his Entra ID identity and sees 4 rows.
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -21,7 +23,7 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 11: Connect and Verify as Marvin (via Entra ID)                  ${NC}"
+echo -e "${GREEN}      Task 5: Connect and Verify as Marvin (via Entra ID)                   ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Marvin has EMPLOYEES and MANAGERS app roles in Entra ID.${NC}"
@@ -30,9 +32,15 @@ echo -e "${PURPLE}Same SQL: SELECT * FROM hr.employees — Marvin sees 4 rows.${
 echo
 echo -e "${YELLOW}Connecting as Marvin via Entra ID...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
-echo -e "${PURPLE}NOTE: This will open your browser for Entra ID login.${NC}"
+echo -e "${PURPLE}NOTE: This should open your browser automatically for Entra ID login${NC}"
+echo -e "${PURPLE}      when SQLPlus is running in a local desktop or NoVNC session.${NC}"
 echo -e "${PURPLE}      Log in as Marvin's Entra ID account.${NC}"
+echo -e "${PURPLE}      If your browser reuses the wrong Entra session, close browser windows${NC}"
+echo -e "${PURPLE}      or use a private/incognito window before retrying.${NC}"
+echo -e "${PURPLE}      Manual/headless token workflows are a last resort for non-GUI clients.${NC}"
 echo
+
+export MARVIN_EXPECTED_IDENTITY="${MARVIN_EXPECTED_IDENTITY:-marvin}"
 
 sqlplus -s /@hrdb <<EOF
 
@@ -44,6 +52,7 @@ set sqlcontinue ""
 set serveroutput on
 set lines 160
 set pages 9999
+whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
@@ -62,6 +71,16 @@ SELECT
     SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS AUTHENTICATED_IDENTITY,
     SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD')  AS AUTH_METHOD
 FROM DUAL;
+
+DECLARE
+  expected VARCHAR2(256) := lower('${MARVIN_EXPECTED_IDENTITY}');
+  actual   VARCHAR2(512) := lower(SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY'));
+BEGIN
+  IF expected IS NOT NULL AND INSTR(actual, expected) = 0 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Expected Marvin identity containing "' || expected || '", got "' || actual || '". Close cached browser sessions or sign in again.');
+  END IF;
+END;
+/
 
 prompt
 prompt ========================================================================

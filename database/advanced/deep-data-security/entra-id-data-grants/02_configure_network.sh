@@ -4,19 +4,22 @@
 #
 # Parameter   : None (uses environment variables)
 #
-# Notes       : Task 8 - Configure TCPS listener, sqlnet.ora, and tnsnames.ora.
+# Notes       : Task 2 - Configure TCPS listener, sqlnet.ora, and tnsnames.ora.
 #               Creates wallet, configures TLS, and adds AZURE_INTERACTIVE
 #               connection descriptor for Entra ID browser-based authentication.
 #
 # Environment : APP_ID_URI   - Application ID URI
 #               TENANT_ID    - Azure Directory (tenant) ID
 #               CLIENT_ID    - Oracle Client Interactive Application ID
-#               PDB_NAME     - Pluggable database name (default: pdb1)
+#               DB_SID       - Local database SID (default: FREE)
+#               PDB_NAME     - Pluggable database name (default: FREEPDB1)
 #               SECRET_PWD   - Wallet password (default: WalletPasswd123)
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
 # =========================================================================================
+
+set -euo pipefail
 
 # Define colors
 GREEN='\033[0;32m'
@@ -28,14 +31,16 @@ NC='\033[0m'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 8: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora         ${NC}"
+echo -e "${GREEN}      Task 2: Configure TCPS Listener, sqlnet.ora, and tnsnames.ora         ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Validate environment variables
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-export PDB_NAME="${PDB_NAME:-pdb1}"
+export DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export SECRET_PWD="${SECRET_PWD:-WalletPasswd123}"
 export WALLET_DIR="${ORACLE_BASE}/admin/${ORACLE_SID}/wallet"
 
@@ -60,6 +65,7 @@ CERT_DN="CN=${FQDN},O=DBSecLab,C=US"
 
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  WALLET_DIR = ${WALLET_DIR}${NC}"
+echo -e "${CYAN}  ORACLE_SID = ${ORACLE_SID}${NC}"
 echo -e "${CYAN}  FQDN       = ${FQDN}${NC}"
 echo -e "${CYAN}  CERT_DN    = ${CERT_DN}${NC}"
 echo -e "${CYAN}  CLIENT_ID  = ${CLIENT_ID}${NC}"
@@ -204,7 +210,68 @@ lsnrctl stop
 lsnrctl start
 
 sqlplus -s / as sysdba <<EOF
+set serveroutput on
+whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER PLUGGABLE DATABASE ${PDB_NAME} OPEN';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE != -65019 THEN
+      RAISE;
+    END IF;
+END;
+/
+
+ALTER SYSTEM SET local_listener =
+  '(ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
+     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+   )'
+  SCOPE = BOTH;
+
 ALTER SYSTEM REGISTER;
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+ALTER SYSTEM SET local_listener =
+  '(ADDRESS_LIST =
+     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
+     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+   )'
+  SCOPE = BOTH;
+
+DECLARE
+  service_missing EXCEPTION;
+  PRAGMA EXCEPTION_INIT(service_missing, -44304);
+BEGIN
+  BEGIN
+    DBMS_SERVICE.START_SERVICE('${PDB_NAME}');
+  EXCEPTION
+    WHEN service_missing THEN
+      DBMS_SERVICE.CREATE_SERVICE(
+        service_name => '${PDB_NAME}',
+        network_name => '${PDB_NAME}'
+      );
+      DBMS_SERVICE.START_SERVICE('${PDB_NAME}');
+    WHEN OTHERS THEN
+      IF SQLCODE NOT IN (-44305, -44311) THEN
+        RAISE;
+      END IF;
+  END;
+END;
+/
+
+ALTER SYSTEM REGISTER;
+
+ALTER SESSION SET CONTAINER = CDB\$ROOT;
+ALTER SYSTEM REGISTER;
+
+prompt
+prompt Registered database services:
+col name format a40
+SELECT name FROM v\$services ORDER BY name;
+
 exit;
 EOF
 
@@ -213,14 +280,16 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 # Step 6: Test connectivity
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
-echo -e "${YELLOW}Step 6: Testing connectivity with tnsping...${NC}"
+echo -e "${YELLOW}Step 6: Checking listener services and testing connectivity...${NC}"
 echo
 
+lsnrctl services | sed -n "/Service \\\"${PDB_NAME}\\\"/,/Service/p"
+echo
 tnsping hrdb
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 8 Completed: Network Configured!                                 ${NC}"
+echo -e "${GREEN}      Task 2 Completed: Network Configured!                                 ${NC}"
 echo -e "${GREEN}      TCPS listener on port 2484, hrdb entry with AZURE_INTERACTIVE.         ${NC}"
 echo -e "${GREEN}      Next: run 03_create_hr_schema.sh                                      ${NC}"
 echo -e "${GREEN}============================================================================${NC}"

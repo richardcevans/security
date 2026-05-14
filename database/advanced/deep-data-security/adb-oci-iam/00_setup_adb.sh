@@ -150,21 +150,32 @@ echo -e "${YELLOW}Step 1: Creating or reusing Autonomous Database...${NC}"
 echo -e "${CYAN}  Checking for existing ADB:${NC}"
 show_cmd oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
+  --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
   --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]"
 ADB_OCID=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
+  --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
   --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
 ADB_DB_VERSION=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
+  --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
   --query "data[?\"db-name\"=='${DB_NAME}'].\"db-version\" | [0]")
+ADB_ANY_STATE=$(oci db autonomous-database list \
+  --compartment-id "$ROOT_COMP_ID" \
+  --all \
+  --raw-output \
+  --query "data[?\"db-name\"=='${DB_NAME}'].\"lifecycle-state\" | [0]")
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
+  if [ -n "$ADB_ANY_STATE" ] && [ "$ADB_ANY_STATE" != "null" ]; then
+    echo -e "${YELLOW}  Found ${DB_NAME} in lifecycle state ${ADB_ANY_STATE}; it is not reusable for this lab.${NC}"
+  fi
   echo -e "${CYAN}  Creating ADB:${NC}"
   show_cmd oci db autonomous-database create \
     --compartment-id "$ROOT_COMP_ID" \
@@ -190,10 +201,18 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
 
   ADB_OCID=$(oci db autonomous-database list \
     --compartment-id "$ROOT_COMP_ID" \
+    --lifecycle-state AVAILABLE \
     --all \
     --raw-output \
     --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
+  ADB_DB_VERSION=$(oci db autonomous-database list \
+    --compartment-id "$ROOT_COMP_ID" \
+    --lifecycle-state AVAILABLE \
+    --all \
+    --raw-output \
+    --query "data[?\"db-name\"=='${DB_NAME}'].\"db-version\" | [0]")
   echo -e "${CYAN}  Created ADB: ${ADB_OCID}${NC}"
+  echo -e "${CYAN}  Created ADB version: ${ADB_DB_VERSION}${NC}"
 else
   if [ "$ADB_DB_VERSION" != "$DB_VERSION" ]; then
     echo -e "${RED}ERROR: Found existing ADB ${DB_NAME}, but it is ${ADB_DB_VERSION}, not ${DB_VERSION}.${NC}"

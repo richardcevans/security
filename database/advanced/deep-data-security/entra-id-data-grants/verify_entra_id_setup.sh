@@ -31,7 +31,7 @@ fi
 
 find_app_id() {
   local display_name="$1"
-  APP_NAME="$display_name" az ad app list --display-name "$display_name" -o json | python3 -c '
+  az ad app list --display-name "$display_name" -o json | APP_NAME="$display_name" python3 -c '
 import json, os, sys
 name = os.environ["APP_NAME"]
 apps = [a for a in json.load(sys.stdin) if a.get("displayName") == name]

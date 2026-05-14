@@ -64,7 +64,7 @@ graph_patch() {
 
 find_app_json() {
   local display_name="$1"
-  APP_NAME="$display_name" az ad app list --display-name "$display_name" -o json | python3 -c '
+  az ad app list --display-name "$display_name" -o json | APP_NAME="$display_name" python3 -c '
 import json, os, sys
 name = os.environ["APP_NAME"]
 apps = [a for a in json.load(sys.stdin) if a.get("displayName") == name]
@@ -80,16 +80,45 @@ ensure_service_principal() {
   az ad sp create --id "$app_id" >/dev/null
 }
 
-domain_name="${DOMAIN_NAME:-}"
-if [ -z "$domain_name" ]; then
-  domain_name=$(az rest --method GET \
+discover_domain_name() {
+  local discovered
+
+  discovered=$(az rest --method GET \
     --uri "https://graph.microsoft.com/v1.0/domains?\$filter=isDefault eq true" \
     --query "value[0].id" \
     --output tsv 2>/dev/null || true)
+  if [ -n "$discovered" ]; then
+    printf '%s' "$discovered"
+    return
+  fi
+
+  discovered=$(az rest --method GET \
+    --uri "https://graph.microsoft.com/v1.0/organization" \
+    --query "value[0].verifiedDomains[?isDefault].name | [0]" \
+    --output tsv 2>/dev/null || true)
+  if [ -n "$discovered" ]; then
+    printf '%s' "$discovered"
+    return
+  fi
+
+  discovered=$(az ad signed-in-user show \
+    --query userPrincipalName \
+    --output tsv 2>/dev/null | awk -F@ 'NF == 2 { print $2; exit }' || true)
+  if [ -n "$discovered" ]; then
+    printf '%s' "$discovered"
+    return
+  fi
+}
+
+domain_name="${DOMAIN_NAME:-}"
+if [ -z "$domain_name" ]; then
+  domain_name=$(discover_domain_name)
 fi
 if [ -z "$domain_name" ]; then
   echo -e "${RED}ERROR: Could not discover default Entra domain.${NC}"
-  echo -e "${YELLOW}Set it explicitly, for example: export DOMAIN_NAME=example.onmicrosoft.com${NC}"
+  echo -e "${YELLOW}Set it explicitly, for example:${NC}"
+  echo -e "${YELLOW}  export DOMAIN_NAME=example.onmicrosoft.com${NC}"
+  echo -e "${YELLOW}Then rerun ./00_setup_entra_id.sh${NC}"
   exit 1
 fi
 export DOMAIN_NAME="$domain_name"

@@ -493,6 +493,12 @@ The setup script creates or reuses:
 - admin consent, if the signed-in Azure account is allowed to grant it
 - optional Marvin/Emma role assignments, if those users already exist
 
+The setup script tries to discover `DOMAIN_NAME` from Microsoft Graph. If your tenant blocks domain discovery, set it explicitly and rerun:
+
+````
+<copy>export DOMAIN_NAME=example.onmicrosoft.com</copy>
+````
+
 Default user lookup:
 
 | User | UPN |

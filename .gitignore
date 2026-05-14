@@ -33,3 +33,4 @@ data-management-library/autonomous-database/shared/adb-auto-scaling/images/send 
 .claude_code/
 *.ps1
 unused_images_report.txt
+database/advanced/deep-data-security/publish_lab_zip.sh

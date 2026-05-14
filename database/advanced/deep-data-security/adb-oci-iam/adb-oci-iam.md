@@ -77,7 +77,6 @@ export DB_NAME=deepsec1
 export DB_VERSION=26ai
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
-export OCI_IAM_SCHEMA_GROUP=ALL_DB_USERS
 export OCI_IAM_EMPLOYEE_GROUP=EMPLOYEES
 export OCI_IAM_MANAGER_GROUP=MANAGERS
 </copy>
@@ -168,15 +167,15 @@ source ./.adb-oci-iam.env
 
 This script creates or reuses:
 
-- OCI IAM OAuth resource app and public client app
-- OAuth database access scope: `OracleDBDB_ACCESS_SCOPE`
+- OCI IAM OAuth resource app and public client app named with `DB_NAME`
+- OAuth database access scope named with `DB_NAME`
 - Access-token group custom claim used by `IAM_OAUTH_GROUP=...`
 - ADB-S database: `deepsec1`
 - ADB wallet: `$HOME/adb_wallet/deepsec1`
-- IAM groups: `ALL_DB_USERS`, `EMPLOYEES`, `MANAGERS`
+- IAM groups: `EMPLOYEES`, `MANAGERS`
 
 When `OCI_CS_USER_OCID` or `ADB_LAB_USER_OCID` is available, the script also adds
-that IAM user to all three lab groups.
+that IAM user to both lab groups.
 
 ## 2. Enable OCI IAM on ADB
 
@@ -219,7 +218,6 @@ not log in as `HR`.
 
 The script creates:
 
-- `IAM_SHARED_SCHEMA`, mapped to `IAM_GROUP_NAME=ALL_DB_USERS`
 - `HRAPP_EMPLOYEES`, mapped to `IAM_OAUTH_GROUP=EMPLOYEES`
 - `HRAPP_MANAGERS`, mapped to `IAM_OAUTH_GROUP=MANAGERS`
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
@@ -310,7 +308,7 @@ groups, ADB instance, wallet, or database objects.
 
 ## Clean Up the Lab
 
-To remove the HR schema, shared IAM schema, lab roles, data roles, and data grants:
+To remove the HR schema, lab roles, data roles, and data grants:
 
 ```bash
 <copy>

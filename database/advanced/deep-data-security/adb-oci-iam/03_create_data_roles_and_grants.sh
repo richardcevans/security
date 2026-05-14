@@ -11,7 +11,6 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/lib_adb.sh"
 require_adb_env
 
-export OCI_IAM_SCHEMA_GROUP="${OCI_IAM_SCHEMA_GROUP:-ALL_DB_USERS}"
 export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
 export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 
@@ -20,7 +19,6 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Task 3: Create Data Roles and Data Grants                             ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${CYAN}OCI_IAM_SCHEMA_GROUP   = ${OCI_IAM_SCHEMA_GROUP}${NC}"
 echo -e "${CYAN}OCI_IAM_EMPLOYEE_GROUP = ${OCI_IAM_EMPLOYEE_GROUP}${NC}"
 echo -e "${CYAN}OCI_IAM_MANAGER_GROUP  = ${OCI_IAM_MANAGER_GROUP}${NC}"
 echo -e "${CYAN}SQL*Plus command:${NC}"
@@ -32,10 +30,6 @@ set echo on
 set serveroutput on
 set lines 180
 whenever sqlerror exit sql.sqlcode
-
-CREATE USER IF NOT EXISTS iam_shared_schema
-  IDENTIFIED GLOBALLY AS 'IAM_GROUP_NAME=${OCI_IAM_SCHEMA_GROUP}';
-GRANT CREATE SESSION TO iam_shared_schema;
 
 CREATE ROLE IF NOT EXISTS employee_context_admin;
 GRANT UPDATE ANY END USER CONTEXT TO hr;

@@ -158,7 +158,7 @@ echo -e "${CYAN}ADB_OCID    = ${ADB_OCID}${NC}"
 echo -e "${CYAN}REMOVE_ALL  = ${REMOVE_ALL}${NC}"
 echo
 
-if confirm "This removes HR, IAM_SHARED_SCHEMA, data roles, and local lab roles."; then
+if confirm "This removes HR, data roles, and local lab roles."; then
   echo -e "${CYAN}SQL*Plus command:${NC}"
   show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
   admin_sqlplus <<'SQL'
@@ -178,7 +178,6 @@ DECLARE
     'DROP DATA ROLE hrapp_employees',
     'DROP ROLE direct_logon_role',
     'DROP ROLE employee_context_admin',
-    'DROP USER iam_shared_schema',
     'DROP USER hr CASCADE'
   );
   failures SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();
@@ -247,20 +246,18 @@ if [ "$REMOVE_ALL" = true ]; then
   if confirm "This removes lab IAM memberships, deletes empty lab IAM groups, and removes local wallet/env/token files."; then
     echo
     echo -e "${YELLOW}Removing lab user from IAM groups...${NC}"
-    remove_lab_user_from_group "${ALL_DB_USERS_OCID:-}" "${OCI_IAM_SCHEMA_GROUP:-ALL_DB_USERS}"
     remove_lab_user_from_group "${EMPLOYEES_OCID:-}" "${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
     remove_lab_user_from_group "${MANAGERS_OCID:-}" "${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 
     echo
     echo -e "${YELLOW}Deleting empty lab IAM groups...${NC}"
-    delete_group_if_empty "${ALL_DB_USERS_OCID:-}" "${OCI_IAM_SCHEMA_GROUP:-ALL_DB_USERS}"
     delete_group_if_empty "${EMPLOYEES_OCID:-}" "${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
     delete_group_if_empty "${MANAGERS_OCID:-}" "${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 
     echo
     echo -e "${YELLOW}Deleting lab OCI IAM OAuth applications...${NC}"
-    delete_domain_app "${OCI_CLIENT_APP_ID:-}" "${OCI_CLIENT_APP_NAME:-ADB OCI IAM Public Client}"
-    delete_domain_app "${OCI_DB_APP_ID:-}" "${OCI_DB_APP_NAME:-ADB OCI IAM DB Resource}"
+    delete_domain_app "${OCI_CLIENT_APP_ID:-}" "${OCI_CLIENT_APP_NAME:-${DB_NAME} ADB OCI IAM Public Client}"
+    delete_domain_app "${OCI_DB_APP_ID:-}" "${OCI_DB_APP_NAME:-${DB_NAME} ADB OCI IAM DB Resource}"
 
     echo
     echo -e "${YELLOW}Removing local generated files...${NC}"

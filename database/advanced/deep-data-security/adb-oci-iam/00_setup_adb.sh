@@ -50,20 +50,40 @@ export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}}"
 export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
-export OCI_IAM_SCHEMA_GROUP="${OCI_IAM_SCHEMA_GROUP:-ALL_DB_USERS}"
 export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
 export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
-export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-ADB OCI IAM DB Resource}"
-export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-ADB OCI IAM Public Client}"
+export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-${DB_NAME} ADB OCI IAM DB Resource}"
+export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-${DB_NAME} ADB OCI IAM Public Client}"
 export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
-export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
-export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
+export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-${DB_NAME}OracleDB}"
+export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-${DB_NAME}_DB_ACCESS_SCOPE}"
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
 DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
 export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-$DEFAULT_REDIRECT_URIS}"
+
+if [ "$OCI_DB_APP_NAME" = "ADB OCI IAM DB Resource" ]; then
+  OCI_DB_APP_NAME="${DB_NAME} ADB OCI IAM DB Resource"
+  export OCI_DB_APP_NAME
+fi
+if [ "$OCI_CLIENT_APP_NAME" = "ADB OCI IAM Public Client" ]; then
+  OCI_CLIENT_APP_NAME="${DB_NAME} ADB OCI IAM Public Client"
+  export OCI_CLIENT_APP_NAME
+fi
+if [ "$OCI_DB_AUDIENCE" = "OracleDB" ]; then
+  OCI_DB_AUDIENCE="${DB_NAME}OracleDB"
+  export OCI_DB_AUDIENCE
+fi
+if [ "$OCI_DB_SCOPE_VALUE" = "DB_ACCESS_SCOPE" ]; then
+  OCI_DB_SCOPE_VALUE="${DB_NAME}_DB_ACCESS_SCOPE"
+  export OCI_DB_SCOPE_VALUE
+fi
+if [ "$OCI_SCOPE" = "OracleDBDB_ACCESS_SCOPE" ]; then
+  OCI_SCOPE="${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}"
+  export OCI_SCOPE
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -424,7 +444,7 @@ echo -e "${CYAN}  DB_DISPLAY_NAME = ${DB_DISPLAY_NAME}${NC}"
 echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
-echo -e "${CYAN}  IAM groups      = ${OCI_IAM_SCHEMA_GROUP}, ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
+echo -e "${CYAN}  IAM groups      = ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
 echo -e "${CYAN}  OAuth client    = ${OCI_CLIENT_ID}${NC}"
 echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous Database 26ai.${NC}"
 echo
@@ -575,7 +595,6 @@ ensure_group() {
   printf '%s' "$group_id"
 }
 
-ALL_DB_USERS_OCID=$(ensure_group "$OCI_IAM_SCHEMA_GROUP")
 EMPLOYEES_OCID=$(ensure_group "$OCI_IAM_EMPLOYEE_GROUP")
 MANAGERS_OCID=$(ensure_group "$OCI_IAM_MANAGER_GROUP")
 
@@ -625,7 +644,6 @@ if [ -n "$ADB_LAB_USER_OCID" ]; then
     fi
   }
 
-  add_user_to_group "$ALL_DB_USERS_OCID" "$OCI_IAM_SCHEMA_GROUP"
   add_user_to_group "$EMPLOYEES_OCID" "$OCI_IAM_EMPLOYEE_GROUP"
   add_user_to_group "$MANAGERS_OCID" "$OCI_IAM_MANAGER_GROUP"
 else
@@ -657,10 +675,8 @@ export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
 export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
 export OCI_DB_APP_NAME='${OCI_DB_APP_NAME}'
 export OCI_CLIENT_APP_NAME='${OCI_CLIENT_APP_NAME}'
-export OCI_IAM_SCHEMA_GROUP='${OCI_IAM_SCHEMA_GROUP}'
 export OCI_IAM_EMPLOYEE_GROUP='${OCI_IAM_EMPLOYEE_GROUP}'
 export OCI_IAM_MANAGER_GROUP='${OCI_IAM_MANAGER_GROUP}'
-export ALL_DB_USERS_OCID='${ALL_DB_USERS_OCID}'
 export EMPLOYEES_OCID='${EMPLOYEES_OCID}'
 export MANAGERS_OCID='${MANAGERS_OCID}'
 export ADB_LAB_USER_OCID='${ADB_LAB_USER_OCID}'

@@ -22,6 +22,8 @@ echo
 echo -e "${CYAN}OCI_USERNAME_DOMAIN = ${OCI_USERNAME_DOMAIN}${NC}"
 echo -e "${CYAN}ADB_LAB_USERNAME    = ${ADB_LAB_USERNAME}${NC}"
 echo -e "${CYAN}Marvin's HR row will use this IAM database user name.${NC}"
+echo -e "${CYAN}SQL*Plus command:${NC}"
+show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
 
 admin_sqlplus <<SQL

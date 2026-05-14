@@ -17,6 +17,18 @@ echo -e "${GREEN}      Task 1: Enable OCI IAM Authentication on ADB             
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}Executing as ADMIN on ${ADB_SERVICE}${NC}"
+echo -e "${CYAN}SQL*Plus command:${NC}"
+show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
+echo -e "${CYAN}SQL block:${NC}"
+cat <<'SQL'
+BEGIN
+  DBMS_CLOUD_ADMIN.ENABLE_EXTERNAL_AUTHENTICATION(
+    type  => 'OCI_IAM',
+    force => TRUE
+  );
+END;
+/
+SQL
 echo
 
 admin_sqlplus <<'SQL'

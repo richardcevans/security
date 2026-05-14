@@ -36,10 +36,15 @@ fi
 
 echo -e "${YELLOW}Step 1: Ensuring sqlnet.ora has TOKEN_AUTH=OCI_TOKEN...${NC}"
 if grep -Eiq '^[[:space:]]*TOKEN_AUTH[[:space:]]*=' "$SQLNET_FILE"; then
+  echo -e "${CYAN}  Updating sqlnet.ora:${NC}"
+  show_cmd sed -i.bak-token-auth -E 's/^[[:space:]]*TOKEN_AUTH[[:space:]]*=.*/TOKEN_AUTH=OCI_TOKEN/I' "$SQLNET_FILE"
   sed -i.bak-token-auth -E 's/^[[:space:]]*TOKEN_AUTH[[:space:]]*=.*/TOKEN_AUTH=OCI_TOKEN/I' "$SQLNET_FILE"
   echo -e "${CYAN}  Updated existing TOKEN_AUTH entry.${NC}"
 else
+  echo -e "${CYAN}  Backing up sqlnet.ora:${NC}"
+  show_cmd cp "$SQLNET_FILE" "${SQLNET_FILE}.bak-token-auth"
   cp "$SQLNET_FILE" "${SQLNET_FILE}.bak-token-auth"
+  echo -e "${CYAN}  Appending TOKEN_AUTH=OCI_TOKEN to ${SQLNET_FILE}${NC}"
   {
     echo
     echo "# Deep Data Security ADB lab: use OCI IAM db-token for slash login."
@@ -51,8 +56,10 @@ fi
 echo
 echo -e "${YELLOW}Step 2: Requesting an OCI IAM database token...${NC}"
 if [ -n "${OCI_CLI_AUTH:-}" ]; then
+  show_cmd oci iam db-token get --auth "$OCI_CLI_AUTH"
   oci iam db-token get --auth "$OCI_CLI_AUTH" >/dev/null
 else
+  show_cmd oci iam db-token get
   oci iam db-token get >/dev/null
 fi
 

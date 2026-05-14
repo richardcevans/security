@@ -10,6 +10,40 @@ require_adb_env() {
   done
 }
 
+show_cmd() {
+  printf '  $'
+  printf ' %q' "$@"
+  printf '\n'
+}
+
+require_wallet_files() {
+  local missing=false
+
+  echo "Wallet preflight:"
+  echo "  TNS_ADMIN  = ${TNS_ADMIN}"
+  echo "  WALLET_DIR = ${WALLET_DIR}"
+
+  for file in tnsnames.ora sqlnet.ora cwallet.sso ewallet.p12; do
+    if [ -f "${TNS_ADMIN}/${file}" ]; then
+      echo "  found ${TNS_ADMIN}/${file}"
+    else
+      echo "  missing ${TNS_ADMIN}/${file}" >&2
+      missing=true
+    fi
+  done
+
+  if grep -q 'DIRECTORY="?/network/admin"' "${TNS_ADMIN}/sqlnet.ora" 2>/dev/null; then
+    echo "ERROR: ${TNS_ADMIN}/sqlnet.ora still points to ?/network/admin." >&2
+    echo "Run ./00_setup_adb.sh again so the wallet directory is rewritten to TNS_ADMIN." >&2
+    exit 1
+  fi
+
+  if [ "$missing" = true ]; then
+    echo "ERROR: The ADB wallet is incomplete. Re-run ./00_setup_adb.sh." >&2
+    exit 1
+  fi
+}
+
 admin_sqlplus() {
   sqlplus -L -s "admin/${ADMIN_PWD}@${ADB_SERVICE}"
 }

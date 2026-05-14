@@ -19,7 +19,7 @@ echo -e "${GREEN}      Task 5: Verify as the Current OCI IAM User               
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}Connecting with slash login and OCI IAM db-token:${NC}"
-echo -e "${CYAN}  sqlplus /@${ADB_SERVICE}${NC}"
+show_cmd sqlplus -L -s "/@${ADB_SERVICE}"
 echo
 
 if [ ! -f "${HOME}/.oci/db-token/token" ]; then

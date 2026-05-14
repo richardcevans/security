@@ -22,11 +22,38 @@ The first database is named `deepsec1` by default.
 - SQL*Plus or SQLcl is available in Cloud Shell.
 - Your OCI user can create Autonomous Databases in the target compartment.
 - Your OCI user can create IAM groups or reuse existing IAM groups.
-- You know the compartment OCID where the ADB-S instance should be created.
+- You know the compartment name where the ADB-S instance should be created, or
+  you want to use the root compartment.
+- The lab can run in an Always Free tenancy when Always Free ADB resources are
+  available. To confirm whether your tenancy is Free Trial, Always Free, or paid,
+  check the OCI Console under your profile menu and tenancy or billing details.
+  The OCI CLI can confirm tenancy access, but it usually does not identify the
+  billing type directly.
 
 ## Lab Variables
 
-Set the target compartment before running the lab:
+Set the target compartment by name before running the lab:
+
+```bash
+export OCI_COMPARTMENT=my-compartment
+```
+
+To use the root compartment, set:
+
+```bash
+export OCI_COMPARTMENT=root
+```
+
+You can also pass the compartment to the setup script directly:
+
+```bash
+./00_setup_adb.sh my-compartment
+```
+
+If neither `OCI_COMPARTMENT` nor `ROOT_COMP_ID` is set, the setup script assumes
+`OCI_COMPARTMENT=root`.
+
+If you prefer to use a compartment OCID directly, set:
 
 ```bash
 export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
@@ -62,6 +89,13 @@ From the `database/advanced/deep-data-security` directory, download the lab arch
 curl -L \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip" \
   -o adb-oci-iam.zip
+```
+
+Or, from a remote shell, use `wget -O` to save the archive with a clean file name:
+
+```bash
+wget -O adb-oci-iam.zip \
+  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip"
 ```
 
 Unzip the archive into the `adb-oci-iam` directory:

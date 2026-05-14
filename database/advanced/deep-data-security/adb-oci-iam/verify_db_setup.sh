@@ -18,6 +18,8 @@ echo -e "${GREEN}      Verify ADB OCI IAM Data Grants Setup                     
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}ADB_SERVICE = ${ADB_SERVICE}${NC}"
+echo -e "${CYAN}SQL*Plus command:${NC}"
+show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
 
 if ! admin_sqlplus <<'SQL'

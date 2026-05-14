@@ -23,6 +23,8 @@ echo
 echo -e "${CYAN}OCI_IAM_SCHEMA_GROUP   = ${OCI_IAM_SCHEMA_GROUP}${NC}"
 echo -e "${CYAN}OCI_IAM_EMPLOYEE_GROUP = ${OCI_IAM_EMPLOYEE_GROUP}${NC}"
 echo -e "${CYAN}OCI_IAM_MANAGER_GROUP  = ${OCI_IAM_MANAGER_GROUP}${NC}"
+echo -e "${CYAN}SQL*Plus command:${NC}"
+show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
 
 admin_sqlplus <<SQL

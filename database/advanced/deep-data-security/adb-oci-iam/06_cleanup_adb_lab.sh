@@ -53,6 +53,8 @@ echo -e "${CYAN}ADB_OCID    = ${ADB_OCID}${NC}"
 echo
 
 if confirm "This removes HR, IAM_SHARED_SCHEMA, data roles, and local lab roles."; then
+  echo -e "${CYAN}SQL*Plus command:${NC}"
+  show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
   admin_sqlplus <<'SQL'
 set echo on
 set serveroutput on
@@ -92,6 +94,11 @@ if [ "$DELETE_ADB" = true ]; then
       exit 1
     fi
 
+    echo -e "${CYAN}Deleting ADB:${NC}"
+    show_cmd oci db autonomous-database delete \
+      --autonomous-database-id "$ADB_OCID" \
+      --force \
+      --wait-for-state TERMINATED
     oci db autonomous-database delete \
       --autonomous-database-id "$ADB_OCID" \
       --force \

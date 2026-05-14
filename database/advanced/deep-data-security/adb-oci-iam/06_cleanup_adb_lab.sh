@@ -240,7 +240,7 @@ if [ "$REMOVE_ALL" = true ]; then
     echo -e "${YELLOW}Removing local generated files...${NC}"
     run_cleanup_cmd "Removing wallet directory ${WALLET_DIR}" rm -rf "$WALLET_DIR"
     run_cleanup_cmd "Removing environment file ${SCRIPT_DIR}/.adb-oci-iam.env" rm -f "${SCRIPT_DIR}/.adb-oci-iam.env"
-    run_cleanup_cmd "Removing local OCI IAM db-token cache" rm -rf "${HOME}/.oci/db-token"
+    run_cleanup_cmd "Removing local OCI IAM OAuth2 token cache" rm -rf "${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}"
   else
     echo -e "${YELLOW}Skipped --remove-all IAM and local-file cleanup.${NC}"
   fi

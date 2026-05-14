@@ -116,5 +116,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 3 completed. Next: run ./04_get_iam_db_token.sh${NC}"
+echo -e "${GREEN}Task 3 completed. Next: run ./04_get_iam_oauth_token.sh${NC}"
 echo

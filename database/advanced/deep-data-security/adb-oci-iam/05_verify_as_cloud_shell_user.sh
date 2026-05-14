@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify the ADB OCI IAM data grants with the current OCI IAM db-token.
+# Verify the ADB OCI IAM data grants with the current OCI IAM OAuth2 token.
 
 set -euo pipefail
 
@@ -18,13 +18,15 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Task 5: Verify as the Current OCI IAM User                            ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${CYAN}Connecting with slash login and OCI IAM db-token:${NC}"
+export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}"
+echo -e "${CYAN}Connecting with slash login and OCI IAM OAuth2 token:${NC}"
+echo -e "${CYAN}TOKEN_LOCATION = ${OCI_TOKEN_DIR}${NC}"
 show_cmd sqlplus -L -s "/@${ADB_SERVICE}"
 echo
 
-if [ ! -f "${HOME}/.oci/db-token/token" ]; then
-  echo -e "${RED}ERROR: OCI IAM db-token was not found at ${HOME}/.oci/db-token/token.${NC}"
-  echo -e "${YELLOW}Run ./04_get_iam_db_token.sh first.${NC}"
+if [ ! -f "${OCI_TOKEN_DIR}/token" ]; then
+  echo -e "${RED}ERROR: OCI IAM OAuth2 token was not found at ${OCI_TOKEN_DIR}/token.${NC}"
+  echo -e "${YELLOW}Run ./04_get_iam_oauth_token.sh first.${NC}"
   exit 1
 fi
 

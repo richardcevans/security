@@ -12,7 +12,7 @@ The first database is named `deepsec1` by default.
 - Enables OCI IAM authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
 - Maps OCI IAM groups to database data roles.
-- Configures SQL*Plus to use an OCI IAM `db-token`.
+- Configures SQL*Plus to use the current user's OCI IAM OAuth2 access token.
 - Verifies the same SQL returns only the rows and columns authorized for the IAM user.
 
 ## Assumptions
@@ -233,34 +233,41 @@ The script creates:
 This confirms that OCI IAM is enabled, the HR rows exist, and the data roles are
 mapped.
 
-## 6. Get an OCI IAM db-token
+## 6. Get an OCI IAM OAuth2 Access Token
 
 ```bash
 <copy>
-./04_get_iam_db_token.sh
+./04_get_iam_oauth_token.sh
 </copy>
 ```
 
 This script updates the ADB wallet `sqlnet.ora` with:
 
 ```text
-TOKEN_AUTH=OCI_TOKEN
+TOKEN_AUTH=OAUTH
+TOKEN_LOCATION=$HOME/.oci/adb-oci-iam
 ```
 
-Then it runs:
+Then it starts the OCI IAM OAuth2 authorization-code flow for the current user.
+The token script requires the OAuth client settings used for database login:
 
 ```bash
 <copy>
-oci iam db-token get
+export OCI_DOMAIN_URL=<identity-domain-url>
+export OCI_CLIENT_ID=<interactive-oauth-client-id>
+export OCI_CLIENT_SECRET=<interactive-oauth-client-secret>
+export OCI_SCOPE=<database-access-scope>
 </copy>
 ```
 
-In Cloud Shell, this uses the Cloud Shell delegation token for your current OCI
-user. The database client reads the resulting token from the default location:
+In Cloud Shell, open the printed login URL in the NoVNC browser. After login,
+the script writes the user's OAuth2 access token here:
 
 ```text
-$HOME/.oci/db-token
+$HOME/.oci/adb-oci-iam/token
 ```
+
+The database client reads that token through `TOKEN_AUTH=OAUTH`.
 
 ## 7. Verify Data Grants as the OCI IAM User
 
@@ -287,11 +294,11 @@ You should see:
 
 ## Clean Up Local Tokens
 
-To remove local OCI IAM database tokens:
+To remove local OCI IAM OAuth2 tokens:
 
 ```bash
 <copy>
-rm -rf "$HOME/.oci/db-token"
+rm -rf "$HOME/.oci/adb-oci-iam"
 </copy>
 ```
 

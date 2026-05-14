@@ -204,7 +204,7 @@ oci db autonomous-database generate-wallet \
 
 if [ -f "${WALLET_DIR}/sqlnet.ora" ]; then
   echo -e "${CYAN}  Rewriting sqlnet.ora wallet directory to ${WALLET_DIR}:${NC}"
-  show_cmd sed -i.bak-wallet-dir -E "s#DIRECTORY=\"?\\?\/network\/admin\"#DIRECTORY=\"${WALLET_DIR}\"#g" "${WALLET_DIR}/sqlnet.ora"
+  show_cmd sed -i.bak-wallet-dir -E "s#DIRECTORY=\"\\?/network/admin\"#DIRECTORY=\"${WALLET_DIR}\"#g" "${WALLET_DIR}/sqlnet.ora"
   sed -i.bak-wallet-dir -E "s#DIRECTORY=\"\\?/network/admin\"#DIRECTORY=\"${WALLET_DIR}\"#g" "${WALLET_DIR}/sqlnet.ora"
 fi
 

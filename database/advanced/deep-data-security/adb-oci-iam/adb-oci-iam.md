@@ -1,13 +1,13 @@
 # ADB OCI IAM Deep Data Security Lab
 
 This lab builds the Deep Data Security data grants demo on Autonomous Database
-Serverless using OCI IAM authentication.
+Serverless 26ai using OCI IAM authentication.
 
 The first database is named `deepsec1` by default.
 
 ## What This Lab Does
 
-- Creates or reuses an ADB-S instance.
+- Creates or reuses an ADB-S 26ai instance.
 - Downloads the ADB client wallet into Cloud Shell.
 - Enables OCI IAM authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
@@ -22,6 +22,8 @@ The first database is named `deepsec1` by default.
 - SQL*Plus or SQLcl is available in Cloud Shell.
 - Your OCI user can create Autonomous Databases in the target compartment.
 - Your OCI user can create IAM groups or reuse existing IAM groups.
+- The target database is Autonomous Database 26ai. Deep Data Security end-user
+  context privileges used by this lab are not supported on 19c.
 - You know the compartment name where the ADB-S instance should be created, or
   you want to use the root compartment.
 - The lab can run in an Always Free tenancy when Always Free ADB resources are
@@ -35,19 +37,25 @@ The first database is named `deepsec1` by default.
 Set the target compartment by name before running the lab:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=my-compartment
+</copy>
 ```
 
 To use the root compartment, set:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=root
+</copy>
 ```
 
 You can also pass the compartment to the setup script directly:
 
 ```bash
+<copy>
 ./00_setup_adb.sh my-compartment
+</copy>
 ```
 
 If neither `OCI_COMPARTMENT` nor `ROOT_COMP_ID` is set, the setup script assumes
@@ -56,25 +64,32 @@ If neither `OCI_COMPARTMENT` nor `ROOT_COMP_ID` is set, the setup script assumes
 If you prefer to use a compartment OCID directly, set:
 
 ```bash
+<copy>
 export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
+</copy>
 ```
 
 Optional overrides:
 
 ```bash
+<copy>
 export DB_NAME=deepsec1
 export DB_DISPLAY_NAME=deepsec1
+export DB_VERSION=26ai
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export OCI_IAM_SCHEMA_GROUP=ALL_DB_USERS
 export OCI_IAM_EMPLOYEE_GROUP=EMPLOYEES
 export OCI_IAM_MANAGER_GROUP=MANAGERS
+</copy>
 ```
 
 If Cloud Shell does not expose `OCI_CS_USER_OCID`, set the user OCID explicitly:
 
 ```bash
+<copy>
 export ADB_LAB_USER_OCID=ocid1.user.oc1..aaaa...
+</copy>
 ```
 
 `00_setup_adb.sh` uses that user as the lab's Marvin identity. Marvin's HR row is
@@ -86,39 +101,49 @@ can run with your current Cloud Shell token.
 From the `database/advanced/deep-data-security` directory, download the lab archive:
 
 ```bash
+<copy>
 curl -L \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip" \
   -o adb-oci-iam.zip
+</copy>
 ```
 
 Or, from a remote shell, use `wget -O` to save the archive with a clean file name:
 
 ```bash
+<copy>
 wget -O adb-oci-iam.zip \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip"
+</copy>
 ```
 
 Unzip the archive into the `adb-oci-iam` directory:
 
 ```bash
+<copy>
 unzip -o adb-oci-iam.zip
 cd adb-oci-iam
+</copy>
 ```
 
 If the archive creates a nested `adb-oci-iam` directory, move its contents up into
 the current lab directory:
 
 ```bash
+<copy>
 if [ -d adb-oci-iam ]; then
   cp -R adb-oci-iam/. .
   rm -rf adb-oci-iam
 fi
+</copy>
 ```
 
 Verify the extracted lab files:
 
 ```bash
+<copy>
 ls
+</copy>
 ```
 
 You should see the setup and verification scripts used by the remaining tasks.
@@ -126,13 +151,17 @@ You should see the setup and verification scripts used by the remaining tasks.
 ## 1. Create ADB-S and Download the Wallet
 
 ```bash
+<copy>
 ./00_setup_adb.sh
+</copy>
 ```
 
 Load the generated environment file:
 
 ```bash
+<copy>
 source ./.adb-oci-iam.env
+</copy>
 ```
 
 This script creates or reuses:
@@ -147,7 +176,9 @@ that IAM user to all three lab groups.
 ## 2. Enable OCI IAM on ADB
 
 ```bash
+<copy>
 ./01_enable_oci_iam.sh
+</copy>
 ```
 
 ADB does not use a SYS connection for this. The script connects as `ADMIN` and runs:
@@ -165,7 +196,9 @@ END;
 ## 3. Create the HR Schema
 
 ```bash
+<copy>
 ./02_create_hr_schema.sh
+</copy>
 ```
 
 The HR schema is created with `NO AUTHENTICATION`. It owns the data, but users do
@@ -174,7 +207,9 @@ not log in as `HR`.
 ## 4. Create Data Roles and Data Grants
 
 ```bash
+<copy>
 ./03_create_data_roles_and_grants.sh
+</copy>
 ```
 
 The script creates:
@@ -188,7 +223,9 @@ The script creates:
 ## 5. Verify the ADMIN-Side Setup
 
 ```bash
+<copy>
 ./verify_db_setup.sh
+</copy>
 ```
 
 This confirms that OCI IAM is enabled, the HR rows exist, and the data roles are
@@ -197,7 +234,9 @@ mapped.
 ## 6. Get an OCI IAM db-token
 
 ```bash
+<copy>
 ./04_get_iam_db_token.sh
+</copy>
 ```
 
 This script updates the ADB wallet `sqlnet.ora` with:
@@ -209,7 +248,9 @@ TOKEN_AUTH=OCI_TOKEN
 Then it runs:
 
 ```bash
+<copy>
 oci iam db-token get
+</copy>
 ```
 
 In Cloud Shell, this uses the Cloud Shell delegation token for your current OCI
@@ -222,13 +263,17 @@ $HOME/.oci/db-token
 ## 7. Verify Data Grants as the OCI IAM User
 
 ```bash
+<copy>
 ./05_verify_as_cloud_shell_user.sh
+</copy>
 ```
 
 The script connects with:
 
 ```bash
+<copy>
 sqlplus /@${ADB_SERVICE}
+</copy>
 ```
 
 You should see:
@@ -243,7 +288,9 @@ You should see:
 To remove local OCI IAM database tokens:
 
 ```bash
+<copy>
 rm -rf "$HOME/.oci/db-token"
+</copy>
 ```
 
 This removes the local token cache only. It does not change the OCI IAM user,
@@ -254,19 +301,25 @@ groups, ADB instance, wallet, or database objects.
 To remove the HR schema, shared IAM schema, lab roles, data roles, and data grants:
 
 ```bash
+<copy>
 ./06_cleanup_adb_lab.sh
+</copy>
 ```
 
 To skip the prompt:
 
 ```bash
+<copy>
 ./06_cleanup_adb_lab.sh --DELETE
+</copy>
 ```
 
 To delete the ADB instance too:
 
 ```bash
+<copy>
 ./06_cleanup_adb_lab.sh --delete-adb
+</copy>
 ```
 
 The cleanup script does not delete IAM groups by default. In shared tenancies,

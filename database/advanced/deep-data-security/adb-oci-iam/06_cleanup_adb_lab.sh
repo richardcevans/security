@@ -56,28 +56,61 @@ if confirm "This removes HR, IAM_SHARED_SCHEMA, data roles, and local lab roles.
   echo -e "${CYAN}SQL*Plus command:${NC}"
   show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
   admin_sqlplus <<'SQL'
-set echo on
+set echo off
 set serveroutput on
-whenever sqlerror exit sql.sqlcode
+set feedback off
+set heading off
+whenever sqlerror continue
 
-DROP DATA GRANT IF EXISTS hr.HRAPP_MANAGER_ACCESS;
-DROP DATA GRANT IF EXISTS hr.EMPLOYEE_CONTEXT_GRANT;
-DROP DATA GRANT IF EXISTS hr.HRAPP_EMPLOYEES_ACCESS;
+DECLARE
+  TYPE step_list IS TABLE OF VARCHAR2(4000);
+  steps step_list := step_list(
+    'DROP DATA GRANT hr.HRAPP_MANAGER_ACCESS',
+    'DROP DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT',
+    'DROP DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS',
+    'DROP DATA ROLE hrapp_managers',
+    'DROP DATA ROLE hrapp_employees',
+    'DROP ROLE direct_logon_role',
+    'DROP ROLE employee_context_admin',
+    'DROP USER iam_shared_schema',
+    'DROP USER hr CASCADE'
+  );
+  failures SYS.ODCIVARCHAR2LIST := SYS.ODCIVARCHAR2LIST();
 
-DROP DATA ROLE IF EXISTS hrapp_managers;
-DROP DATA ROLE IF EXISTS hrapp_employees;
-DROP ROLE IF EXISTS direct_logon_role;
-DROP ROLE IF EXISTS employee_context_admin;
-
+  PROCEDURE record_failure(statement_text VARCHAR2, err VARCHAR2) IS
+  BEGIN
+    failures.EXTEND;
+    failures(failures.COUNT) := statement_text || ' -> ' || err;
+  END;
 BEGIN
-  EXECUTE IMMEDIATE 'DROP USER iam_shared_schema';
-EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1918 THEN RAISE; END IF;
-END;
-/
+  DBMS_OUTPUT.PUT_LINE('Running cleanup statements...');
 
-BEGIN
-  EXECUTE IMMEDIATE 'DROP USER hr CASCADE';
-EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1918 THEN RAISE; END IF;
+  FOR i IN 1 .. steps.COUNT LOOP
+    BEGIN
+      DBMS_OUTPUT.PUT_LINE('  ' || steps(i));
+      EXECUTE IMMEDIATE steps(i);
+      DBMS_OUTPUT.PUT_LINE('    OK');
+    EXCEPTION
+      WHEN OTHERS THEN
+        IF SQLCODE IN (-1918, -1919, -1924, -904, -942, -950) THEN
+          DBMS_OUTPUT.PUT_LINE('    Skipped: ' || SQLERRM);
+        ELSE
+          DBMS_OUTPUT.PUT_LINE('    Failed: ' || SQLERRM);
+          record_failure(steps(i), SQLERRM);
+        END IF;
+    END;
+  END LOOP;
+
+  IF failures.COUNT > 0 THEN
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('Cleanup completed with failures:');
+    FOR i IN 1 .. failures.COUNT LOOP
+      DBMS_OUTPUT.PUT_LINE('  - ' || failures(i));
+    END LOOP;
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('Cleanup completed without blocking failures.');
+  END IF;
 END;
 /
 

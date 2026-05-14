@@ -40,6 +40,7 @@ show_cmd() {
 
 export DB_NAME="${DB_NAME:-deepsec1}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
+export DB_VERSION="${DB_VERSION:-26ai}"
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}}"
@@ -134,9 +135,11 @@ echo -e "${CYAN}  OCI_COMPARTMENT = ${OCI_COMPARTMENT}${NC}"
 echo -e "${CYAN}  ROOT_COMP_ID    = ${ROOT_COMP_ID}${NC}"
 echo -e "${CYAN}  DB_NAME         = ${DB_NAME}${NC}"
 echo -e "${CYAN}  DB_DISPLAY_NAME = ${DB_DISPLAY_NAME}${NC}"
+echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  IAM groups      = ${OCI_IAM_SCHEMA_GROUP}, ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
+echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous Database 26ai.${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating or reusing Autonomous Database...${NC}"
@@ -151,6 +154,11 @@ ADB_OCID=$(oci db autonomous-database list \
   --all \
   --raw-output \
   --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
+ADB_DB_VERSION=$(oci db autonomous-database list \
+  --compartment-id "$ROOT_COMP_ID" \
+  --all \
+  --raw-output \
+  --query "data[?\"db-name\"=='${DB_NAME}'].\"db-version\" | [0]")
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
   echo -e "${CYAN}  Creating ADB:${NC}"
@@ -158,6 +166,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --compartment-id "$ROOT_COMP_ID" \
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
+    --db-version "$DB_VERSION" \
     --is-free-tier true \
     --admin-password '<hidden>' \
     --cpu-core-count 1 \
@@ -167,6 +176,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --compartment-id "$ROOT_COMP_ID" \
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
+    --db-version "$DB_VERSION" \
     --is-free-tier true \
     --admin-password "$ADMIN_PWD" \
     --cpu-core-count 1 \
@@ -181,7 +191,14 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
   echo -e "${CYAN}  Created ADB: ${ADB_OCID}${NC}"
 else
+  if [ "$ADB_DB_VERSION" != "$DB_VERSION" ]; then
+    echo -e "${RED}ERROR: Found existing ADB ${DB_NAME}, but it is ${ADB_DB_VERSION}, not ${DB_VERSION}.${NC}"
+    echo -e "${YELLOW}This lab requires Autonomous Database ${DB_VERSION} for Deep Data Security end-user context privileges.${NC}"
+    echo -e "${YELLOW}Use a different DB_NAME or delete/recreate the existing database as ${DB_VERSION}.${NC}"
+    exit 1
+  fi
   echo -e "${CYAN}  Reusing ADB: ${ADB_OCID}${NC}"
+  echo -e "${CYAN}  Existing ADB version: ${ADB_DB_VERSION}${NC}"
 fi
 
 echo
@@ -315,6 +332,7 @@ export OCI_COMPARTMENT='${OCI_COMPARTMENT}'
 export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
+export DB_VERSION='${DB_VERSION}'
 export ADB_OCID='${ADB_OCID}'
 export ADB_SERVICE='${ADB_SERVICE}'
 export ADMIN_PWD='${ADMIN_PWD}'

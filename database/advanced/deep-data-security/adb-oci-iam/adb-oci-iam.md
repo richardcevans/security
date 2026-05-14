@@ -168,6 +168,9 @@ source ./.adb-oci-iam.env
 
 This script creates or reuses:
 
+- OCI IAM OAuth resource app and public client app
+- OAuth database access scope: `OracleDBDB_ACCESS_SCOPE`
+- Access-token group custom claim used by `IAM_OAUTH_GROUP=...`
 - ADB-S database: `deepsec1`
 - ADB wallet: `$HOME/adb_wallet/deepsec1`
 - IAM groups: `ALL_DB_USERS`, `EMPLOYEES`, `MANAGERS`
@@ -249,13 +252,11 @@ TOKEN_LOCATION=$HOME/.oci/adb-oci-iam
 ```
 
 Then it starts the OCI IAM OAuth2 authorization-code flow for the current user.
-The token script requires the OAuth client settings used for database login:
+`00_setup_adb.sh` writes the required OAuth values to `.adb-oci-iam.env`:
 
 ```bash
 <copy>
-export OCI_DOMAIN_URL=<identity-domain-url>
-export OCI_CLIENT_ID=<public-interactive-oauth-client-id>
-export OCI_SCOPE=<database-access-scope>
+source ./.adb-oci-iam.env
 </copy>
 ```
 
@@ -334,8 +335,8 @@ To delete the ADB instance too:
 ```
 
 To remove database objects, delete the ADB instance, remove the lab user from
-the lab IAM groups, delete empty lab IAM groups, and remove local generated
-wallet/env/token files:
+the lab IAM groups, delete empty lab IAM groups, delete the lab OAuth apps, and
+remove local generated wallet/env/token files:
 
 ```bash
 <copy>
@@ -351,10 +352,10 @@ To skip all cleanup prompts:
 </copy>
 ```
 
-The cleanup script does not delete IAM groups by default. With `--remove-all`,
-it deletes lab IAM groups only after removing the lab user and confirming the
-groups are empty. In shared tenancies, groups may be reused by other labs or
-policies.
+The cleanup script does not delete IAM groups or OAuth apps by default. With
+`--remove-all`, it deletes lab IAM groups only after removing the lab user and
+confirming the groups are empty. In shared tenancies, groups may be reused by
+other labs or policies.
 
 ## References
 

@@ -127,6 +127,27 @@ delete_group_if_empty() {
       --force
 }
 
+delete_domain_app() {
+  local app_id="${1:-}"
+  local app_name="$2"
+
+  if [ -z "${OCI_DOMAIN_URL:-}" ]; then
+    echo -e "${YELLOW}Skipping ${app_name}; OCI_DOMAIN_URL is not set.${NC}"
+    return 0
+  fi
+
+  if [ -z "$app_id" ] || [ "$app_id" = "null" ]; then
+    echo -e "${YELLOW}Skipping ${app_name}; app OCID is not set.${NC}"
+    return 0
+  fi
+
+  run_cleanup_cmd "Deleting OCI IAM app ${app_name}" \
+    oci identity-domains app delete \
+      --endpoint "$OCI_DOMAIN_URL" \
+      --app-id "$app_id" \
+      --force
+}
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 6: Clean Up ADB OCI IAM Data Grants Lab                          ${NC}"
@@ -216,7 +237,7 @@ if [ "$DELETE_ADB" = true ]; then
       oci db autonomous-database delete \
       --autonomous-database-id "$ADB_OCID" \
       --force \
-      --wait-for-state TERMINATED
+      --wait-for-state SUCCEEDED
   else
     echo -e "${YELLOW}Skipped ADB deletion.${NC}"
   fi
@@ -237,9 +258,15 @@ if [ "$REMOVE_ALL" = true ]; then
     delete_group_if_empty "${MANAGERS_OCID:-}" "${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 
     echo
+    echo -e "${YELLOW}Deleting lab OCI IAM OAuth applications...${NC}"
+    delete_domain_app "${OCI_CLIENT_APP_ID:-}" "${OCI_CLIENT_APP_NAME:-ADB OCI IAM Public Client}"
+    delete_domain_app "${OCI_DB_APP_ID:-}" "${OCI_DB_APP_NAME:-ADB OCI IAM DB Resource}"
+
+    echo
     echo -e "${YELLOW}Removing local generated files...${NC}"
     run_cleanup_cmd "Removing wallet directory ${WALLET_DIR}" rm -rf "$WALLET_DIR"
     run_cleanup_cmd "Removing environment file ${SCRIPT_DIR}/.adb-oci-iam.env" rm -f "${SCRIPT_DIR}/.adb-oci-iam.env"
+    run_cleanup_cmd "Removing local OCI IAM setup work directory" rm -rf "${SCRIPT_DIR}/.oci-iam-setup"
     run_cleanup_cmd "Removing local OCI IAM OAuth2 token cache" rm -rf "${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}"
   else
     echo -e "${YELLOW}Skipped --remove-all IAM and local-file cleanup.${NC}"

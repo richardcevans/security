@@ -12,6 +12,7 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.adb-oci-iam.env"
+WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
 
 usage() {
   cat <<'EOF'
@@ -54,10 +55,19 @@ export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
 export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
+export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-ADB OCI IAM DB Resource}"
+export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-ADB OCI IAM Public Client}"
+export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
+export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
+export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
+export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
+DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
+export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
+export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-$DEFAULT_REDIRECT_URIS}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 0: Create ADB-S Instance and Wallet                              ${NC}"
+echo -e "${GREEN}      Task 0: Create OCI IAM Apps, ADB-S Instance, and Wallet               ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
@@ -71,10 +81,16 @@ if ! oci iam region list >/dev/null 2>&1; then
   exit 1
 fi
 
+mkdir -p "$WORK_DIR"
+
+oci_global_args=()
+[ -n "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}" ] && oci_global_args+=(--config-file "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}")
+[ -n "${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}" ] && oci_global_args+=(--profile "${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}")
+
 read_oci_config_value() {
   local key="$1"
-  local profile="${OCI_CLI_PROFILE:-DEFAULT}"
-  local config_file="${OCI_CLI_CONFIG_FILE:-$HOME/.oci/config}"
+  local profile="${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}"
+  local config_file="${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-$HOME/.oci/config}}"
 
   if [ ! -f "$config_file" ]; then
     return 0
@@ -91,6 +107,270 @@ read_oci_config_value() {
       exit
     }
   ' "$config_file"
+}
+
+normalize_redirect_uri() {
+  local first_uri
+  if [[ "$OCI_REDIRECT_URI" == *":8080/"* ]] || [[ "$OCI_REDIRECT_URIS" != *"localhost:8888/callback"* ]]; then
+    echo -e "${YELLOW}Replacing stale OAuth redirect settings with lab defaults.${NC}"
+    OCI_REDIRECT_URIS="$DEFAULT_REDIRECT_URIS"
+    export OCI_REDIRECT_URIS
+  fi
+
+  first_uri="${OCI_REDIRECT_URIS%%,*}"
+  if [ -n "$OCI_REDIRECT_URIS" ] && [[ ",${OCI_REDIRECT_URIS}," != *",${OCI_REDIRECT_URI},"* ]]; then
+    echo -e "${YELLOW}Ignoring stale OCI_REDIRECT_URI=${OCI_REDIRECT_URI}${NC}"
+    echo -e "${YELLOW}Using OCI_REDIRECT_URI=${first_uri}${NC}"
+    OCI_REDIRECT_URI="$first_uri"
+    export OCI_REDIRECT_URI
+  fi
+}
+
+discover_domain_url() {
+  if [ -n "${OCI_DOMAIN_URL:-}" ]; then
+    printf '%s' "$OCI_DOMAIN_URL"
+    return
+  fi
+
+  local url
+  url=$(oci iam domain list \
+    --compartment-id "$TENANCY_OCID" \
+    --all \
+    "${oci_global_args[@]}" \
+    --query "data[?lifecycleState==\`ACTIVE\` && displayName==\`${OCI_DOMAIN_NAME}\`].url | [0]" \
+    --raw-output 2>/dev/null || true)
+
+  if [ -z "$url" ] || [ "$url" = "null" ] || [ "$url" = "None" ]; then
+    url=$(oci iam domain list \
+      --compartment-id "$TENANCY_OCID" \
+      --all \
+      "${oci_global_args[@]}" \
+      --query 'data[?lifecycleState==`ACTIVE`].url | [0]' \
+      --raw-output 2>/dev/null || true)
+  fi
+
+  if [ -z "$url" ] || [ "$url" = "null" ] || [ "$url" = "None" ]; then
+    echo -e "${RED}ERROR: Could not discover an active OCI IAM domain URL.${NC}" >&2
+    echo -e "${YELLOW}Export OCI_DOMAIN_URL from Console -> Identity & Security -> Domains -> Overview.${NC}" >&2
+    exit 1
+  fi
+
+  printf '%s' "$url"
+}
+
+domain_cmd() {
+  oci identity-domains "$@" --endpoint "$OCI_DOMAIN_URL" "${oci_global_args[@]}"
+}
+
+raw_request() {
+  oci raw-request "$@" "${oci_global_args[@]}"
+}
+
+first_query() {
+  local command="$1"
+  local q1="$2"
+  local q2="$3"
+  local value
+  value=$(eval "$command --query '$q1' --raw-output" 2>/dev/null || true)
+  if [ -z "$value" ] || [ "$value" = "null" ] || [ "$value" = "None" ]; then
+    value=$(eval "$command --query '$q2' --raw-output" 2>/dev/null || true)
+  fi
+  [ "$value" = "null" ] || [ "$value" = "None" ] && value=""
+  printf '%s' "$value"
+}
+
+find_domain_app_id() {
+  local name="$1"
+  first_query \
+    "domain_cmd apps list --all --attribute-sets all --filter 'displayName eq \"${name}\"'" \
+    'data.Resources[0].id' \
+    'data.resources[0].id'
+}
+
+get_domain_app_field() {
+  local app_id="$1"
+  local field="$2"
+  local response
+  response=$(domain_cmd app get --app-id "$app_id" --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  APP_RESPONSE="$response" python3 - "$field" <<'PY'
+import json
+import os
+import sys
+
+field = sys.argv[1]
+try:
+    raw = json.loads(os.environ.get("APP_RESPONSE", "{}"))
+except Exception:
+    sys.exit(0)
+
+data = raw.get("data") or {}
+aliases = {
+    "client_id": [
+        "clientId",
+        "client_id",
+        "clientID",
+        "oauthClientId",
+        "oAuthClientId",
+        "appId",
+        "app_id",
+        "name",
+        "id",
+    ],
+}
+
+for key in aliases.get(field, [field]):
+    value = data.get(key)
+    if value:
+        print(value)
+        break
+PY
+}
+
+redirect_uris_json() {
+  REDIRECT_URIS="$OCI_REDIRECT_URIS" python3 - <<'PY'
+import json
+import os
+
+uris = [uri.strip() for uri in os.environ["REDIRECT_URIS"].split(",") if uri.strip()]
+print(json.dumps(uris))
+PY
+}
+
+create_or_reuse_db_resource_app() {
+  local app_id
+  app_id=$(find_domain_app_id "$OCI_DB_APP_NAME")
+  if [ -n "$app_id" ]; then
+    echo -e "${CYAN}  Reusing DB resource app ${OCI_DB_APP_NAME}: ${app_id}${NC}" >&2
+  else
+    echo -e "${CYAN}  Creating DB resource app ${OCI_DB_APP_NAME}:${NC}" >&2
+    show_cmd oci identity-domains app create \
+      --endpoint "$OCI_DOMAIN_URL" \
+      --display-name "$OCI_DB_APP_NAME" \
+      --audience "$OCI_DB_AUDIENCE" \
+      --scopes "[{\"value\":\"${OCI_DB_SCOPE_VALUE}\"}]" >&2
+    app_id=$(domain_cmd app create \
+      --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
+      --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
+      --display-name "$OCI_DB_APP_NAME" \
+      --description "Database resource app for the ADB OCI IAM Deep Data Security lab" \
+      --active true \
+      --is-o-auth-resource true \
+      --audience "$OCI_DB_AUDIENCE" \
+      --scopes "[{\"value\":\"${OCI_DB_SCOPE_VALUE}\",\"displayName\":\"DB Access\",\"description\":\"Access the ADB lab database\",\"requiresConsent\":false}]" \
+      --bypass-consent true \
+      --attribute-sets all \
+      --query 'data.id' \
+      --raw-output)
+    echo -e "${CYAN}  Created DB resource app: ${app_id}${NC}" >&2
+  fi
+  printf '%s' "$app_id"
+}
+
+configure_public_client_app() {
+  local app_id="$1"
+  local redirect_json
+  redirect_json=$(redirect_uris_json)
+
+  domain_cmd app patch \
+    --app-id "$app_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations "[{\"op\":\"replace\",\"path\":\"allowedGrants\",\"value\":[\"authorization_code\"]},{\"op\":\"replace\",\"path\":\"redirectUris\",\"value\":${redirect_json}},{\"op\":\"replace\",\"path\":\"allowedScopes\",\"value\":[{\"fqs\":\"${OCI_SCOPE}\"}]}]" \
+    >/dev/null
+}
+
+create_or_reuse_public_client_app() {
+  local app_id
+  local redirect_json
+  redirect_json=$(redirect_uris_json)
+  app_id=$(find_domain_app_id "$OCI_CLIENT_APP_NAME")
+  if [ -n "$app_id" ]; then
+    echo -e "${CYAN}  Reusing public client app ${OCI_CLIENT_APP_NAME}: ${app_id}${NC}" >&2
+  else
+    echo -e "${CYAN}  Creating public client app ${OCI_CLIENT_APP_NAME}:${NC}" >&2
+    show_cmd oci identity-domains app create \
+      --endpoint "$OCI_DOMAIN_URL" \
+      --display-name "$OCI_CLIENT_APP_NAME" \
+      --client-type public \
+      --allowed-grants '["authorization_code"]' \
+      --allowed-scopes "[{\"fqs\":\"${OCI_SCOPE}\"}]" >&2
+    app_id=$(domain_cmd app create \
+      --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
+      --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
+      --display-name "$OCI_CLIENT_APP_NAME" \
+      --description "Public interactive OAuth client for the ADB OCI IAM Deep Data Security lab" \
+      --active true \
+      --is-o-auth-client true \
+      --client-type public \
+      --allowed-grants '["authorization_code"]' \
+      --allowed-scopes "[{\"fqs\":\"${OCI_SCOPE}\"}]" \
+      --redirect-uris "$redirect_json" \
+      --all-url-schemes-allowed true \
+      --attribute-sets all \
+      --query 'data.id' \
+      --raw-output)
+    echo -e "${CYAN}  Created public client app: ${app_id}${NC}" >&2
+  fi
+
+  configure_public_client_app "$app_id"
+  printf '%s' "$app_id"
+}
+
+create_group_claim() {
+  local body="${WORK_DIR}/custom-claim-group.json"
+  cat > "$body" <<'JSON'
+{
+  "schemas": [
+    "urn:ietf:params:scim:schemas:oracle:idcs:CustomClaim"
+  ],
+  "name": "group",
+  "value": "$user.groups.*.display",
+  "expression": true,
+  "mode": "always",
+  "tokenType": "AT",
+  "allScopes": true
+}
+JSON
+
+  raw_request \
+    --http-method POST \
+    --target-uri "${OCI_DOMAIN_URL}/admin/v1/CustomClaims" \
+    --request-headers '{"Content-Type":"application/scim+json"}' \
+    --request-body "file://${body}" \
+    >/dev/null 2>&1 || {
+      echo -e "${YELLOW}  Could not create the group custom claim automatically.${NC}"
+      echo -e "${YELLOW}  If data roles do not activate, create a custom access-token claim named group with value '\$user.groups.*.display'.${NC}"
+    }
+}
+
+setup_oauth_apps() {
+  normalize_redirect_uri
+  OCI_DOMAIN_URL=$(discover_domain_url)
+  export OCI_DOMAIN_URL
+
+  echo
+  echo -e "${YELLOW}Step 1: Creating or reusing OCI IAM OAuth applications...${NC}"
+  echo -e "${CYAN}  OCI_DOMAIN_URL    = ${OCI_DOMAIN_URL}${NC}"
+  echo -e "${CYAN}  OCI_DB_APP_NAME   = ${OCI_DB_APP_NAME}${NC}"
+  echo -e "${CYAN}  OCI_CLIENT_APP    = ${OCI_CLIENT_APP_NAME}${NC}"
+  echo -e "${CYAN}  OCI_SCOPE         = ${OCI_SCOPE}${NC}"
+  echo -e "${CYAN}  OCI_REDIRECT_URIS = ${OCI_REDIRECT_URIS}${NC}"
+
+  OCI_DB_APP_ID=$(create_or_reuse_db_resource_app)
+  OCI_CLIENT_APP_ID=$(create_or_reuse_public_client_app)
+  OCI_CLIENT_ID=$(get_domain_app_field "$OCI_CLIENT_APP_ID" client_id)
+
+  if [ -z "$OCI_CLIENT_ID" ]; then
+    echo -e "${RED}ERROR: Could not determine OAuth client id for app ${OCI_CLIENT_APP_ID}.${NC}"
+    echo -e "${YELLOW}Inspect it with:${NC}"
+    echo "  oci identity-domains app get --endpoint '${OCI_DOMAIN_URL}' --app-id '${OCI_CLIENT_APP_ID}' --attribute-sets all"
+    exit 1
+  fi
+
+  echo
+  echo -e "${YELLOW}Step 2: Creating access-token group claim...${NC}"
+  create_group_claim
 }
 
 if [ -z "$TENANCY_OCID" ]; then
@@ -134,6 +414,8 @@ if [ -z "${ROOT_COMP_ID:-}" ]; then
 fi
 export ROOT_COMP_ID
 
+setup_oauth_apps
+
 echo -e "${CYAN}Configuration:${NC}"
 echo -e "${CYAN}  OCI_COMPARTMENT = ${OCI_COMPARTMENT}${NC}"
 echo -e "${CYAN}  ROOT_COMP_ID    = ${ROOT_COMP_ID}${NC}"
@@ -143,10 +425,11 @@ echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  IAM groups      = ${OCI_IAM_SCHEMA_GROUP}, ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
+echo -e "${CYAN}  OAuth client    = ${OCI_CLIENT_ID}${NC}"
 echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous Database 26ai.${NC}"
 echo
 
-echo -e "${YELLOW}Step 1: Creating or reusing Autonomous Database...${NC}"
+echo -e "${YELLOW}Step 3: Creating or reusing Autonomous Database...${NC}"
 echo -e "${CYAN}  Checking for existing ADB:${NC}"
 show_cmd oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
@@ -225,7 +508,7 @@ else
 fi
 
 echo
-echo -e "${YELLOW}Step 2: Downloading wallet...${NC}"
+echo -e "${YELLOW}Step 4: Downloading wallet...${NC}"
 mkdir -p "$WALLET_DIR"
 show_cmd oci db autonomous-database generate-wallet \
   --autonomous-database-id "$ADB_OCID" \
@@ -249,7 +532,7 @@ if [ -f "${WALLET_DIR}/sqlnet.ora" ]; then
 fi
 
 echo
-echo -e "${YELLOW}Step 3: Creating or reusing IAM groups for the lab...${NC}"
+echo -e "${YELLOW}Step 5: Creating or reusing IAM groups for the lab...${NC}"
 
 ensure_group() {
   local group_name="$1"
@@ -364,6 +647,16 @@ export WALLET_DIR='${WALLET_DIR}'
 export TNS_ADMIN='${WALLET_DIR}'
 export OCI_TOKEN_DIR='${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}'
 export TENANCY_OCID='${TENANCY_OCID}'
+export OCI_DOMAIN_URL='${OCI_DOMAIN_URL}'
+export OCI_DB_APP_ID='${OCI_DB_APP_ID}'
+export OCI_CLIENT_APP_ID='${OCI_CLIENT_APP_ID}'
+export OCI_CLIENT_ID='${OCI_CLIENT_ID}'
+export OCI_AUDIENCE='${OCI_DB_AUDIENCE}'
+export OCI_SCOPE='${OCI_SCOPE}'
+export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
+export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
+export OCI_DB_APP_NAME='${OCI_DB_APP_NAME}'
+export OCI_CLIENT_APP_NAME='${OCI_CLIENT_APP_NAME}'
 export OCI_IAM_SCHEMA_GROUP='${OCI_IAM_SCHEMA_GROUP}'
 export OCI_IAM_EMPLOYEE_GROUP='${OCI_IAM_EMPLOYEE_GROUP}'
 export OCI_IAM_MANAGER_GROUP='${OCI_IAM_MANAGER_GROUP}'
@@ -377,7 +670,7 @@ chmod 600 "$ENV_FILE"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 0 Completed: ADB and Wallet Ready                                ${NC}"
+echo -e "${GREEN}      Task 0 Completed: OCI IAM Apps, ADB, and Wallet Ready                 ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}Environment file: ${ENV_FILE}${NC}"

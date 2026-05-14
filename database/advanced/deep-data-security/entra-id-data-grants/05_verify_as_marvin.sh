@@ -14,6 +14,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_network_check.sh"
+
 # Define colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -41,6 +44,8 @@ echo -e "${PURPLE}      Manual/headless token workflows are a last resort for no
 echo
 
 export MARVIN_EXPECTED_IDENTITY="${MARVIN_EXPECTED_IDENTITY:-marvin}"
+
+check_hrdb_alias
 
 sqlplus -s /@hrdb <<EOF
 

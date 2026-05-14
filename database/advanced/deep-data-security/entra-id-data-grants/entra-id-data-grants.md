@@ -997,6 +997,7 @@ Database cleanup does not remove browser sessions, Entra app registrations, Entr
 | `03_create_hr_schema.sh` | Create HR schema (NO AUTHENTICATION) with employee data |
 | `04_create_data_roles_and_grants.sh` | Create data roles (MAPPED TO azure\_role), data grants, context |
 | `verify_db_setup.sh` | Verify database-side identity provider, data roles, grants, and HR rows |
+| `lib_network_check.sh` | Shared check that `hrdb` resolves before verification scripts connect |
 | `05_verify_as_marvin.sh` | Connect as Marvin via Entra ID — 4 rows |
 | `06_verify_as_emma.sh` | Connect as Emma via Entra ID — 1 row |
 | `07_verify_security_boundary.sh` | Test bypass attempts — all fail |
@@ -1122,6 +1123,7 @@ If Unified Auditing is enabled in your environment, review your local audit poli
 |---|---|---|
 | Browser does not open | No GUI session or browser launcher available | Use NoVNC/local desktop; treat manual/headless token flow as last resort |
 | Browser logs in as Marvin when testing Emma | Existing Entra browser session | Close browser windows, sign out, or use private/incognito mode |
+| `ORA-12154` or `Cannot find alias hrdb` | `hrdb` alias is missing from the active `tnsnames.ora` | Rerun `02_configure_network.sh`; check `TNS_ADMIN` |
 | `ORA-12514` for `FREEPDB1` | PDB service not registered with listener | Rerun `02_configure_network.sh`; verify `lsnrctl status` shows `freepdb1` or `FREEPDB1` |
 | `ORA-01017` after Entra login | Token validation or role/session problem | Check database alert log and rerun `01_configure_db_identity_provider.sh` |
 | No active data roles | Entra app roles missing from token or wrong role values | Confirm Marvin/Emma app role assignments and sign in again |

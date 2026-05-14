@@ -14,6 +14,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_network_check.sh"
+
 # Define colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -40,6 +43,8 @@ echo
 # --------- ----- ----- ----- ----- ----- ----- ----- ----- ----- ----- -----
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DBUSR_PWD="${DBUSR_PWD:-Oracle123}"
+
+check_hrdb_alias
 
 # =====================================================================
 # Test 1: Marvin tries to see Bob's SSN (Bob is not his direct report)

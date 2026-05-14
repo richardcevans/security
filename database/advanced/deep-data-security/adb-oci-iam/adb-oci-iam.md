@@ -54,6 +54,41 @@ export ADB_LAB_USER_OCID=ocid1.user.oc1..aaaa...
 created with the OCI IAM database user name for that user, so the verification step
 can run with your current Cloud Shell token.
 
+## 0. Download and Unzip the Lab Files
+
+From the `database/advanced/deep-data-security` directory, download the lab archive:
+
+```bash
+curl -L \
+  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip" \
+  -o adb-oci-iam.zip
+```
+
+Unzip the archive into the `adb-oci-iam` directory:
+
+```bash
+unzip -o adb-oci-iam.zip
+cd adb-oci-iam
+```
+
+If the archive creates a nested `adb-oci-iam` directory, move its contents up into
+the current lab directory:
+
+```bash
+if [ -d adb-oci-iam ]; then
+  cp -R adb-oci-iam/. .
+  rm -rf adb-oci-iam
+fi
+```
+
+Verify the extracted lab files:
+
+```bash
+ls
+```
+
+You should see the setup and verification scripts used by the remaining tasks.
+
 ## 1. Create ADB-S and Download the Wallet
 
 ```bash

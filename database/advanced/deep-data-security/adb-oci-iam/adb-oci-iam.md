@@ -74,7 +74,6 @@ Optional overrides:
 ```bash
 <copy>
 export DB_NAME=deepsec1
-export DB_DISPLAY_NAME=deepsec1
 export DB_VERSION=26ai
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
@@ -83,6 +82,9 @@ export OCI_IAM_EMPLOYEE_GROUP=EMPLOYEES
 export OCI_IAM_MANAGER_GROUP=MANAGERS
 </copy>
 ```
+
+`DB_DISPLAY_NAME` defaults to `DB_NAME`. Set it only if you want the OCI Console
+display name to differ from the database name.
 
 If Cloud Shell does not expose `OCI_CS_USER_OCID`, set the user OCID explicitly:
 

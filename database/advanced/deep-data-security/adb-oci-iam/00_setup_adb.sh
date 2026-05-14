@@ -40,6 +40,10 @@ show_cmd() {
 
 export DB_NAME="${DB_NAME:-deepsec1}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
+if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
+  DB_DISPLAY_NAME="$DB_NAME"
+fi
+export DB_DISPLAY_NAME
 export DB_VERSION="${DB_VERSION:-26ai}"
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"

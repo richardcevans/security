@@ -20,6 +20,7 @@ data-management-library/autonomous-database/shared/adb-auto-scaling/images/send 
 # Deep Data Security lab-generated secrets and scratch files
 **/.oci-iam-data-grants.env
 **/.oci-iam-setup/
+**/.entra-id-data-grants.env
 **/custom-claim-group.json
 **/02_entra_demo.log
 

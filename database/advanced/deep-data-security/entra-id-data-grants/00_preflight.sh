@@ -62,6 +62,18 @@ echo -e "${GREEN}Commands${NC}"
 check_command sqlplus
 check_command lsnrctl
 check_command orapki
+check_command az
+
+echo
+echo -e "${GREEN}Azure CLI${NC}"
+if command -v az >/dev/null 2>&1; then
+  if az account show >/dev/null 2>&1; then
+    ok "Azure CLI is logged in"
+    az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output table 2>/dev/null || true
+  else
+    fail "Azure CLI is not logged in. Run: az login"
+  fi
+fi
 
 echo
 echo -e "${GREEN}Browser Launch${NC}"

@@ -41,19 +41,19 @@ export DB_SID="${DB_SID:-FREE}"
 export ORACLE_SID="$DB_SID"
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
-if [ -z "$APP_ID" ]; then
+if [ -z "${APP_ID:-}" ]; then
     echo -e "${RED}ERROR: APP_ID is not set.${NC}"
     echo -e "${YELLOW}  export APP_ID=<your-oracle-db-app-id>${NC}"
     exit 1
 fi
 
-if [ -z "$APP_ID_URI" ]; then
+if [ -z "${APP_ID_URI:-}" ]; then
     echo -e "${RED}ERROR: APP_ID_URI is not set.${NC}"
     echo -e "${YELLOW}  export APP_ID_URI=https://<tenant>.onmicrosoft.com/<app-id>${NC}"
     exit 1
 fi
 
-if [ -z "$TENANT_ID" ]; then
+if [ -z "${TENANT_ID:-}" ]; then
     echo -e "${RED}ERROR: TENANT_ID is not set.${NC}"
     echo -e "${YELLOW}  export TENANT_ID=<your-tenant-id>${NC}"
     exit 1

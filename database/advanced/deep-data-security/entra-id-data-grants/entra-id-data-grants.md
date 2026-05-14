@@ -68,6 +68,7 @@ This lab assumes:
 - The `oracle` OS user, or another OS user that can run `sqlplus / as sysdba`
 - A local CDB and PDB. The default script values are `DB_SID=FREE` and `PDB_NAME=FREEPDB1`
 - An **Azure subscription** with permissions to register applications, create app roles, and create users in Microsoft Entra ID
+- Azure CLI installed and logged in with `az login`
 - A local browser-capable desktop session, such as NoVNC on the lab host, for `AZURE_INTERACTIVE` browser login
 
 `AZURE_INTERACTIVE` should open the browser automatically when SQLPlus runs in a local graphical session. Use a manual or headless token workaround only as a last resort for environments where a browser cannot be launched from the database client host.
@@ -96,6 +97,18 @@ Oracle Client Interactive - ${PDB_NAME}
 ```
 
 The examples below use the default `PDB_NAME=FREEPDB1`.
+
+The setup script writes these values to:
+
+```text
+.entra-id-data-grants.env
+```
+
+Load it before running database setup scripts:
+
+```bash
+source ./.entra-id-data-grants.env
+```
 
 ## Do Not Do This
 
@@ -241,6 +254,7 @@ Sensitive local files, values, and sessions:
 | Entra Application ID URI | `APP_ID_URI` | Token audience/resource identifier |
 | Entra tenant ID | `TENANT_ID` | Token issuer/tenant validation |
 | Entra client app ID | `CLIENT_ID` | Used by `AZURE_INTERACTIVE` browser login |
+| Lab env file | `.entra-id-data-grants.env` | Contains app IDs, tenant ID, domain, and PDB-specific app names |
 | Browser session cookies | Browser profile | Can silently log in as the previous user |
 | TCPS wallet | `$ORACLE_BASE/admin/$ORACLE_SID/wallet` | Contains listener TLS wallet |
 | Network backups | `$ORACLE_HOME/network/admin/*.bak` | May contain old connection descriptors |
@@ -387,7 +401,72 @@ lsnrctl start
 
 ## Part 1: Configure Microsoft Entra ID
 
-### Task 1: Register the Oracle AI Database with Microsoft Entra ID
+### Task 1: Sign in to Azure CLI
+
+Sign in with an account that can create Microsoft Entra app registrations, create service principals, grant admin consent, and assign app roles.
+
+````
+<copy>az login</copy>
+````
+
+Verify the selected tenant:
+
+````
+<copy>az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output table</copy>
+````
+
+### Task 2: Create Entra ID Applications, Enterprise Apps, Roles, and Permissions
+
+Run the setup script:
+
+````
+<copy>./00_setup_entra_id.sh</copy>
+````
+
+Load the generated environment file:
+
+````
+<copy>source ./.entra-id-data-grants.env</copy>
+````
+
+Verify the Entra objects:
+
+````
+<copy>./verify_entra_id_setup.sh</copy>
+````
+
+The setup script creates or reuses:
+
+- app registration and enterprise application: `Oracle Database 26ai - ${PDB_NAME}`
+- app registration and enterprise application: `Oracle Client Interactive - ${PDB_NAME}`
+- app roles on the database app: `EMPLOYEES`, `MANAGERS`
+- delegated permission scope: `session:scope:connect`
+- public client redirect URI: `http://localhost`
+- API permission from the client app to the database app
+- admin consent, if the signed-in Azure account is allowed to grant it
+- optional Marvin/Emma role assignments, if those users already exist
+
+Default user lookup:
+
+| User | UPN |
+|---|---|
+| Marvin | `marvin@${DOMAIN_NAME}` |
+| Emma | `emma@${DOMAIN_NAME}` |
+
+To use different existing Entra users, set these before running `00_setup_entra_id.sh`:
+
+````
+<copy>export MARVIN_UPN=marvin@example.com
+export EMMA_UPN=emma@example.com</copy>
+````
+
+If your account cannot grant admin consent automatically, grant admin consent manually for the `Oracle Client Interactive - ${PDB_NAME}` API permission in the Azure portal.
+
+### Manual Portal Fallback
+
+The Azure portal steps below are a fallback if your environment does not allow Azure CLI app administration. If you use `00_setup_entra_id.sh`, skip the manual portal tasks and continue with Part 2.
+
+### Manual Task 1: Register the Oracle AI Database with Microsoft Entra ID
 
 Register your Oracle Database as an application in Entra ID so it can accept OAuth2 tokens.
 
@@ -414,9 +493,9 @@ Register your Oracle Database as an application in Entra ID so it can accept OAu
 
 5. Record the **Application (client) ID** and the **Directory (tenant) ID** — you will need these for the database configuration and `tnsnames.ora`.
 
-### Task 2: Create the Application ID URI and scope
+### Manual Task 2: Create the Application ID URI and scope
 
-After Task 1, you will be on the **Oracle Database 26ai - FREEPDB1** app registration **Overview** page.
+After Manual Task 1, you will be on the **Oracle Database 26ai - FREEPDB1** app registration **Overview** page.
 
 1. Click on the **Application ID URI** to add one.
 
@@ -444,7 +523,7 @@ After Task 1, you will be on the **Oracle Database 26ai - FREEPDB1** app registr
 
       ![Azure services](./images/entra-id-page-08.png "Add a scope")
 
-### Task 3: Create application roles
+### Manual Task 3: Create application roles
 
 Create the Entra ID app roles that will map to Oracle data roles.
 
@@ -472,7 +551,7 @@ Create the Entra ID app roles that will map to Oracle data roles.
 
       ![Azure services](./images/entra-id-page-12.png "Verify app roles")
 
-### Task 4: Assign users to app roles
+### Manual Task 4: Assign users to app roles
 
 Assign Marvin and Emma to the appropriate Entra ID app roles.
 
@@ -511,7 +590,7 @@ Assign Marvin and Emma to the appropriate Entra ID app roles.
       | Marvin | EMPLOYEES |
       | Emma | EMPLOYEES |
 
-### Task 5: Create the browser authentication app
+### Manual Task 5: Create the browser authentication app
 
 Create a second Entra ID application for interactive (browser) authentication. This app launches the user's browser for Entra ID login and passes the token to the database.
 
@@ -535,7 +614,7 @@ Create a second Entra ID application for interactive (browser) authentication. T
       ![Azure services](./images/entra-id-page-25a.png "Authentication settings")
       ![Azure services](./images/entra-id-page-26.png "Allow public client flows")
 
-### Task 6: Assign API permissions to the client app
+### Manual Task 6: Assign API permissions to the client app
 
 Link the client app to the database app so tokens can flow.
 
@@ -573,15 +652,21 @@ Fix any blocking failures before continuing. A warning about browser launch mean
 
 ### Script 1: Set database identity provider parameters
 
-Configure the database to accept Entra ID tokens. You need the `APP_ID`, `TENANT_ID`, and `APP_ID_URI` from Tasks 1-2.
+Configure the database to accept Entra ID tokens. If you used `00_setup_entra_id.sh`, these values come from `.entra-id-data-grants.env`.
 
 ### Try it
 
-Before running, set these environment variables:
+Before running, load the generated environment file:
+
+````
+<copy>source ./.entra-id-data-grants.env</copy>
+````
+
+If you used the manual portal fallback, set these values yourself instead:
 
 ````
 <copy>export APP_ID=<your-oracle-db-app-id>
-export APP_ID_URI=https://<your-tenant-name>.onmicrosoft.com/<your-oracle-db-app-id>
+export APP_ID_URI=https://<your-tenant-name>.onmicrosoft.com/<your-pdb-name>
 export TENANT_ID=<your-tenant-id></copy>
 ````
 
@@ -612,12 +697,10 @@ To authenticate with Entra ID, the database must use a TLS connection. This task
 
 ### Try it
 
-Before running, set these environment variables (in addition to the ones from Script 1):
+Before running, make sure the environment file is loaded:
 
 ````
-<copy>export CLIENT_ID=<your-oracle-client-interactive-app-id>
-export DB_SID=FREE
-export PDB_NAME=FREEPDB1</copy>
+<copy>source ./.entra-id-data-grants.env</copy>
 ````
 
 Then run:
@@ -828,6 +911,18 @@ This script:
 1. Delete the **Oracle Client Interactive - FREEPDB1** app registration
 2. Delete the **Oracle Database 26ai - FREEPDB1** app registration
 
+Or use the cleanup script:
+
+````
+<copy>./09_cleanup_entra_id.sh</copy>
+````
+
+To skip the confirmation prompt:
+
+````
+<copy>./09_cleanup_entra_id.sh -f</copy>
+````
+
 Also remove or review these Entra objects if you created them only for this lab:
 
 - Marvin test user
@@ -842,6 +937,8 @@ Database cleanup does not remove browser sessions, Entra app registrations, Entr
 | Script | Purpose |
 |---|---|
 | `00_preflight.sh` | Check local database, listener tools, and browser-launch readiness |
+| `00_setup_entra_id.sh` | Create or reuse Entra app registrations, enterprise apps, roles, permissions, and optional assignments |
+| `verify_entra_id_setup.sh` | Verify Entra app registrations, enterprise apps, roles, scopes, and permissions |
 | `01_configure_db_identity_provider.sh` | Set identity\_provider\_type and identity\_provider\_config |
 | `02_configure_network.sh` | Create wallet, configure TCPS listener, sqlnet.ora, tnsnames.ora |
 | `03_create_hr_schema.sh` | Create HR schema (NO AUTHENTICATION) with employee data |
@@ -851,6 +948,7 @@ Database cleanup does not remove browser sessions, Entra app registrations, Entr
 | `06_verify_as_emma.sh` | Connect as Emma via Entra ID — 1 row |
 | `07_verify_security_boundary.sh` | Test bypass attempts — all fail |
 | `08_cleanup.sh` | Drop everything, reset identity provider |
+| `09_cleanup_entra_id.sh` | Delete lab-created Entra app registrations and enterprise applications |
 
 ## Key Differences: Entra ID vs. Direct Password
 

@@ -30,10 +30,10 @@ set trimspool on
 whenever sqlerror exit sql.sqlcode
 
 col name format a35
-col value format a30
+col value format a120
 SELECT name, value
 FROM v$parameter
-WHERE name = 'identity_provider_type';
+WHERE name IN ('identity_provider_type', 'identity_provider_oauth_config');
 
 SELECT COUNT(*) AS hr_employee_rows
 FROM hr.employees;

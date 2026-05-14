@@ -238,6 +238,12 @@ aliases = {
         "name",
         "id",
     ],
+    "client_secret": [
+        "clientSecret",
+        "client_secret",
+        "oauthClientSecret",
+        "oAuthClientSecret",
+    ],
 }
 
 for key in aliases.get(field, [field]):
@@ -245,6 +251,49 @@ for key in aliases.get(field, [field]):
     if value:
         print(value)
         break
+PY
+}
+
+generate_secret() {
+  local secret
+  secret=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 48 || true)
+  printf '%s' "$secret"
+}
+
+regenerate_app_client_secret() {
+  local app_id="$1"
+  local body="${WORK_DIR}/regenerate-client-secret-${app_id}.json"
+  local response
+
+  cat > "$body" <<EOF
+{
+  "schemas": [
+    "urn:ietf:params:scim:schemas:oracle:idcs:AppClientSecretRegenerator"
+  ],
+  "appId": "${app_id}"
+}
+EOF
+
+  response=$(raw_request \
+    --http-method POST \
+    --target-uri "${OCI_DOMAIN_URL}/admin/v1/AppClientSecretRegenerator?attributeSets=all" \
+    --request-headers '{"Content-Type":"application/scim+json"}' \
+    --request-body "file://${body}" 2>/dev/null || true)
+
+  RAW_RESPONSE="$response" python3 - <<'PY'
+import json
+import os
+import sys
+
+try:
+    raw = json.loads(os.environ.get("RAW_RESPONSE", "{}"))
+except Exception:
+    sys.exit(0)
+
+data = raw.get("data") or raw
+secret = data.get("clientSecret") or data.get("client_secret")
+if secret:
+    print(secret)
 PY
 }
 
@@ -260,10 +309,12 @@ PY
 
 create_or_reuse_db_resource_app() {
   local app_id
+  local generated_secret
   app_id=$(find_domain_app_id "$OCI_DB_APP_NAME")
   if [ -n "$app_id" ]; then
     echo -e "${CYAN}  Reusing DB resource app ${OCI_DB_APP_NAME}: ${app_id}${NC}" >&2
   else
+    generated_secret=$(generate_secret)
     echo -e "${CYAN}  Creating DB resource app ${OCI_DB_APP_NAME}:${NC}" >&2
     show_cmd oci identity-domains app create \
       --endpoint "$OCI_DOMAIN_URL" \
@@ -276,13 +327,18 @@ create_or_reuse_db_resource_app() {
       --display-name "$OCI_DB_APP_NAME" \
       --description "Database resource app for the ADB OCI IAM Deep Data Security lab" \
       --active true \
+      --is-o-auth-client true \
       --is-o-auth-resource true \
+      --client-type confidential \
+      --client-secret "$generated_secret" \
       --audience "$OCI_DB_AUDIENCE" \
       --scopes "[{\"value\":\"${OCI_DB_SCOPE_VALUE}\",\"displayName\":\"DB Access\",\"description\":\"Access the ADB lab database\",\"requiresConsent\":false}]" \
+      --allowed-grants '["client_credentials"]' \
       --bypass-consent true \
       --attribute-sets all \
       --query 'data.id' \
       --raw-output)
+    OCI_DB_CLIENT_SECRET="$generated_secret"
     echo -e "${CYAN}  Created DB resource app: ${app_id}${NC}" >&2
   fi
   printf '%s' "$app_id"
@@ -378,9 +434,27 @@ setup_oauth_apps() {
   echo -e "${CYAN}  OCI_REDIRECT_URIS = ${OCI_REDIRECT_URIS}${NC}"
 
   OCI_DB_APP_ID=$(create_or_reuse_db_resource_app)
+  OCI_DB_CLIENT_ID=$(get_domain_app_field "$OCI_DB_APP_ID" client_id)
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+    OCI_DB_CLIENT_SECRET=$(get_domain_app_field "$OCI_DB_APP_ID" client_secret)
+  fi
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+    echo -e "${CYAN}  Resetting DB resource app secret for database-side OAuth validation...${NC}"
+    OCI_DB_CLIENT_SECRET=$(regenerate_app_client_secret "$OCI_DB_APP_ID")
+  fi
   OCI_CLIENT_APP_ID=$(create_or_reuse_public_client_app)
   OCI_CLIENT_ID=$(get_domain_app_field "$OCI_CLIENT_APP_ID" client_id)
 
+  if [ -z "$OCI_DB_CLIENT_ID" ]; then
+    echo -e "${RED}ERROR: Could not determine OAuth client id for DB resource app ${OCI_DB_APP_ID}.${NC}"
+    echo -e "${YELLOW}Inspect it with:${NC}"
+    echo "  oci identity-domains app get --endpoint '${OCI_DOMAIN_URL}' --app-id '${OCI_DB_APP_ID}' --attribute-sets all"
+    exit 1
+  fi
+  if [ -z "$OCI_DB_CLIENT_SECRET" ]; then
+    echo -e "${RED}ERROR: Could not determine or reset the DB resource app client secret for ${OCI_DB_APP_ID}.${NC}"
+    exit 1
+  fi
   if [ -z "$OCI_CLIENT_ID" ]; then
     echo -e "${RED}ERROR: Could not determine OAuth client id for app ${OCI_CLIENT_APP_ID}.${NC}"
     echo -e "${YELLOW}Inspect it with:${NC}"
@@ -667,6 +741,8 @@ export OCI_TOKEN_DIR='${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}'
 export TENANCY_OCID='${TENANCY_OCID}'
 export OCI_DOMAIN_URL='${OCI_DOMAIN_URL}'
 export OCI_DB_APP_ID='${OCI_DB_APP_ID}'
+export OCI_DB_CLIENT_ID='${OCI_DB_CLIENT_ID}'
+export OCI_DB_CLIENT_SECRET='${OCI_DB_CLIENT_SECRET}'
 export OCI_CLIENT_APP_ID='${OCI_CLIENT_APP_ID}'
 export OCI_CLIENT_ID='${OCI_CLIENT_ID}'
 export OCI_AUDIENCE='${OCI_DB_AUDIENCE}'

@@ -322,8 +322,28 @@ To delete the ADB instance too:
 </copy>
 ```
 
-The cleanup script does not delete IAM groups by default. In shared tenancies,
-groups are often reused by other labs or policies.
+To remove database objects, delete the ADB instance, remove the lab user from
+the lab IAM groups, delete empty lab IAM groups, and remove local generated
+wallet/env/token files:
+
+```bash
+<copy>
+./06_cleanup_adb_lab.sh --remove-all
+</copy>
+```
+
+To skip all cleanup prompts:
+
+```bash
+<copy>
+./06_cleanup_adb_lab.sh --remove-all --DELETE
+</copy>
+```
+
+The cleanup script does not delete IAM groups by default. With `--remove-all`,
+it deletes lab IAM groups only after removing the lab user and confirming the
+groups are empty. In shared tenancies, groups may be reused by other labs or
+policies.
 
 ## References
 

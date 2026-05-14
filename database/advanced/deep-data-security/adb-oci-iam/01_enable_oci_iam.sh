@@ -17,6 +17,8 @@ echo -e "${GREEN}      Task 1: Enable OCI IAM Authentication on ADB             
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}Executing as ADMIN on ${ADB_SERVICE}${NC}"
+require_wallet_files
+echo
 echo -e "${CYAN}SQL*Plus command:${NC}"
 show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo -e "${CYAN}SQL block:${NC}"

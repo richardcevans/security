@@ -25,6 +25,26 @@ The first database is named `deepsec1` by default.
 - Your OCI user can create Autonomous Databases in the target compartment.
 - Your Entra user can create app registrations, service principals, app roles, scopes, and app role assignments.
 
+## Install Azure CLI
+
+OCI Cloud Shell may not include Azure CLI. On Oracle Linux, use Microsoft's RPM
+repository instructions:
+
+```bash
+sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
+sudo dnf install -y azure-cli
+```
+
+Then sign in:
+
+```bash
+az login
+```
+
+If Cloud Shell cannot open a browser, Azure CLI will show a device-code login
+URL and code. Complete that flow in your local browser.
+
 ## Variables
 
 Set the target OCI compartment:
@@ -175,8 +195,21 @@ This cleanup script does not delete the Entra app registrations. Reusing them is
 usually safer while iterating on the lab. Delete them from Entra ID when you are
 done with the environment.
 
+To delete the Entra app registrations from the command line:
+
+```bash
+./07_cleanup_entra_id.sh
+```
+
+To skip the prompt:
+
+```bash
+./07_cleanup_entra_id.sh --DELETE
+```
+
 ## References
 
+- [Install Azure CLI on Linux](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux)
 - [Enable Microsoft Entra ID Authentication on Autonomous Database](https://docs.public.content.oci.oraclecloud.com/iaas/autonomous-database-serverless/doc/manage-users-azure-ad.html)
 - [DBMS_CLOUD_ADMIN package](https://docs.oracle.com/en/cloud/paas/autonomous-database/dedicated/adbaa/dbmscloudadmin-package.html)
 - [Oracle Net `TOKEN_AUTH` parameter](https://docs.oracle.com/en/database/oracle/oracle-database/26/netrf/local-naming-parameters-in-tns-ora-file.html)

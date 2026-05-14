@@ -67,10 +67,30 @@ if [ -z "$base_descriptor" ]; then
   exit 1
 fi
 
-host=$(printf '%s\n' "$base_descriptor" | sed -n -E 's/.*host=([^)]*).*/\1/Ip' | head -1)
-port=$(printf '%s\n' "$base_descriptor" | sed -n -E 's/.*port=([^)]*).*/\1/Ip' | head -1)
-service_name=$(printf '%s\n' "$base_descriptor" | sed -n -E 's/.*service_name=([^)]*).*/\1/Ip' | head -1)
-ssl_dn=$(printf '%s\n' "$base_descriptor" | sed -n -E 's/.*ssl_server_cert_dn="([^"]*)".*/\1/Ip' | head -1)
+parsed=$(BASE_DESCRIPTOR="$base_descriptor" python3 -c '
+import os
+import re
+
+text = os.environ["BASE_DESCRIPTOR"]
+
+def value(name):
+    match = re.search(r"\(\s*" + re.escape(name) + r"\s*=\s*(\"[^\"]*\"|[^)\s]+)", text, re.I)
+    if not match:
+        return ""
+    value = match.group(1)
+    if value.startswith("\"") and value.endswith("\""):
+        value = value[1:-1]
+    return value
+
+print(value("host"))
+print(value("port"))
+print(value("service_name"))
+print(value("ssl_server_cert_dn"))
+')
+host=$(printf '%s\n' "$parsed" | sed -n '1p')
+port=$(printf '%s\n' "$parsed" | sed -n '2p')
+service_name=$(printf '%s\n' "$parsed" | sed -n '3p')
+ssl_dn=$(printf '%s\n' "$parsed" | sed -n '4p')
 
 if [ -z "$host" ] || [ -z "$port" ] || [ -z "$service_name" ]; then
   echo -e "${RED}ERROR: Could not parse host, port, or service_name from ${ADB_SERVICE}.${NC}"

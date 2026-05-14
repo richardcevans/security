@@ -270,6 +270,18 @@ $HOME/.oci/adb-oci-iam/token
 
 The database client reads that token through `TOKEN_AUTH=OAUTH`.
 
+To inspect the token contents locally:
+
+```bash
+<copy>
+./decode_token.sh
+</copy>
+```
+
+The helper decodes the JWT header and payload, explains the important claims,
+and shows the OCI IAM group claim used by the data role mappings. It does not
+validate the token signature.
+
 ## 7. Verify Data Grants as the OCI IAM User
 
 ```bash

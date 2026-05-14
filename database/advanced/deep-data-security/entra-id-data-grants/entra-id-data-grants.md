@@ -46,6 +46,7 @@ Same SQL. Zero application filtering. Zero database passwords. The security is o
 - [Security Validation Checklist](#security-validation-checklist)
 - [DBA Production Caution](#dba-production-caution)
 - [Network File Backups And Restore](#network-file-backups-and-restore)
+- [Install Azure CLI](#install-azure-cli)
 - [Part 1: Configure Microsoft Entra ID](#part-1-configure-microsoft-entra-id)
 - [Part 2: Configure the Oracle Database](#part-2-configure-the-oracle-database)
 - [Part 3: Create Deep Data Security Objects](#part-3-create-deep-data-security-objects)
@@ -398,6 +399,52 @@ lsnrctl start
     ````
     <copy>ls</copy>
     ````
+
+## Install Azure CLI
+
+Azure CLI is required for `00_setup_entra_id.sh`. The script uses Azure CLI and Microsoft Graph to create and update Entra ID app registrations, enterprise applications, app roles, API permissions, and optional user role assignments.
+
+### Oracle Linux 9
+
+````
+<copy>sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc</copy>
+````
+
+````
+<copy>sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm</copy>
+````
+
+````
+<copy>sudo dnf install -y azure-cli</copy>
+````
+
+### Oracle Linux 8
+
+````
+<copy>sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc</copy>
+````
+
+````
+<copy>sudo dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm</copy>
+````
+
+````
+<copy>sudo dnf install -y azure-cli</copy>
+````
+
+### Generic Linux Installer
+
+Use this only if your lab host does not use the Oracle Linux package path above.
+
+````
+<copy>curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash</copy>
+````
+
+### Verify Azure CLI
+
+````
+<copy>az version</copy>
+````
 
 ## Part 1: Configure Microsoft Entra ID
 

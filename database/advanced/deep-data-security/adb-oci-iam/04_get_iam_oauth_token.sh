@@ -32,9 +32,11 @@ Usage:
 
 Required environment:
   OCI_DOMAIN_URL       Identity domain URL, such as https://idcs-...identity.oraclecloud.com
-  OCI_CLIENT_ID        OAuth client id for the interactive user login app
-  OCI_CLIENT_SECRET    OAuth client secret for the interactive user login app
+  OCI_CLIENT_ID        OAuth client id for the public interactive user login app
   OCI_SCOPE            Database access scope granted to the client app
+
+Optional environment:
+  OCI_CLIENT_SECRET    Only needed when using a confidential OAuth client app.
 
 Options:
   --headless     Print the login URL and prompt for the final redirected URL or code.
@@ -113,7 +115,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 missing=()
-for var in OCI_DOMAIN_URL OCI_CLIENT_ID OCI_CLIENT_SECRET OCI_SCOPE OCI_REDIRECT_URI; do
+for var in OCI_DOMAIN_URL OCI_CLIENT_ID OCI_SCOPE OCI_REDIRECT_URI; do
   if [ -z "${!var:-}" ]; then
     missing+=("$var")
   fi
@@ -160,7 +162,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 domain = os.environ["OCI_DOMAIN_URL"].rstrip("/")
 client_id = os.environ["OCI_CLIENT_ID"]
-client_secret = os.environ["OCI_CLIENT_SECRET"]
+client_secret = os.environ.get("OCI_CLIENT_SECRET", "")
 scope = os.environ["OCI_SCOPE"]
 token_dir = os.environ["OCI_TOKEN_DIR"]
 open_browser = os.environ.get("OCI_OPEN_BROWSER", "0").lower() in ("1", "true", "yes", "y")
@@ -175,6 +177,10 @@ if os.environ["OCI_REDIRECT_URI"] not in redirect_candidates:
     redirect_candidates.insert(0, os.environ["OCI_REDIRECT_URI"])
 
 state = base64.urlsafe_b64encode(os.urandom(24)).decode("ascii").rstrip("=")
+code_verifier = base64.urlsafe_b64encode(os.urandom(48)).decode("ascii").rstrip("=")
+code_challenge = base64.urlsafe_b64encode(
+    __import__("hashlib").sha256(code_verifier.encode("ascii")).digest()
+).decode("ascii").rstrip("=")
 result = {}
 server = None
 redirect_uri = None
@@ -274,6 +280,8 @@ auth_url = f"{domain}/oauth2/v1/authorize?" + urllib.parse.urlencode({
     "redirect_uri": redirect_uri,
     "scope": scope,
     "state": state,
+    "code_challenge": code_challenge,
+    "code_challenge_method": "S256",
 })
 
 if server:
@@ -314,20 +322,27 @@ if not code:
     sys.exit(1)
 
 def request_token(strip_padding=False):
-    basic = base64.urlsafe_b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
-    if strip_padding:
-        basic = basic.rstrip("=")
+    form = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "client_id": client_id,
+        "code_verifier": code_verifier,
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+        "Accept": "application/json",
+    }
+    if client_secret:
+        basic = base64.urlsafe_b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
+        if strip_padding:
+            basic = basic.rstrip("=")
+        headers["Authorization"] = f"Basic {basic}"
+
     request = urllib.request.Request(
         f"{domain}/oauth2/v1/token",
-        data=urllib.parse.urlencode({
-            "grant_type": "authorization_code",
-            "code": code,
-        }).encode("utf-8"),
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-            "Accept": "application/json",
-            "Authorization": f"Basic {basic}",
-        },
+        data=urllib.parse.urlencode(form).encode("utf-8"),
+        headers=headers,
         method="POST",
     )
     try:
@@ -337,7 +352,7 @@ def request_token(strip_padding=False):
         return {"_http_error": exc.code, "_detail": exc.read().decode("utf-8", errors="replace")}
 
 token_response = request_token(strip_padding=False)
-if token_response.get("_http_error") and "decode client header" in token_response.get("_detail", "").lower():
+if client_secret and token_response.get("_http_error") and "decode client header" in token_response.get("_detail", "").lower():
     token_response = request_token(strip_padding=True)
 
 if token_response.get("_http_error"):

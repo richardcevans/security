@@ -254,11 +254,13 @@ The token script requires the OAuth client settings used for database login:
 ```bash
 <copy>
 export OCI_DOMAIN_URL=<identity-domain-url>
-export OCI_CLIENT_ID=<interactive-oauth-client-id>
-export OCI_CLIENT_SECRET=<interactive-oauth-client-secret>
+export OCI_CLIENT_ID=<public-interactive-oauth-client-id>
 export OCI_SCOPE=<database-access-scope>
 </copy>
 ```
+
+The token helper uses OAuth authorization-code with PKCE. A client secret is not
+required for SQL*Plus or for a public interactive OAuth client.
 
 In Cloud Shell, open the printed login URL in the NoVNC browser. After login,
 the script writes the user's OAuth2 access token here:

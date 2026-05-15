@@ -803,13 +803,25 @@ Run this helper on the DBSec-Lab VM after `02_configure_network.sh`:
 <copy>./export_server_cert_for_client.sh</copy>
 ````
 
+By default, the generated TNS snippet points to a Windows client wallet directory under:
+
+````
+C:/oracle/tns_admin/wallets/hrdb-<hostname>-<pdb>
+````
+
+For a Linux client path instead, run:
+
+````
+<copy>./export_server_cert_for_client.sh --linux</copy>
+````
+
 The helper exports the database server certificate from the TCPS wallet and creates a client trust bundle:
 
 ````
 entra-id-data-grants-client-trust.zip
 ````
 
-Copy the zip file to the client machine. For Oracle Instant Client systems that do not have `orapki`, copy the generated `oracle_client_wallet` directory and point `sqlnet.ora` to that wallet. For SQLcl/JDBC clients, you can also use the generated `db_server_truststore.p12`. In all cases, keep `SSL_SERVER_DN_MATCH=YES` in the client connect descriptor.
+Copy the zip file to the client machine. For Oracle Instant Client systems that do not have `orapki`, copy the generated `hrdb-<hostname>-<pdb>` wallet directory to the path shown in `tnsnames-client-snippet.ora`. For SQLcl/JDBC clients, you can also use the generated `db_server_truststore.p12`. In all cases, keep `SSL_SERVER_DN_MATCH=YES` in the client connect descriptor.
 
 ## Part 3: Create Deep Data Security Objects
 

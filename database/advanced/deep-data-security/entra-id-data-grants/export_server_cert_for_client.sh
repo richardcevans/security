@@ -109,13 +109,10 @@ ZIP_FILE="${SCRIPT_DIR}/entra-id-data-grants-client-trust.zip"
 if [ "$CLIENT_PATH_STYLE" = "linux" ]; then
   CLIENT_WALLET_DIRECTORY="${CLIENT_WALLET_DIRECTORY:-/u01/app/oracle/tns_names/${WALLET_FOLDER_NAME}}"
 else
-  CLIENT_WALLET_DIRECTORY="${CLIENT_WALLET_DIRECTORY:-C:/oracle/tns_admin/wallets/${WALLET_FOLDER_NAME}}"
+  CLIENT_WALLET_DIRECTORY="${CLIENT_WALLET_DIRECTORY:-C:\\oracle\\tns_admin\\wallets\\${WALLET_FOLDER_NAME}}"
 fi
 
 CLIENT_WALLET_DIRECTORY_TNS="$CLIENT_WALLET_DIRECTORY"
-if [ "$CLIENT_PATH_STYLE" = "windows" ]; then
-  CLIENT_WALLET_DIRECTORY_TNS="${CLIENT_WALLET_DIRECTORY_TNS//\\//}"
-fi
 
 format_net_path() {
   local value="$1"

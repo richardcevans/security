@@ -806,7 +806,7 @@ Run this helper on the DBSec-Lab VM after `02_configure_network.sh`:
 By default, the generated TNS snippet points to a Windows client wallet directory under:
 
 ````
-C:/oracle/tns_admin/wallets/hrdb-<hostname>-<pdb>
+C:\oracle\tns_admin\wallets\hrdb-<hostname>-<pdb>
 ````
 
 For a Linux client path instead, run:
@@ -818,7 +818,7 @@ For a Linux client path instead, run:
 To set the exact wallet directory written into the generated TNS alias, pass `--client-wallet-directory`:
 
 ````
-<copy>./export_server_cert_for_client.sh --client-wallet-directory C:/oracle/tns_admin/wallets/hrdb</copy>
+<copy>./export_server_cert_for_client.sh --client-wallet-directory C:\oracle\tns_admin\wallets\hrdb</copy>
 ````
 
 Quote the path if it contains spaces:

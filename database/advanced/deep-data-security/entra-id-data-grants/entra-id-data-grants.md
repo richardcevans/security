@@ -793,6 +793,24 @@ hrdb =
 
 When you connect with `sqlplus /@hrdb`, the Oracle client launches your browser for Entra ID login. If the browser silently signs in as the wrong user, close all Entra ID browser windows or use a private/incognito window before retrying.
 
+### One-off helper: Export the database server certificate for a client
+
+If you connect from SQLcl, the VS Code Oracle SQL Developer extension, or another Oracle client outside the lab VM, that client must trust the database server certificate created by `02_configure_network.sh`. This is still one-way TLS: the client trusts the database server certificate, and the database does not request a client certificate.
+
+Run this helper on the DBSec-Lab VM after `02_configure_network.sh`:
+
+````
+<copy>./export_server_cert_for_client.sh</copy>
+````
+
+The helper exports the database server certificate from the TCPS wallet and creates a client trust bundle:
+
+````
+entra-id-data-grants-client-trust.zip
+````
+
+Copy the zip file to the client machine. For Oracle Instant Client systems that do not have `orapki`, copy the generated `oracle_client_wallet` directory and point `sqlnet.ora` to that wallet. For SQLcl/JDBC clients, you can also use the generated `db_server_truststore.p12`. In all cases, keep `SSL_SERVER_DN_MATCH=YES` in the client connect descriptor.
+
 ## Part 3: Create Deep Data Security Objects
 
 ### Script 3: Create the HR schema and employee data

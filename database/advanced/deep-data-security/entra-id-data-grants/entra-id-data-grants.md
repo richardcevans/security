@@ -368,33 +368,35 @@ lsnrctl stop
 lsnrctl start
 ```
 
-### Task 0: Download lab scripts
+### Task 0: Download entra-id-data-grants.zip file to local directory
 
-1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and `cd` to the livelabs directory.
+1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to livelabs directory.
 
     ````
     <copy>cd livelabs</copy>
     ````
 
-2. Download the bundled script archive for this lab.
+    **Note**: If you are using a remote desktop session, double-click on the *Terminal* icon on the desktop to launch a session
+
+2. Use the Linux command 'wget' to download a bundled (zipped) file of the commands for the lab.
 
     ````
-    <copy>wget https://objectstorage.us-ashburn-1.oraclecloud.com/p/_vC6pMGFQLjZ-4ndpRr54m4IKQKHNcSGc7cS4lmkFh8JcsJ3DeYz6nKeMbe88s3Q/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip</copy>
+    <copy>wget -O entra-id-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/aSXtPT18-67-gR7BdvSd5VtxmxemrI5KpRkoMYoN6S22aUhRnrB5O12ZaoXbjgLE/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip</copy>
     ````
 
-3. Extract the archive.
+3. Unarchive the downloaded zip to expand the directory and scripts.
 
     ````
-    <copy>tar xvf dbsec-livelabs-entra-id-data-grants.tar.gz</copy>
+    <copy>unzip -o entra-id-data-grants.zip</copy>
     ````
 
-4. Move into the lab directory.
+4. Use `cd` command to move to entra-id-data-grants directory.
 
     ````
     <copy>cd entra-id-data-grants</copy>
     ````
 
-5. List files to confirm the scripts are present.
+5. Use `ls` command to list files.
 
     ````
     <copy>ls</copy>

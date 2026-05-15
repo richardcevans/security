@@ -47,7 +47,7 @@ mcp-grant-view/
 2. Use the Linux command `wget` to download a bundled (zipped) file of the commands for the lab.
 
     ````
-    <copy>wget -O mcp-grant-view.zip __MCP_GRANT_VIEW_ZIP_URL__</copy>
+    <copy>wget -O mcp-grant-view.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/nosHidzYV48XRjC3hcxi_N5SJcwaL_q0ajXfpZa5HfwWuYKVFHhwJwJ7dQJOiWDr/n/oradbclouducm/b/dbsec_public/o/mcp-grant-view.zip</copy>
     ````
 
 3. Unarchive the downloaded zip to expand the directory and scripts.
@@ -176,4 +176,3 @@ curl -X POST http://127.0.0.1:8008/api/ask \
 - Keep `SSL_SERVER_DN_MATCH=YES`.
 - Use a client wallet or trust store that trusts the database server certificate.
 - Use per-user connections or a token-keyed pool. Never reuse one user's database session for another user.
-

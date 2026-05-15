@@ -22,7 +22,7 @@ CLIENT_PATH_STYLE="windows"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--windows|--linux]
+Usage: $(basename "$0") [--windows|--linux] [--client-wallet-directory <path>]
 
 Exports the lab database TCPS server certificate and creates a ready-to-copy
 Oracle client trust wallet.
@@ -30,6 +30,9 @@ Oracle client trust wallet.
 Options:
   --windows  Generate a Windows-style MY_WALLET_DIRECTORY path. Default.
   --linux    Generate a Linux-style MY_WALLET_DIRECTORY path.
+  --client-wallet-directory <path>
+             Exact client-side wallet directory to write into the generated
+             TNS alias.
   -h, --help Show this help.
 
 Environment overrides:
@@ -45,6 +48,18 @@ while [ "$#" -gt 0 ]; do
       ;;
     --linux)
       CLIENT_PATH_STYLE="linux"
+      ;;
+    --client-wallet-directory)
+      if [ -z "${2:-}" ]; then
+        echo -e "${RED}ERROR: --client-wallet-directory requires a path.${NC}"
+        usage
+        exit 1
+      fi
+      CLIENT_WALLET_DIRECTORY="$2"
+      shift
+      ;;
+    --client-wallet-directory=*)
+      CLIENT_WALLET_DIRECTORY="${1#*=}"
       ;;
     -h|--help)
       usage

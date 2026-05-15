@@ -1,12 +1,11 @@
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.identity import UserIdentity
 from app.oracle_adapter import GrantViewDatabase
 
 
-def list_tools() -> list[dict[str, Any]]:
+def list_tools():
+    # type: () -> List[Dict[str, Any]]
     return [
         {
             "name": "search_employees",
@@ -30,11 +29,12 @@ def list_tools() -> list[dict[str, Any]]:
 
 
 def call_tool(
-    database: GrantViewDatabase,
-    identity: UserIdentity,
-    tool_name: str,
-    arguments: dict[str, Any] | None = None,
-) -> dict[str, Any]:
+    database,
+    identity,
+    tool_name,
+    arguments=None,
+):
+    # type: (GrantViewDatabase, UserIdentity, str, Optional[Dict[str, Any]]) -> Dict[str, Any]
     args = arguments or {}
 
     if tool_name == "search_employees":
@@ -43,10 +43,11 @@ def call_tool(
     if tool_name == "summarize_my_access":
         return database.summarize_access(identity)
 
-    raise ValueError(f"Unknown tool: {tool_name}")
+    raise ValueError("Unknown tool: {0}".format(tool_name))
 
 
-def choose_tool_for_question(question: str) -> tuple[str, dict[str, Any]]:
+def choose_tool_for_question(question):
+    # type: (str) -> Tuple[str, Dict[str, Any]]
     lowered = question.lower()
     if "access" in lowered or "role" in lowered or "grant" in lowered:
         return "summarize_my_access", {}

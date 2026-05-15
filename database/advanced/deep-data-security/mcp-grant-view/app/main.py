@@ -1,13 +1,12 @@
-from __future__ import annotations
-
 import json
 import mimetypes
 import os
 import sys
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from socketserver import ThreadingMixIn
+from typing import Any, Dict
 from urllib.parse import unquote
 
 from app.identity import identity_from_authorization_header
@@ -18,6 +17,10 @@ from app.oracle_adapter import GrantViewDatabase
 APP_DIR = Path(__file__).resolve().parent
 STATIC_DIR = APP_DIR / "static"
 database = GrantViewDatabase()
+
+
+class GrantViewServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
 
 
 class GrantViewHandler(BaseHTTPRequestHandler):
@@ -41,7 +44,7 @@ class GrantViewHandler(BaseHTTPRequestHandler):
             return
 
         if self.path.startswith("/static/"):
-            relative = unquote(self.path.removeprefix("/static/"))
+            relative = unquote(self.path[len("/static/") :])
             self._send_static_file(relative)
             return
 
@@ -113,7 +116,8 @@ class GrantViewHandler(BaseHTTPRequestHandler):
             }
         )
 
-    def _read_json(self) -> dict[str, Any]:
+    def _read_json(self):
+        # type: () -> Dict[str, Any]
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length) if length else b"{}"
         try:
@@ -142,7 +146,8 @@ class GrantViewHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _send_json(self, payload: dict[str, Any], status: HTTPStatus = HTTPStatus.OK) -> None:
+    def _send_json(self, payload, status=HTTPStatus.OK):
+        # type: (Dict[str, Any], HTTPStatus) -> None
         content = json.dumps(payload, indent=2).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -150,11 +155,13 @@ class GrantViewHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def log_message(self, format: str, *args: Any) -> None:
-        print(f"{self.address_string()} - {format % args}")
+    def log_message(self, format, *args):
+        # type: (str, Any) -> None
+        print("{0} - {1}".format(self.address_string(), format % args))
 
 
-def _identity_response(identity: Any) -> dict[str, Any]:
+def _identity_response(identity):
+    # type: (Any) -> Dict[str, Any]
     return {
         "subject": identity.subject,
         "display_name": identity.display_name,
@@ -162,9 +169,10 @@ def _identity_response(identity: Any) -> dict[str, Any]:
     }
 
 
-def _client_config() -> dict[str, Any]:
+def _client_config():
+    # type: () -> Dict[str, Any]
     app_id_uri = os.getenv("APP_ID_URI") or os.getenv("AZURE_DB_APP_ID_URI") or ""
-    default_scope = f"{app_id_uri}/session:scope:connect" if app_id_uri else ""
+    default_scope = "{0}/session:scope:connect".format(app_id_uri) if app_id_uri else ""
     return {
         "auth_mode": os.getenv("GRANT_VIEW_AUTH_MODE", "demo").lower(),
         "db_mode": database.mode,
@@ -175,31 +183,36 @@ def _client_config() -> dict[str, Any]:
     }
 
 
-def _format_answer(tool_name: str, result: dict[str, Any]) -> str:
+def _format_answer(tool_name, result):
+    # type: (str, Dict[str, Any]) -> str
     if tool_name == "summarize_my_access":
         roles = ", ".join(result.get("roles", []))
         salary = "can" if result.get("salary_visible") else "cannot"
-        return f"You have roles {roles}. In this demo you {salary} view salary values."
+        return "You have roles {0}. In this demo you {1} view salary values.".format(
+            roles, salary
+        )
 
     count = result.get("row_count", 0)
-    return f"Found {count} visible employee row(s). The database layer decides what is visible."
+    return "Found {0} visible employee row(s). The database layer decides what is visible.".format(
+        count
+    )
 
 
 def main() -> None:
     host = os.getenv("GRANT_VIEW_HOST", "127.0.0.1")
     port = int(os.getenv("GRANT_VIEW_PORT", "8008"))
     try:
-        server = ThreadingHTTPServer((host, port), GrantViewHandler)
+        server = GrantViewServer((host, port), GrantViewHandler)
     except OSError as exc:
         if exc.errno == 98:
             print(
-                f"Port {port} is already in use. Stop the existing server or run "
-                f"with GRANT_VIEW_PORT=<other-port> ./run.sh",
+                "Port {0} is already in use. Stop the existing server or run "
+                "with GRANT_VIEW_PORT=<other-port> ./run.sh".format(port),
                 file=sys.stderr,
             )
             raise SystemExit(1) from exc
         raise
-    print(f"MCP Grant View running at http://{host}:{port}")
+    print("MCP Grant View running at http://{0}:{1}".format(host, port))
     server.serve_forever()
 
 

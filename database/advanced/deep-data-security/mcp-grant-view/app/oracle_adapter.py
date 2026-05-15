@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import json
 import os
 import shutil
 import subprocess
-from typing import Any
+from typing import Any, Dict, List
 
 from app.identity import UserIdentity
 
@@ -20,14 +18,16 @@ class GrantViewDatabase:
         self.sqlplus_bin = os.getenv("SQLPLUS_BIN", "sqlplus")
         self.sqlplus_timeout = int(os.getenv("SQLPLUS_TIMEOUT_SECONDS", "180"))
 
-    def search_employees(self, identity: UserIdentity, query: str = "") -> dict[str, Any]:
+    def search_employees(self, identity, query=""):
+        # type: (UserIdentity, str) -> Dict[str, Any]
         if self.mode in {"python", "oracledb"}:
             return self._search_employees_python(identity, query)
         if self.mode in {"sqlplus", "oracle"}:
             return self._search_employees_oracle(identity, query)
         return self._search_employees_mock(identity, query)
 
-    def summarize_access(self, identity: UserIdentity) -> dict[str, Any]:
+    def summarize_access(self, identity):
+        # type: (UserIdentity) -> Dict[str, Any]
         if self.mode in {"python", "oracledb"}:
             return self._summarize_access_python(identity)
         if self.mode in {"sqlplus", "oracle"}:
@@ -41,7 +41,8 @@ class GrantViewDatabase:
             "salary_visible": self._can_view_salary(identity),
         }
 
-    def _search_employees_mock(self, identity: UserIdentity, query: str) -> dict[str, Any]:
+    def _search_employees_mock(self, identity, query):
+        # type: (UserIdentity, str) -> Dict[str, Any]
         rows = [
             {
                 "employee_id": 101,
@@ -102,21 +103,23 @@ class GrantViewDatabase:
             "enforced_by": "mock adapter standing in for Oracle data grants",
         }
 
-    def _search_employees_oracle(self, identity: UserIdentity, query: str) -> dict[str, Any]:
+    def _search_employees_oracle(self, identity, query):
+        # type: (UserIdentity, str) -> Dict[str, Any]
         result = self._run_sqlplus_json(_emit_json_sql(_employees_select_sql(query)))
         result["query"] = query
         result["row_count"] = len(result.get("rows", []))
         result["enforced_by"] = (
-            f"Oracle Database through sqlplus /@{self.tns_alias}; "
-            "Entra ID token auth and data grants are enforced by the database"
+            "Oracle Database through sqlplus /@{0}; Entra ID token auth and "
+            "data grants are enforced by the database".format(self.tns_alias)
         )
         return result
 
-    def _summarize_access_oracle(self, identity: UserIdentity) -> dict[str, Any]:
+    def _summarize_access_oracle(self, identity):
+        # type: (UserIdentity) -> Dict[str, Any]
         result = self._run_sqlplus_json(_emit_json_sql(_access_select_sql()))
         result["model"] = (
-            f"Oracle Database through sqlplus /@{self.tns_alias}; "
-            "identity comes from the Entra ID token accepted by Oracle"
+            "Oracle Database through sqlplus /@{0}; identity comes from the "
+            "Entra ID token accepted by Oracle".format(self.tns_alias)
         )
         result["salary_visible"] = any(
             role.upper() in {"HRAPP_EMPLOYEES", "HRAPP_MANAGERS"}
@@ -124,21 +127,23 @@ class GrantViewDatabase:
         )
         return result
 
-    def _search_employees_python(self, identity: UserIdentity, query: str) -> dict[str, Any]:
+    def _search_employees_python(self, identity, query):
+        # type: (UserIdentity, str) -> Dict[str, Any]
         result = self._run_python_json(identity, _employees_select_sql(query))
         result["query"] = query
         result["row_count"] = len(result.get("rows", []))
         result["enforced_by"] = (
-            f"Oracle Database through python-oracledb /@{self.tns_alias}; "
-            "Entra ID token auth and data grants are enforced by the database"
+            "Oracle Database through python-oracledb /@{0}; Entra ID token auth "
+            "and data grants are enforced by the database".format(self.tns_alias)
         )
         return result
 
-    def _summarize_access_python(self, identity: UserIdentity) -> dict[str, Any]:
+    def _summarize_access_python(self, identity):
+        # type: (UserIdentity) -> Dict[str, Any]
         result = self._run_python_json(identity, _access_select_sql())
         result["model"] = (
-            f"Oracle Database through python-oracledb /@{self.tns_alias}; "
-            "identity comes from the Entra ID token accepted by Oracle"
+            "Oracle Database through python-oracledb /@{0}; identity comes from "
+            "the Entra ID token accepted by Oracle".format(self.tns_alias)
         )
         result["salary_visible"] = any(
             role.upper() in {"HRAPP_EMPLOYEES", "HRAPP_MANAGERS"}
@@ -146,7 +151,8 @@ class GrantViewDatabase:
         )
         return result
 
-    def _run_python_json(self, identity: UserIdentity, sql: str) -> dict[str, Any]:
+    def _run_python_json(self, identity, sql):
+        # type: (UserIdentity, str) -> Dict[str, Any]
         try:
             import oracledb
         except ImportError as exc:
@@ -162,7 +168,7 @@ class GrantViewDatabase:
             except Exception:
                 pass
 
-        connect_kwargs: dict[str, Any] = {"dsn": self.tns_alias}
+        connect_kwargs = {"dsn": self.tns_alias}  # type: Dict[str, Any]
         if identity.access_token:
             connect_kwargs["access_token"] = lambda: identity.access_token
             if os.getenv("ORACLEDB_EXTERNAL_AUTH", "true").lower() == "true":
@@ -176,7 +182,7 @@ class GrantViewDatabase:
                     cursor.execute(sql)
                     row = cursor.fetchone()
         except Exception as exc:
-            raise RuntimeError(f"python-oracledb could not query Oracle: {exc}") from exc
+            raise RuntimeError("python-oracledb could not query Oracle: {0}".format(exc))
 
         if not row:
             raise RuntimeError("Oracle returned no JSON payload.")
@@ -192,10 +198,13 @@ class GrantViewDatabase:
             raise RuntimeError("Oracle JSON payload was not an object.")
         return parsed
 
-    def _run_sqlplus_json(self, sql: str) -> dict[str, Any]:
+    def _run_sqlplus_json(self, sql):
+        # type: (str) -> Dict[str, Any]
         if not shutil.which(self.sqlplus_bin):
             raise RuntimeError(
-                f"Cannot find {self.sqlplus_bin}. Install Oracle Client or set SQLPLUS_BIN."
+                "Cannot find {0}. Install Oracle Client or set SQLPLUS_BIN.".format(
+                    self.sqlplus_bin
+                )
             )
 
         script = _sqlplus_script(sql)
@@ -203,8 +212,9 @@ class GrantViewDatabase:
             completed = subprocess.run(
                 [self.sqlplus_bin, "-s", f"/@{self.tns_alias}"],
                 input=script,
-                text=True,
-                capture_output=True,
+                universal_newlines=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 timeout=self.sqlplus_timeout,
                 check=False,
             )
@@ -230,7 +240,8 @@ class GrantViewDatabase:
             raise RuntimeError("SQLPlus JSON payload was not an object.")
         return parsed
 
-    def _visible_regions(self, identity: UserIdentity) -> list[str]:
+    def _visible_regions(self, identity):
+        # type: (UserIdentity) -> List[str]
         roles = set(identity.roles)
         if "HR_ADMIN" in roles:
             return []
@@ -238,7 +249,8 @@ class GrantViewDatabase:
             return ["US"]
         return ["US"]
 
-    def _visible_departments(self, identity: UserIdentity) -> list[str]:
+    def _visible_departments(self, identity):
+        # type: (UserIdentity) -> List[str]
         roles = set(identity.roles)
         if "HR_ADMIN" in roles:
             return []
@@ -252,8 +264,9 @@ class GrantViewDatabase:
         return bool({"FINANCE_ANALYST", "HR_ADMIN"} & set(identity.roles))
 
 
-def _sqlplus_script(sql: str) -> str:
-    return f"""
+def _sqlplus_script(sql):
+    # type: (str) -> str
+    return """
 set echo off
 set feedback off
 set heading off
@@ -267,13 +280,14 @@ set trimspool on
 set verify off
 whenever sqlerror exit sql.sqlcode
 
-{sql}
+{0}
 
 exit
-"""
+""".format(sql)
 
 
-def _access_select_sql() -> str:
+def _access_select_sql():
+    # type: () -> str
     return """
         SELECT JSON_OBJECT(
           'user' VALUE SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY'),
@@ -290,11 +304,12 @@ def _access_select_sql() -> str:
         """
 
 
-def _employees_select_sql(query: str) -> str:
+def _employees_select_sql(query):
+    # type: (str) -> str
     query_literal = _sql_literal(query.strip().lower())
-    return f"""
+    return """
         WITH filter_value AS (
-          SELECT {query_literal} AS q FROM dual
+          SELECT {0} AS q FROM dual
         ),
         visible_employees AS (
           SELECT
@@ -346,36 +361,39 @@ def _employees_select_sql(query: str) -> str:
           RETURNING CLOB
         )
         FROM dual
-        """
+        """.format(query_literal)
 
 
-def _emit_json_sql(select_sql: str) -> str:
-    return f"""
+def _emit_json_sql(select_sql):
+    # type: (str) -> str
+    return """
 DECLARE
   l_json CLOB;
   l_pos  PLS_INTEGER := 1;
 BEGIN
-  {select_sql}
+  {0}
   INTO l_json;
 
-  DBMS_OUTPUT.PUT_LINE('{SQLPLUS_JSON_BEGIN}');
+  DBMS_OUTPUT.PUT_LINE('{1}');
   WHILE l_pos <= DBMS_LOB.GETLENGTH(l_json) LOOP
     DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(l_json, 30000, l_pos));
     l_pos := l_pos + 30000;
   END LOOP;
-  DBMS_OUTPUT.PUT_LINE('{SQLPLUS_JSON_END}');
+  DBMS_OUTPUT.PUT_LINE('{2}');
 END;
 /
-"""
+""".format(select_sql, SQLPLUS_JSON_BEGIN, SQLPLUS_JSON_END)
 
 
-def _sql_literal(value: str) -> str:
+def _sql_literal(value):
+    # type: (str) -> str
     if value == "":
         return "NULL"
     return "'" + value.replace("'", "''") + "'"
 
 
-def _extract_between_markers(output: str) -> str:
+def _extract_between_markers(output):
+    # type: (str) -> str
     begin = output.find(SQLPLUS_JSON_BEGIN)
     end = output.find(SQLPLUS_JSON_END)
     if begin == -1 or end == -1 or end <= begin:
@@ -383,7 +401,8 @@ def _extract_between_markers(output: str) -> str:
     return output[begin + len(SQLPLUS_JSON_BEGIN) : end].strip()
 
 
-def _short_sqlplus_error(output: str) -> str:
+def _short_sqlplus_error(output):
+    # type: (str) -> str
     lines = [line.rstrip() for line in output.splitlines() if line.strip()]
     interesting = [
         line

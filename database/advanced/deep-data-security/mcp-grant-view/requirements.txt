@@ -1,0 +1,2 @@
+# No third-party packages are required for the mock web app.
+# Add python-oracledb or the supported Oracle client driver here when wiring Oracle mode.

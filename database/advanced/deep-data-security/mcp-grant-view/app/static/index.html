@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCP Grant View</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Deep Data Security</p>
+            <h1>MCP Grant View</h1>
+          </div>
+          <div class="identity" id="identitySummary"></div>
+        </header>
+
+        <section class="control-row" aria-label="Demo identity">
+          <button class="identity-button active" data-user="marvin">Marvin</button>
+          <button class="identity-button" data-user="emma">Emma</button>
+          <button class="identity-button" data-user="admin">Admin</button>
+          <button id="entraSignInButton" class="auth-button" hidden>Sign In</button>
+          <button id="entraSignOutButton" class="auth-button" hidden>Sign Out</button>
+        </section>
+
+        <section class="ask-panel">
+          <label for="question">Ask for data</label>
+          <div class="ask-row">
+            <input
+              id="question"
+              type="text"
+              value="Show me sales employees"
+              autocomplete="off"
+            />
+            <button id="askButton">Ask</button>
+          </div>
+        </section>
+
+        <section class="result-grid">
+          <article class="panel">
+            <h2>Agent Decision</h2>
+            <dl id="decisionList"></dl>
+          </article>
+
+          <article class="panel">
+            <h2>Visible Rows</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>SSN</th>
+                    <th>Salary</th>
+                    <th>Dept</th>
+                    <th>Manager</th>
+                  </tr>
+                </thead>
+                <tbody id="rowsBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel details-panel">
+          <h2>Raw Tool Response</h2>
+          <pre id="rawOutput"></pre>
+        </section>
+      </section>
+    </main>
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

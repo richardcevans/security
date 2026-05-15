@@ -821,6 +821,12 @@ To set the exact wallet directory written into the generated TNS alias, pass `--
 <copy>./export_server_cert_for_client.sh --client-wallet-directory C:/oracle/tns_admin/wallets/hrdb</copy>
 ````
 
+Quote the path if it contains spaces:
+
+````
+<copy>./export_server_cert_for_client.sh --client-wallet-directory "C:\Program Files\Oracle\wallets\hrdb"</copy>
+````
+
 The helper exports the database server certificate from the TCPS wallet and creates a client trust bundle:
 
 ````

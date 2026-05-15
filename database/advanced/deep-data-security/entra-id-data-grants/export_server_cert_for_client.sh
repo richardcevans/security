@@ -32,7 +32,8 @@ Options:
   --linux    Generate a Linux-style MY_WALLET_DIRECTORY path.
   --client-wallet-directory <path>
              Exact client-side wallet directory to write into the generated
-             TNS alias.
+             TNS alias. Quote paths that contain spaces, for example:
+             --client-wallet-directory "C:\Program Files\Oracle\wallets\hrdb"
   -h, --help Show this help.
 
 Environment overrides:
@@ -111,6 +112,22 @@ else
   CLIENT_WALLET_DIRECTORY="${CLIENT_WALLET_DIRECTORY:-C:/oracle/tns_admin/wallets/${WALLET_FOLDER_NAME}}"
 fi
 
+CLIENT_WALLET_DIRECTORY_TNS="$CLIENT_WALLET_DIRECTORY"
+if [ "$CLIENT_PATH_STYLE" = "windows" ]; then
+  CLIENT_WALLET_DIRECTORY_TNS="${CLIENT_WALLET_DIRECTORY_TNS//\\//}"
+fi
+
+format_net_path() {
+  local value="$1"
+  if [[ "$value" =~ [[:space:]] ]]; then
+    printf '"%s"' "$value"
+  else
+    printf '%s' "$value"
+  fi
+}
+
+CLIENT_WALLET_DIRECTORY_NET="$(format_net_path "$CLIENT_WALLET_DIRECTORY_TNS")"
+
 echo -e "${GREEN}=========================================================================${NC}"
 echo -e "${GREEN}      Export Database Server Certificate for Client Trust                  ${NC}"
 echo -e "${GREEN}=========================================================================${NC}"
@@ -121,6 +138,7 @@ echo -e "${CYAN}  WALLET_DIR          = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  FQDN                = ${FQDN}${NC}"
 echo -e "${CYAN}  CLIENT_PATH_STYLE   = ${CLIENT_PATH_STYLE}${NC}"
 echo -e "${CYAN}  CLIENT_WALLET_DIR   = ${CLIENT_WALLET_DIRECTORY}${NC}"
+echo -e "${CYAN}  TNS WALLET DIR      = ${CLIENT_WALLET_DIRECTORY_NET}${NC}"
 echo -e "${CYAN}  CERT_DN             = ${CERT_DN}${NC}"
 echo -e "${CYAN}  CLIENT_ID           = ${CLIENT_ID_VALUE}${NC}"
 echo -e "${CYAN}  APP_ID_URI          = ${APP_ID_URI_VALUE}${NC}"
@@ -195,7 +213,7 @@ hrdb_client =
   (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = ${TCPS_PORT}))
     (SECURITY =
-      (MY_WALLET_DIRECTORY = ${CLIENT_WALLET_DIRECTORY})
+      (MY_WALLET_DIRECTORY = ${CLIENT_WALLET_DIRECTORY_NET})
       (SSL_SERVER_DN_MATCH = YES)
       (SSL_SERVER_CERT_DN = "${CERT_DN}")
       (TOKEN_AUTH = AZURE_INTERACTIVE)
@@ -248,12 +266,12 @@ For Oracle Instant Client without orapki:
 
   1. Copy ${WALLET_FOLDER_NAME} to this client directory:
 
-       ${CLIENT_WALLET_DIRECTORY}
+       ${CLIENT_WALLET_DIRECTORY_TNS}
 
   2. Use the hrdb_client alias from tnsnames-client-snippet.ora, or add this
      line to the SECURITY section of your existing hrdb alias:
 
-       (MY_WALLET_DIRECTORY = ${CLIENT_WALLET_DIRECTORY})
+       (MY_WALLET_DIRECTORY = ${CLIENT_WALLET_DIRECTORY_NET})
 
   3. Keep SSL_SERVER_DN_MATCH=YES.
 
@@ -263,7 +281,7 @@ Example sqlnet.ora:
     (SOURCE =
       (METHOD = FILE)
       (METHOD_DATA =
-        (DIRECTORY = ${CLIENT_WALLET_DIRECTORY})
+        (DIRECTORY = ${CLIENT_WALLET_DIRECTORY_NET})
       )
     )
 

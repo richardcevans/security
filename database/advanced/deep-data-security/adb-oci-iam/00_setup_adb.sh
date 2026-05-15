@@ -344,6 +344,25 @@ create_or_reuse_db_resource_app() {
   printf '%s' "$app_id"
 }
 
+configure_db_resource_app() {
+  local app_id="$1"
+  local secret="${2:-}"
+
+  domain_cmd app patch \
+    --app-id "$app_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations "[{\"op\":\"replace\",\"path\":\"isOAuthClient\",\"value\":true},{\"op\":\"replace\",\"path\":\"isOAuthResource\",\"value\":true},{\"op\":\"replace\",\"path\":\"clientType\",\"value\":\"confidential\"},{\"op\":\"replace\",\"path\":\"audience\",\"value\":\"${OCI_DB_AUDIENCE}\"},{\"op\":\"replace\",\"path\":\"scopes\",\"value\":[{\"value\":\"${OCI_DB_SCOPE_VALUE}\",\"displayName\":\"DB Access\",\"description\":\"Access the ADB lab database\",\"requiresConsent\":false}]},{\"op\":\"replace\",\"path\":\"allowedGrants\",\"value\":[\"client_credentials\"]},{\"op\":\"replace\",\"path\":\"bypassConsent\",\"value\":true}]" \
+    >/dev/null
+
+  if [ -n "$secret" ]; then
+    domain_cmd app patch \
+      --app-id "$app_id" \
+      --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+      --operations "[{\"op\":\"replace\",\"path\":\"clientSecret\",\"value\":\"${secret}\"}]" \
+      >/dev/null
+  fi
+}
+
 configure_public_client_app() {
   local app_id="$1"
   local redirect_json
@@ -434,13 +453,15 @@ setup_oauth_apps() {
   echo -e "${CYAN}  OCI_REDIRECT_URIS = ${OCI_REDIRECT_URIS}${NC}"
 
   OCI_DB_APP_ID=$(create_or_reuse_db_resource_app)
+  configure_db_resource_app "$OCI_DB_APP_ID"
   OCI_DB_CLIENT_ID=$(get_domain_app_field "$OCI_DB_APP_ID" client_id)
   if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
     OCI_DB_CLIENT_SECRET=$(get_domain_app_field "$OCI_DB_APP_ID" client_secret)
   fi
   if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
-    echo -e "${CYAN}  Resetting DB resource app secret for database-side OAuth validation...${NC}"
-    OCI_DB_CLIENT_SECRET=$(regenerate_app_client_secret "$OCI_DB_APP_ID")
+    echo -e "${CYAN}  Setting DB resource app secret for database-side OAuth validation...${NC}"
+    OCI_DB_CLIENT_SECRET=$(generate_secret)
+    configure_db_resource_app "$OCI_DB_APP_ID" "$OCI_DB_CLIENT_SECRET"
   fi
   OCI_CLIENT_APP_ID=$(create_or_reuse_public_client_app)
   OCI_CLIENT_ID=$(get_domain_app_field "$OCI_CLIENT_APP_ID" client_id)

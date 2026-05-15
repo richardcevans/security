@@ -169,6 +169,7 @@ This script creates or reuses:
 
 - OCI IAM OAuth resource app and public client app named with `DB_NAME`
 - OAuth database access scope named with `DB_NAME`
+- Database-side OCI IAM OAuth credential for the resource app
 - Access-token group custom claim used by `IAM_OAUTH_GROUP=...`
 - ADB-S database: `deepsec1`
 - ADB wallet: `$HOME/adb_wallet/deepsec1`
@@ -196,6 +197,11 @@ BEGIN
 END;
 /
 ```
+
+The script also sets `identity_provider_oauth_config` to the DB resource app
+created by Task 0 and creates the database-side `OCI_IAM_DOMAIN_DB_CRED$`
+credential. The client does not use this secret; SQL*Plus only reads the OAuth2
+access token from `TOKEN_LOCATION`.
 
 ## 3. Create the HR Schema
 

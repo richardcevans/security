@@ -218,8 +218,7 @@ class WebHrDatabase(object):
                    action_name,
                    object_schema,
                    object_name,
-                   return_code,
-                   sql_text
+                   return_code
               FROM unified_audit_trail
              WHERE object_schema = 'HR'
                AND object_name = 'EMPLOYEES'
@@ -458,6 +457,8 @@ def _row_to_dict(columns, row):
         value = row[index]
         if hasattr(value, "read"):
             value = value.read()
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", "replace")
         elif hasattr(value, "isoformat"):
             value = value.isoformat()
         elif isinstance(value, Decimal):

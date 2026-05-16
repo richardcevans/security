@@ -99,6 +99,173 @@ class WebHrDatabase(object):
         print("")
         return payload
 
+    def preflight(self, user):
+        checks = []
+
+        def add(name, status, detail, evidence=None):
+            check = {
+                "name": name,
+                "status": status,
+                "detail": detail,
+            }
+            if evidence is not None:
+                check["evidence"] = evidence
+            checks.append(check)
+
+        def run(name, fn):
+            try:
+                detail, evidence = fn()
+                add(name, "pass", detail, evidence)
+            except Exception as exc:
+                add(name, "fail", str(exc))
+
+        required_env = [
+            "WEB_HR_TOKEN_URI",
+            "WEB_HR_APP_CLIENT_ID",
+            "WEB_HR_APP_CLIENT_SECRET",
+            "WEB_HR_DB_SCOPE",
+        ]
+        missing_env = [name for name in required_env if not os.getenv(name)]
+        if missing_env:
+            add("Required environment", "fail", "Missing {0}.".format(", ".join(missing_env)))
+        else:
+            add(
+                "Required environment",
+                "pass",
+                "Required Entra and database token settings are present.",
+                {
+                    "tns_alias": self.tns_alias,
+                    "db_scope": os.getenv("WEB_HR_DB_SCOPE"),
+                    "app_db_scope": os.getenv("WEB_HR_APP_DB_SCOPE", os.getenv("WEB_HR_DB_SCOPE")),
+                },
+            )
+
+        config_dir = os.getenv("WEB_HR_CONFIG_DIR") or os.getenv("TNS_ADMIN")
+        wallet_location = os.getenv("WEB_HR_WALLET_LOCATION")
+        if config_dir:
+            status = "pass" if os.path.isdir(config_dir) else "fail"
+            add("Oracle network config", status, "Config directory: {0}".format(config_dir))
+        else:
+            add("Oracle network config", "warn", "WEB_HR_CONFIG_DIR/TNS_ADMIN is not set; relying on default Oracle lookup.")
+        if wallet_location:
+            status = "pass" if os.path.isdir(wallet_location) else "fail"
+            add("Client wallet", status, "Wallet directory: {0}".format(wallet_location))
+        else:
+            add("Client wallet", "warn", "WEB_HR_WALLET_LOCATION is not set; the TNS alias must resolve wallet settings.")
+
+        if self.mode != "oracledb":
+            add("Database mode", "warn", "WEB_HR_DB_MODE is {0}; database checks are skipped.".format(self.mode))
+            return {
+                "mode": self.mode,
+                "checks": checks,
+                "summary": _preflight_summary(checks),
+            }
+
+        def driver_check():
+            import oracledb
+            import oracledb.plugins.end_user_sec_provider  # noqa: F401
+
+            if not hasattr(oracledb, "create_end_user_security_context"):
+                raise RuntimeError("python-oracledb does not expose create_end_user_security_context.")
+            return (
+                "python-oracledb exposes Deep Data Security APIs.",
+                {"oracledb_version": getattr(oracledb, "__version__", "unknown")},
+            )
+
+        run("Python driver", driver_check)
+
+        def app_token_check():
+            token = self._application_access_token()
+            claims = public_claims(decode_jwt_without_validation(token))
+            return "Application database token acquired.", {
+                "aud": claims.get("aud"),
+                "appid": claims.get("appid"),
+                "roles": claims.get("roles", []),
+                "scp": claims.get("scp"),
+            }
+
+        run("Application token", app_token_check)
+
+        def user_token_check():
+            token = self._database_access_token_for_user(user["access_token"])
+            claims = public_claims(decode_jwt_without_validation(token))
+            return "On-behalf-of database token acquired for {0}.".format(user["username"]), {
+                "aud": claims.get("aud"),
+                "upn": claims.get("upn"),
+                "roles": claims.get("roles", []),
+                "scp": claims.get("scp"),
+            }
+
+        run("End-user database token", user_token_check)
+
+        def app_connection_check():
+            row = self._run_app_query(
+                """
+                SELECT SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                       SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
+                       SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user
+                  FROM dual
+                """,
+                fetch="one",
+            )
+            return "Application token can acquire a pooled database connection.", row
+
+        run("Pooled app connection", app_connection_check)
+
+        def context_check():
+            result = self._run_with_context(
+                user,
+                None,
+                """
+                SELECT ORA_END_USER_CONTEXT.username AS username,
+                       SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method
+                  FROM dual
+                """,
+                fetch="one",
+            )
+            return "Application can create and attach an end-user security context.", result
+
+        run("End-user security context", context_check)
+
+        def role_check():
+            roles = self._run_with_context(
+                user,
+                None,
+                "SELECT role_name FROM v$end_user_data_role ORDER BY role_name",
+                fetch="rows",
+            )
+            return "Database mapped token roles to active Deep Data Security data roles.", {
+                "active_data_roles": [row.get("ROLE_NAME") for row in roles],
+            }
+
+        run("Token role mapping", role_check)
+
+        def elevation_check():
+            result = self._run_with_context(
+                user,
+                ["HRAPP_COMPENSATION_ANALYST"],
+                "SELECT COUNT(*) AS visible_rows FROM hr.employees",
+                fetch="one",
+            )
+            return "Application can request HRAPP_COMPENSATION_ANALYST for one elevated action.", result
+
+        run("Application elevation role", elevation_check)
+
+        def audit_check():
+            result = self._run_app_query(
+                "SELECT COUNT(*) AS sample_rows FROM unified_audit_trail WHERE ROWNUM <= 1",
+                fetch="one",
+            )
+            return "Application can read Unified Audit Trail through AUDIT_VIEWER.", result
+
+        run("Audit visibility", audit_check)
+
+        return {
+            "mode": "oracledb",
+            "checks": checks,
+            "summary": _preflight_summary(checks),
+        }
+
     def _employees_mock(self, user):
         username = user["username"].lower()
         is_manager = "MANAGERS" in user.get("roles", [])
@@ -464,3 +631,12 @@ def _row_to_dict(columns, row):
             value = int(value) if value == value.to_integral_value() else float(value)
         result[column] = value
     return result
+
+
+def _preflight_summary(checks):
+    counts = {"pass": 0, "warn": 0, "fail": 0}
+    for check in checks:
+        status = check.get("status")
+        if status in counts:
+            counts[status] += 1
+    return counts

@@ -4,6 +4,70 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env}"
 ENV_FILE="${SCRIPT_DIR}/.web-hr-app.env"
+PUBLIC_IP_REDIRECT=1
+LOCALHOST_REDIRECT=0
+REDIRECT_URI_ARG=""
+REDIRECT_MODE_EXPLICIT=0
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ./00_setup_entra_web_app.sh [options]
+
+Options:
+  --localhost
+      Use http://localhost:${WEB_HR_PORT:-8012}/callback as the Entra redirect URI.
+      Use this only when the browser runs on the DBSec-Lab VM itself.
+
+  --public-ip
+      Discover this OCI VM public IP from instance metadata and use
+      http://<public-ip>:${WEB_HR_PORT:-8012}/callback as the Entra redirect URI.
+      Also writes WEB_HR_HOST=0.0.0.0 to .web-hr-app.env.
+
+  --redirect-uri URI
+      Use an explicit redirect URI such as http://203.0.113.10:8012/callback.
+
+  -h, --help
+      Show this help.
+
+By default, this script uses --public-ip because most workshop users open the app
+from a browser outside the VM.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --localhost)
+      LOCALHOST_REDIRECT=1
+      PUBLIC_IP_REDIRECT=0
+      REDIRECT_MODE_EXPLICIT=1
+      ;;
+    --public-ip)
+      PUBLIC_IP_REDIRECT=1
+      LOCALHOST_REDIRECT=0
+      REDIRECT_MODE_EXPLICIT=1
+      ;;
+    --redirect-uri)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "ERROR: --redirect-uri requires a value."
+        exit 1
+      fi
+      REDIRECT_URI_ARG="$1"
+      REDIRECT_MODE_EXPLICIT=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "ERROR: Unknown option: $1"
+      usage
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 if [ -f "$ENTRA_LAB_ENV" ]; then
   # shellcheck disable=SC1090
@@ -23,8 +87,58 @@ fi
 : "${APP_ID_URI:?APP_ID_URI is required from entra-id-data-grants}"
 : "${PDB_NAME:?PDB_NAME is required from entra-id-data-grants}"
 
+discover_public_ip() {
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "ERROR: curl is required for --public-ip discovery." >&2
+    return 1
+  fi
+
+  curl -fsS --connect-timeout 3 http://169.254.169.254/opc/v1/vnics/ \
+    | python3 -c '
+import json, sys
+vnics = json.load(sys.stdin)
+for vnic in vnics:
+    public_ip = vnic.get("publicIp")
+    if public_ip:
+        print(public_ip)
+        break
+'
+}
+
 WEB_HR_APP_NAME="${WEB_HR_APP_NAME:-Web HR App - ${PDB_NAME}}"
-WEB_HR_REDIRECT_URI="${WEB_HR_REDIRECT_URI:-http://localhost:8012/callback}"
+WEB_HR_PORT="${WEB_HR_PORT:-8012}"
+WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST:-}"
+if [ -n "${WEB_HR_REDIRECT_URI:-}" ] && [ "$REDIRECT_MODE_EXPLICIT" -eq 0 ]; then
+  unset WEB_HR_REDIRECT_URI
+fi
+
+if [ -n "$REDIRECT_URI_ARG" ]; then
+  WEB_HR_REDIRECT_URI="$REDIRECT_URI_ARG"
+  PUBLIC_IP_REDIRECT=0
+  case "$WEB_HR_REDIRECT_URI" in
+    http://localhost:*|http://127.0.0.1:*)
+      WEB_HR_HOST_TO_WRITE=""
+      ;;
+    *)
+      WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST_TO_WRITE:-0.0.0.0}"
+      ;;
+  esac
+elif [ "$PUBLIC_IP_REDIRECT" -eq 1 ]; then
+  public_ip="$(discover_public_ip)"
+  if [ -z "$public_ip" ]; then
+    echo "ERROR: Could not discover a public IP from OCI instance metadata."
+    echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:${WEB_HR_PORT}/callback"
+    echo "       Or use local-only mode: ./00_setup_entra_web_app.sh --localhost"
+    exit 1
+  fi
+  WEB_HR_REDIRECT_URI="http://${public_ip}:${WEB_HR_PORT}/callback"
+  WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST_TO_WRITE:-0.0.0.0}"
+elif [ "$LOCALHOST_REDIRECT" -eq 1 ]; then
+  WEB_HR_REDIRECT_URI="http://localhost:${WEB_HR_PORT}/callback"
+  WEB_HR_HOST_TO_WRITE=""
+else
+  WEB_HR_REDIRECT_URI="${WEB_HR_REDIRECT_URI:-http://localhost:${WEB_HR_PORT}/callback}"
+fi
 WEB_HR_USER_SCOPE_VALUE="${WEB_HR_USER_SCOPE_VALUE:-user_access}"
 WEB_HR_DB_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 WEB_HR_DB_SCOPE="${APP_ID_URI}/${WEB_HR_DB_SCOPE_VALUE}"
@@ -71,6 +185,7 @@ echo "Using existing database app:"
 echo "  APP_ID      = ${APP_ID}"
 echo "  APP_ID_URI  = ${APP_ID_URI}"
 echo "  TENANT_ID   = ${TENANT_ID}"
+echo "  REDIRECT    = ${WEB_HR_REDIRECT_URI}"
 echo
 
 db_app_full=$(az ad app show --id "$APP_ID" -o json)
@@ -95,6 +210,11 @@ if [ -z "$app_client_id" ]; then
   echo "Created Web HR App: ${app_client_id}"
 else
   echo "Reusing Web HR App: ${app_client_id}"
+  echo "Updating Web HR App configuration:"
+  echo "  Redirect URI             = ${WEB_HR_REDIRECT_URI}"
+  echo "  Identifier URI           = api://${app_client_id}"
+  echo "  User delegated scope     = ${WEB_HR_USER_SCOPE_VALUE}"
+  echo "  Database delegated scope = ${WEB_HR_DB_SCOPE}"
 fi
 ensure_service_principal "$app_client_id"
 
@@ -175,10 +295,19 @@ export WEB_HR_APP_DB_SCOPE='${APP_ID_URI}/.default'
 export WEB_HR_TOKEN_URI='${WEB_HR_TOKEN_URI}'
 export WEB_HR_AUTH_URI='${WEB_HR_AUTH_URI}'
 EOF
+if [ -n "$WEB_HR_HOST_TO_WRITE" ]; then
+  cat >> "$ENV_FILE" <<EOF
+export WEB_HR_HOST='${WEB_HR_HOST_TO_WRITE}'
+EOF
+fi
 chmod 600 "$ENV_FILE"
 
 echo
 echo "Saved: ${ENV_FILE}"
 echo "Next:"
 echo "source ./.web-hr-app.env"
-echo "./01_configure_database_app_identity.sh"
+if [ "$PUBLIC_IP_REDIRECT" -eq 1 ] || [ -n "$REDIRECT_URI_ARG" ]; then
+  echo "./run.sh"
+else
+  echo "./01_configure_database_app_identity.sh"
+fi

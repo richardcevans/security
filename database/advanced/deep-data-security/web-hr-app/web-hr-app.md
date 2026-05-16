@@ -23,7 +23,8 @@ The app uses the existing HR schema, Entra database resource app, app roles, and
 - A disabled local data role, `HRAPP_COMPENSATION_ANALYST`, granted to the application identity.
 - A Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`.
 - A demo-only DBA policy toggle that can remove and restore manager salary update rights without changing application code.
-- A small web app that can show pooled identity context, normal user access, blocked edit attempts, audit records, and an elevated salary-summary action.
+- A Diagnostics page with token-flow visualization, pooled connection context, database context, and a one-button preflight check.
+- A small web app that can show normal user access, blocked edit attempts, audit records, DBA policy changes, and an elevated salary-summary action.
 
 ## Task 0: Download web-hr-app.zip file to local directory
 
@@ -75,6 +76,30 @@ Create or reuse the Web HR App Entra application:
 ./00_setup_entra_web_app.sh
 ```
 
+By default, the setup script configures the app for a remote browser. It discovers the OCI VM public IP, uses that public callback for the Entra redirect URI, and writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`:
+
+```bash
+./00_setup_entra_web_app.sh
+```
+
+You can also request the public behavior explicitly:
+
+```bash
+./00_setup_entra_web_app.sh --public-ip
+```
+
+If public IP discovery is not available, pass the callback explicitly:
+
+```bash
+./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:8012/callback
+```
+
+For a local-only browser on the DBSec-Lab VM, use:
+
+```bash
+./00_setup_entra_web_app.sh --localhost
+```
+
 This script sources the existing `entra-id-data-grants` environment file and creates:
 
 ```text
@@ -84,6 +109,8 @@ Web HR App - ${PDB_NAME}
 It grants the app delegated access to the existing database app scope and creates a client secret for client-credentials database tokens.
 
 If browser sign-in redirects back to `/callback` with a token exchange error such as `HTTP 401: Unauthorized`, restart `./run.sh` after running this setup script. The app must load `WEB_HR_APP_CLIENT_SECRET` from `.web-hr-app.env` before it can exchange the authorization code for tokens.
+
+If a remote browser is redirected to `http://localhost:8012/callback`, rerun the setup script with the default public behavior or `--redirect-uri`, then restart `./run.sh`. The browser must use the same host that is stored in `WEB_HR_REDIRECT_URI`.
 
 ## Configure Database Application Identity
 
@@ -150,6 +177,14 @@ Open:
 http://127.0.0.1:8012
 ```
 
+With the default public setup, open it from your workstation at:
+
+```text
+http://<public-ip>:8012
+```
+
+The default public setup writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`, so `./run.sh` listens on the VM public interface after that environment file is sourced.
+
 Real database mode requires a current python-oracledb version with Deep Data Security support:
 
 ```bash
@@ -180,6 +215,53 @@ To compare the web app token flow with `sqlplus /@hrdb`, sign in to the web app 
 http://127.0.0.1:8012/debug
 ```
 
+## Use The Diagnostics Page
+
+The Diagnostics page is designed to help developers and DBAs discuss the same request from different angles.
+
+Click **Run Preflight** before a live demo. The preflight check verifies the pieces that most often cause demo failures:
+
+- Required environment variables from `.web-hr-app.env`
+- Oracle Net configuration and wallet location
+- python-oracledb Deep Data Security API support
+- Application database token acquisition
+- On-behalf-of database token acquisition for the signed-in user
+- Pooled application database connection
+- End user security context creation
+- Entra token role mapping to active Deep Data Security data roles
+- Application-requested elevation with `HRAPP_COMPENSATION_ANALYST`
+- Unified Audit Trail visibility through `AUDIT_VIEWER`
+
+For developers, the important point is that the app does not implement row or column security rules in Python or JavaScript. The app:
+
+1. Receives a browser-authenticated Entra user.
+2. Exchanges the user token for a database-scoped token using OAuth 2.0 on-behalf-of.
+3. Borrows a pooled database connection authenticated as the application identity.
+4. Calls `oracledb.create_end_user_security_context(...)`.
+5. Calls `connection.set_end_user_security_context(...)`.
+6. Runs ordinary SQL against `HR.EMPLOYEES`.
+7. Clears the end user security context before returning the connection to the pool.
+
+The **Token Flow** panel shows this path visually:
+
+```text
+Browser sign-in token
+  -> Web app API token
+  -> OBO database token
+  -> Oracle Deep Data Security active data roles
+```
+
+The browser token proves who signed in to the web app. The database token has the database audience and role claims such as `EMPLOYEES` and `MANAGERS`. Oracle maps those claims to Deep Data Security data roles, and the active data roles are visible in the Diagnostics page.
+
+For DBAs, the important point is that authorization remains in the database. The web app can show what Oracle decided, but it does not become the enforcement point. The main page demonstrates:
+
+- Row visibility and column masking from Deep Data Security data grants.
+- `ORA_IS_COLUMN_AUTHORIZED(ssn)` to distinguish a masked SSN from a real `NULL`.
+- `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', column_name)` to decide whether the UI should render a field as editable.
+- Ordinary `UPDATE hr.employees ...` statements for edits; Oracle still allows or blocks the change.
+- Unified Audit records showing `END_USER_NAME`, even though the physical database session is the pooled application user.
+- A DBA policy toggle that removes and restores `UPDATE(salary)` without changing application code.
+
 The token endpoint is also available directly:
 
 ```text
@@ -197,6 +279,14 @@ http://127.0.0.1:8012/api/debug/database-context
 ```
 
 For Marvin, this should show `USERNAME` as Marvin's Entra username and active data roles `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`.
+
+The preflight endpoint is also available directly:
+
+```text
+http://127.0.0.1:8012/api/preflight
+```
+
+This endpoint returns pass, warn, and fail checks as JSON. It is useful when the UI cannot complete a request and you want to quickly identify whether the issue is Entra configuration, token exchange, wallet/TNS configuration, driver support, database grants, application elevation, or audit visibility.
 
 In real mode the application:
 
@@ -235,7 +325,9 @@ web-hr-app/
     identity.py
     static/
       index.html
+      debug.html
       app.js
+      debug.js
       styles.css
   run.sh
   .env.example

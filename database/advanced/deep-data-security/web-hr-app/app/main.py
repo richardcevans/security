@@ -114,6 +114,13 @@ class Handler(BaseHTTPRequestHandler):
             self._call_database(lambda: DATABASE.debug_context_for_user(user))
             return
 
+        if path == "/api/preflight":
+            user = self._require_user()
+            if not user:
+                return
+            self._call_database(lambda: DATABASE.preflight(user))
+            return
+
         if path == "/api/employees":
             user = self._require_user()
             if not user:

@@ -5,9 +5,15 @@ const raw = document.querySelector("#raw");
 const employeesButton = document.querySelector("#employeesButton");
 const summaryButton = document.querySelector("#summaryButton");
 const modeBanner = document.querySelector("#modeBanner");
+const tokensButton = document.querySelector("#tokensButton");
+const contextButton = document.querySelector("#contextButton");
+const tokenDebug = document.querySelector("#tokenDebug");
+const contextDebug = document.querySelector("#contextDebug");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
+tokensButton.addEventListener("click", loadTokenDebug);
+contextButton.addEventListener("click", loadContextDebug);
 
 async function refreshConfig() {
   const response = await fetch("/config");
@@ -35,10 +41,14 @@ async function refreshPage() {
   await refreshConfig();
   const user = await refreshUser();
   if (user) {
-    await loadEmployees();
+    await loadTokenDebug();
+    await loadContextDebug();
+    raw.textContent = "Use Load Employees to run the HR.EMPLOYEES query.";
     return;
   }
   raw.textContent = "Sign in before loading employee data.";
+  tokenDebug.textContent = "Sign in to view token claims.";
+  contextDebug.textContent = "Sign in to view database context.";
 }
 
 async function loadEmployees() {
@@ -70,11 +80,35 @@ async function loadSummary() {
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
-async function getJson(url) {
+async function loadTokenDebug() {
+  tokenDebug.textContent = "Loading token claims...";
+  try {
+    const payload = await getJson("/api/debug/tokens", tokenDebug);
+    tokenDebug.textContent = JSON.stringify(payload, null, 2);
+  } catch (error) {
+    if (!tokenDebug.textContent) {
+      tokenDebug.textContent = String(error.stack || error);
+    }
+  }
+}
+
+async function loadContextDebug() {
+  contextDebug.textContent = "Loading database context...";
+  try {
+    const payload = await getJson("/api/debug/database-context", contextDebug);
+    contextDebug.textContent = JSON.stringify(payload, null, 2);
+  } catch (error) {
+    if (!contextDebug.textContent) {
+      contextDebug.textContent = String(error.stack || error);
+    }
+  }
+}
+
+async function getJson(url, outputElement = raw) {
   const response = await fetch(url);
   const payload = await response.json();
   if (!response.ok) {
-    raw.textContent = JSON.stringify(payload, null, 2);
+    outputElement.textContent = JSON.stringify(payload, null, 2);
     throw new Error(payload.error || "Request failed");
   }
   return payload;

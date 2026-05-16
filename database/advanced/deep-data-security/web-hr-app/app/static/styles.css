@@ -103,12 +103,17 @@ h2 {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
   font-size: 14px;
 }
 
 .debug-links a {
   color: var(--accent-dark);
   text-decoration: underline;
+}
+
+.debug-grid {
+  grid-template-columns: 1fr 1fr;
 }
 
 .button,

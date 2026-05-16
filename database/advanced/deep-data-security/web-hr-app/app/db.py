@@ -136,7 +136,7 @@ class WebHrDatabase(object):
             "data_roles": ["HRAPP_COMPENSATION_ANALYST"],
             "average_salary": row.get("AVERAGE_SALARY"),
             "employee_count": row.get("EMPLOYEE_COUNT"),
-            "note": "Oracle allowed this only because the data role is granted to the application identity.",
+            "note": "Oracle allowed this only because the data role is granted through the pooled user's database role.",
         }
 
     def _pool_oracle(self):

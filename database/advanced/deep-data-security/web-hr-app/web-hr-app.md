@@ -20,7 +20,7 @@ The app uses the existing HR schema, Entra database resource app, app roles, and
 - A client secret for the app to get database access tokens with the client credentials flow.
 - A database application user mapped to the Entra web app client ID.
 - An Oracle application identity mapped to the same Entra client ID.
-- A disabled data role, `HRAPP_COMPENSATION_ANALYST`, granted to the application identity.
+- A disabled data role, `HRAPP_COMPENSATION_ANALYST`, granted through a database role used by the pooled application user.
 - A small web app that can show normal user access and an elevated salary-summary action.
 
 ## Task 0: Download web-hr-app.zip file to local directory
@@ -109,10 +109,12 @@ CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=<web-hr-app-client-id>';
 
 CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
-GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
+CREATE ROLE web_hr_app_elevation_role;
+GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app_elevation_role;
+GRANT web_hr_app_elevation_role TO web_hr_app_user;
 ```
 
-The disabled role is not automatically active for all requests. The application must explicitly request it for the salary-summary action.
+The disabled role is not automatically active for all requests. The application must explicitly request it for the salary-summary action. Marvin's normal `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS` roles still come from the database-scoped Entra token; they are not manually requested by the app.
 
 ## Run The Web App
 
@@ -186,7 +188,7 @@ For elevation, the salary-summary request sets:
 data_roles = ["HRAPP_COMPENSATION_ANALYST"]
 ```
 
-Oracle accepts that role only because it was granted to the application identity.
+Oracle accepts that role only because it was granted through `WEB_HR_APP_ELEVATION_ROLE` to the pooled application user.
 
 ## Files
 

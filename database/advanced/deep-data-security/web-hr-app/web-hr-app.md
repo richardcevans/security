@@ -109,8 +109,6 @@ CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=<web-hr-app-client-id>';
 
 CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
-GRANT DATA ROLE hrapp_employees TO web_hr_app;
-GRANT DATA ROLE hrapp_managers TO web_hr_app;
 GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 ```
 

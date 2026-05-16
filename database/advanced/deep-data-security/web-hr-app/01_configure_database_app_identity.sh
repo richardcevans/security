@@ -84,8 +84,6 @@ prompt ========================================================================
 
 CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
 
-GRANT DATA ROLE hrapp_employees TO web_hr_app;
-GRANT DATA ROLE hrapp_managers TO web_hr_app;
 GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 
 prompt
@@ -116,7 +114,7 @@ col grantee_type format a20
 SELECT grantee, grantee_type, data_role
   FROM dba_data_role_grants
  WHERE grantee = 'WEB_HR_APP'
-   AND data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS', 'HRAPP_COMPENSATION_ANALYST')
+   AND data_role = 'HRAPP_COMPENSATION_ANALYST'
  ORDER BY data_role;
 
 col grant_name format a36

@@ -130,7 +130,7 @@ class WebHrDatabase(object):
             "min": 1,
             "max": 4,
             "increment": 1,
-            "access_token": lambda: self._application_access_token(),
+            "access_token": self._application_access_token,
         }
 
         config_dir = os.getenv("WEB_HR_CONFIG_DIR") or os.getenv("TNS_ADMIN")
@@ -146,7 +146,7 @@ class WebHrDatabase(object):
         self._pool = oracledb.create_pool(**pool_kwargs)
         return self._pool
 
-    def _application_access_token(self):
+    def _application_access_token(self, *args):
         body = urlencode(
             {
                 "grant_type": "client_credentials",

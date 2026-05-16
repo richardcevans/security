@@ -37,6 +37,7 @@ def app_config():
 
 def new_login():
     config = app_config()
+    _require_login_config(config)
     state = uuid.uuid4().hex
     verifier = _base64url(os.urandom(48))
     challenge = _base64url(hashlib.sha256(verifier.encode("ascii")).digest())
@@ -63,6 +64,7 @@ def finish_login(state, code):
         raise RuntimeError("Login session expired or was not found.")
 
     config = app_config()
+    _require_login_config(config)
     body = urlencode(
         {
             "grant_type": "authorization_code",
@@ -179,3 +181,17 @@ def decode_jwt_without_validation(token):
 def _base64url(value):
     return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
+
+def _require_login_config(config):
+    missing = []
+    for key in ("tenant_id", "client_id", "redirect_uri", "user_scope"):
+        if not config.get(key):
+            missing.append(key)
+    if missing:
+        raise RuntimeError(
+            "Microsoft Entra login is not configured. Missing: {0}. "
+            "Run ./00_setup_entra_web_app.sh, then restart ./run.sh. "
+            "For a quick local demo, use Demo Marvin or Demo Emma.".format(
+                ", ".join(missing)
+            )
+        )

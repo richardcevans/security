@@ -45,7 +45,10 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/login":
-            self._redirect(new_login())
+            try:
+                self._redirect(new_login())
+            except Exception as exc:
+                self._send_text(str(exc), HTTPStatus.BAD_REQUEST)
             return
 
         if path == "/demo/marvin":
@@ -195,4 +198,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

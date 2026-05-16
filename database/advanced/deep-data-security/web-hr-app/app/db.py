@@ -214,7 +214,6 @@ class WebHrDatabase(object):
             SELECT event_timestamp,
                    dbusername,
                    end_user_name,
-                   end_user_security_context_id,
                    action_name,
                    object_schema,
                    object_name,

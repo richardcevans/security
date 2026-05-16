@@ -21,7 +21,9 @@ The app uses the existing HR schema, Entra database resource app, app roles, and
 - A database application user mapped to the Entra web app client ID.
 - An Oracle application identity mapped to the same Entra client ID.
 - A disabled local data role, `HRAPP_COMPENSATION_ANALYST`, granted to the application identity.
-- A small web app that can show normal user access and an elevated salary-summary action.
+- A Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`.
+- A demo-only DBA policy toggle that can remove and restore manager salary update rights without changing application code.
+- A small web app that can show pooled identity context, normal user access, blocked edit attempts, audit records, and an elevated salary-summary action.
 
 ## Task 0: Download web-hr-app.zip file to local directory
 
@@ -114,6 +116,26 @@ GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 
 The disabled role is not automatically active for all requests. The application must explicitly request it for the salary-summary action. Marvin's normal `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS` roles still come from the database-scoped Entra token; they are not manually requested by the app.
 
+## Configure Auditing
+
+Create a Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`:
+
+```bash
+./04_configure_auditing.sh
+```
+
+The policy audits app activity on `HR.EMPLOYEES`. The app's audit panel queries `UNIFIED_AUDIT_TRAIL` and shows `END_USER_NAME`, so DBAs can see whether Marvin or Emma performed the operation even though the app uses pooled database connections.
+
+## Configure DBA Policy Toggle Demo
+
+Create two demo-only DBA procedures that can recreate the manager data grant with or without `UPDATE(salary)`:
+
+```bash
+./05_configure_policy_toggle_demo.sh
+```
+
+The web app buttons call these procedures to demonstrate a DBA policy change. When salary updates are disabled, the app code does not change; the next employee query asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again, and salary cells stop rendering as editable.
+
 ## Run The Web App
 
 Mock mode needs no dependencies:
@@ -186,7 +208,8 @@ In real mode the application:
 6. Runs the normal employee query.
 7. Uses `ORA_IS_COLUMN_AUTHORIZED` and `ORA_CHECK_DATA_PRIVILEGE` in the SQL query to show masked values and decide which cells the UI renders as editable.
 8. Sends ordinary `UPDATE hr.employees ...` statements for edits. Deep Data Security still enforces whether the row and column can be changed.
-9. Clears the end user security context before returning the connection to the pool.
+9. Displays `UNIFIED_AUDIT_TRAIL.END_USER_NAME` for audited `SELECT` and `UPDATE` actions on `HR.EMPLOYEES`.
+10. Clears the end user security context before returning the connection to the pool.
 
 For elevation, the salary-summary request sets:
 
@@ -203,6 +226,8 @@ web-hr-app/
   00_setup_entra_web_app.sh
   01_configure_database_app_identity.sh
   02_verify_application_identity.sh
+  04_configure_auditing.sh
+  05_configure_policy_toggle_demo.sh
   setup_python_oracledb.sh
   app/
     main.py

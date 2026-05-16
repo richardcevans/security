@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from app.identity import decode_jwt_without_validation, public_claims
 from urllib.parse import urlencode
 from urllib.error import HTTPError
@@ -25,6 +26,29 @@ class WebHrDatabase(object):
         if self.mode == "oracledb":
             return self._update_employee_field_oracle(user, employee_id, field_name, value)
         return self._update_employee_field_mock(user, employee_id, field_name, value)
+
+    def audit_events(self, user):
+        if self.mode == "oracledb":
+            return self._audit_events_oracle()
+        return {
+            "mode": "mock",
+            "events": [],
+            "note": "Audit events are available in oracledb mode after running 04_configure_auditing.sh.",
+        }
+
+    def disable_salary_updates(self, user):
+        if self.mode == "oracledb":
+            return self._set_salary_update_policy_oracle(user, enabled=False)
+        payload = self._employees_mock(user)
+        payload["policy_change"] = "Mock mode: salary updates disabled."
+        return payload
+
+    def enable_salary_updates(self, user):
+        if self.mode == "oracledb":
+            return self._set_salary_update_policy_oracle(user, enabled=True)
+        payload = self._employees_mock(user)
+        payload["policy_change"] = "Mock mode: salary updates enabled."
+        return payload
 
     def debug_tokens_for_user(self, user):
         if self.mode != "oracledb":
@@ -93,6 +117,11 @@ class WebHrDatabase(object):
             "user": user["username"],
             "elevated": False,
             "rows": rows,
+            "request_context": {
+                "pooled_connection": "mock",
+                "end_user": user["username"],
+                "active_data_roles": user.get("roles", []),
+            },
             "note": "Normal request. No application elevation role was requested.",
         }
 
@@ -134,12 +163,13 @@ class WebHrDatabase(object):
               FROM hr.employees emp
              ORDER BY employee_id
         """
-        rows = self._run_with_context(user, None, sql, fetch="rows")
+        result = self._run_with_context(user, None, sql, fetch="rows", include_context=True)
         return {
             "mode": "oracledb",
             "user": user["username"],
             "elevated": False,
-            "rows": rows,
+            "rows": result["data"],
+            "request_context": result["request_context"],
             "note": "Oracle enforced visible rows and columns using the end user security context.",
         }
 
@@ -177,6 +207,43 @@ class WebHrDatabase(object):
         }
         if row_count == 0:
             payload["note"] = "No rows were updated. Deep Data Security did not authorize that edit for the current end user."
+        return payload
+
+    def _audit_events_oracle(self):
+        sql = """
+            SELECT event_timestamp,
+                   dbusername,
+                   end_user_name,
+                   end_user_security_context_id,
+                   action_name,
+                   object_schema,
+                   object_name,
+                   return_code,
+                   sql_text
+              FROM unified_audit_trail
+             WHERE object_schema = 'HR'
+               AND object_name = 'EMPLOYEES'
+               AND action_name IN ('SELECT', 'UPDATE')
+             ORDER BY event_timestamp DESC
+             FETCH FIRST 20 ROWS ONLY
+        """
+        rows = self._run_app_query(sql, fetch="rows")
+        return {
+            "mode": "oracledb",
+            "events": rows,
+            "note": "END_USER_NAME identifies the Deep Data Security end user on pooled app connections.",
+        }
+
+    def _set_salary_update_policy_oracle(self, user, enabled):
+        proc = "sys.web_hr_enable_salary_updates" if enabled else "sys.web_hr_disable_salary_updates"
+        self._run_app_query("BEGIN {0}; END;".format(proc), fetch="rowcount")
+        payload = self._employees_oracle(user)
+        payload["policy_change"] = (
+            "Manager salary updates enabled by recreating HR.HRAPP_MANAGER_ACCESS."
+            if enabled
+            else "Manager salary updates disabled by recreating HR.HRAPP_MANAGER_ACCESS without UPDATE(salary)."
+        )
+        payload["dba_demo_procedure"] = proc
         return payload
 
     def _salary_summary_oracle(self, user):
@@ -301,7 +368,7 @@ class WebHrDatabase(object):
             raise RuntimeError("Entra ID did not return an {0}.".format(token_name))
         return token
 
-    def _run_with_context(self, user, data_roles, sql, fetch, params=None):
+    def _run_with_context(self, user, data_roles, sql, fetch, params=None, include_context=False):
         import oracledb
 
         pool = self._pool_oracle()
@@ -327,13 +394,62 @@ class WebHrDatabase(object):
                 columns = [d[0] for d in cursor.description]
                 if fetch == "one":
                     row = cursor.fetchone()
-                    return _row_to_dict(columns, row) if row else None
-                return [_row_to_dict(columns, row) for row in cursor.fetchall()]
+                    data = _row_to_dict(columns, row) if row else None
+                    return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
+                data = [_row_to_dict(columns, row) for row in cursor.fetchall()]
+                return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
             finally:
                 cursor.close()
                 connection.clear_end_user_security_context()
         finally:
             pool.release(connection)
+
+    def _run_app_query(self, sql, fetch, params=None):
+        pool = self._pool_oracle()
+        connection = pool.acquire()
+        try:
+            cursor = connection.cursor()
+            try:
+                cursor.execute(sql, params or {})
+                if fetch == "rowcount":
+                    row_count = cursor.rowcount
+                    connection.commit()
+                    return row_count
+                columns = [d[0] for d in cursor.description]
+                if fetch == "one":
+                    row = cursor.fetchone()
+                    return _row_to_dict(columns, row) if row else None
+                return [_row_to_dict(columns, row) for row in cursor.fetchall()]
+            finally:
+                cursor.close()
+        finally:
+            pool.release(connection)
+
+    def _current_request_context(self, cursor):
+        identity_sql = """
+            SELECT SYS_CONTEXT('USERENV','SESSIONID') AS session_id,
+                   SYS_CONTEXT('USERENV','SERVICE_NAME') AS service_name,
+                   ORA_END_USER_CONTEXT.username AS end_user_name,
+                   SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                   SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
+                   SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
+                   SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user
+              FROM dual
+        """
+        cursor.execute(identity_sql)
+        columns = [d[0] for d in cursor.description]
+        identity = _row_to_dict(columns, cursor.fetchone())
+        cursor.execute("SELECT role_name FROM v$end_user_data_role ORDER BY role_name")
+        columns = [d[0] for d in cursor.description]
+        roles = [_row_to_dict(columns, row) for row in cursor.fetchall()]
+        return {
+            "pooled_connection": {
+                "session_id": identity.get("SESSION_ID"),
+                "service_name": identity.get("SERVICE_NAME"),
+            },
+            "identity": identity,
+            "active_data_roles": roles,
+        }
 
 
 def _row_to_dict(columns, row):
@@ -342,5 +458,9 @@ def _row_to_dict(columns, row):
         value = row[index]
         if hasattr(value, "read"):
             value = value.read()
+        elif hasattr(value, "isoformat"):
+            value = value.isoformat()
+        elif isinstance(value, Decimal):
+            value = int(value) if value == value.to_integral_value() else float(value)
         result[column] = value
     return result

@@ -73,6 +73,13 @@ h2 {
   gap: 8px;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .mode-banner {
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);
@@ -218,6 +225,25 @@ th {
   opacity: 0.75;
 }
 
+.readonly-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.attempt-button {
+  width: max-content;
+  min-height: 28px;
+  border-color: #a45700;
+  background: #fff8ed;
+  color: #6f3900;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.attempt-button:hover {
+  background: #ffe8c4;
+}
+
 .edit-chip {
   width: max-content;
   border-radius: 3px;
@@ -227,6 +253,10 @@ th {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
+}
+
+.audit-table {
+  min-width: 620px;
 }
 
 dl {

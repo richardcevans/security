@@ -128,6 +128,13 @@ class Handler(BaseHTTPRequestHandler):
             self._call_database(lambda: DATABASE.salary_summary(user))
             return
 
+        if path == "/api/audit/events":
+            user = self._require_user()
+            if not user:
+                return
+            self._call_database(lambda: DATABASE.audit_events(user))
+            return
+
         if path.startswith("/static/"):
             relative = path[len("/static/") :]
             self._send_static(relative)
@@ -152,6 +159,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"error": "invalid request", "detail": str(exc)}, HTTPStatus.BAD_REQUEST)
                 return
             self._call_database(lambda: DATABASE.update_employee_field(user, employee_id, field_name, value))
+            return
+
+        if path == "/api/policy/disable-salary-updates":
+            user = self._require_user()
+            if not user:
+                return
+            self._call_database(lambda: DATABASE.disable_salary_updates(user))
+            return
+
+        if path == "/api/policy/enable-salary-updates":
+            user = self._require_user()
+            if not user:
+                return
+            self._call_database(lambda: DATABASE.enable_salary_updates(user))
             return
 
         self._send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)

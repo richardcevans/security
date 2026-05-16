@@ -5,9 +5,17 @@ const raw = document.querySelector("#raw");
 const employeesButton = document.querySelector("#employeesButton");
 const summaryButton = document.querySelector("#summaryButton");
 const modeBanner = document.querySelector("#modeBanner");
+const requestContext = document.querySelector("#requestContext");
+const auditButton = document.querySelector("#auditButton");
+const auditRows = document.querySelector("#auditRows");
+const disableSalaryButton = document.querySelector("#disableSalaryButton");
+const enableSalaryButton = document.querySelector("#enableSalaryButton");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
+auditButton.addEventListener("click", loadAuditEvents);
+disableSalaryButton.addEventListener("click", disableSalaryEdits);
+enableSalaryButton.addEventListener("click", enableSalaryEdits);
 
 async function refreshConfig() {
   const response = await fetch("/config");
@@ -69,6 +77,7 @@ function showAuthenticationContextDemo(user) {
 async function loadEmployees() {
   const payload = await getJson("/api/employees");
   renderEmployees(payload.rows || []);
+  renderRequestContext(payload.request_context);
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
@@ -95,6 +104,26 @@ async function loadSummary() {
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
+async function loadAuditEvents() {
+  const payload = await getJson("/api/audit/events");
+  renderAuditEvents(payload.events || []);
+  raw.textContent = JSON.stringify(payload, null, 2);
+}
+
+async function disableSalaryEdits() {
+  const payload = await postJson("/api/policy/disable-salary-updates", {});
+  renderEmployees(payload.rows || []);
+  renderRequestContext(payload.request_context);
+  raw.textContent = JSON.stringify(payload, null, 2);
+}
+
+async function enableSalaryEdits() {
+  const payload = await postJson("/api/policy/enable-salary-updates", {});
+  renderEmployees(payload.rows || []);
+  renderRequestContext(payload.request_context);
+  raw.textContent = JSON.stringify(payload, null, 2);
+}
+
 async function getJson(url, outputElement = raw) {
   const response = await fetch(url);
   const payload = await response.json();
@@ -114,10 +143,10 @@ function renderEmployees(rows) {
     <tr>
       <td>${escapeHtml(valueFor(row, "employee_id"))}</td>
       <td>${escapeHtml(`${valueFor(row, "first_name")} ${valueFor(row, "last_name")}`.trim())}</td>
-      <td>${renderEditableCell(row, "phone_number", "can_update_phone_number")}</td>
-      <td>${renderEditableCell(row, "salary", "can_update_salary")}</td>
+      <td>${renderEditableCell(row, "phone_number", "can_update_phone_number", "text")}</td>
+      <td>${renderEditableCell(row, "salary", "can_update_salary", "number")}</td>
       <td>${escapeHtml(valueFor(row, "ssn"))}</td>
-      <td>${renderEditableCell(row, "department_id", "can_update_department_id")}</td>
+      <td>${renderEditableCell(row, "department_id", "can_update_department_id", "number")}</td>
       <td>${escapeHtml(valueFor(row, "manager_id"))}</td>
     </tr>
   `).join("");
@@ -126,6 +155,10 @@ function renderEmployees(rows) {
     input.addEventListener("focus", showEditAuthorizationDemo);
     input.addEventListener("mouseenter", showEditAuthorizationDemo);
   });
+  employeeRows.querySelectorAll("[data-attempt-field]").forEach((button) => {
+    button.addEventListener("click", attemptUnauthorizedEdit);
+    button.addEventListener("mouseenter", showAttemptAuthorizationDemo);
+  });
 }
 
 function valueFor(row, key) {
@@ -133,15 +166,27 @@ function valueFor(row, key) {
   return row[key] ?? row[upperKey] ?? "";
 }
 
-function renderEditableCell(row, field, permissionField) {
+function renderEditableCell(row, field, permissionField, inputType) {
   const value = valueFor(row, field);
   if (!isTrue(valueFor(row, permissionField))) {
-    return escapeHtml(value);
+    return `
+      <div class="readonly-cell">
+        <span>${escapeHtml(value)}</span>
+        <button
+          class="attempt-button"
+          type="button"
+          data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
+          data-attempt-field="${escapeHtml(field)}"
+          data-attempt-value="${escapeHtml(value)}"
+        >Try anyway</button>
+      </div>
+    `;
   }
   return `
     <div class="editable-cell">
       <input
         class="cell-input"
+        type="${escapeHtml(inputType)}"
         data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
         data-edit-field="${escapeHtml(field)}"
         value="${escapeHtml(value)}"
@@ -160,9 +205,10 @@ async function saveEmployeeEdit(event) {
       employee_id: input.dataset.employeeId,
       field: input.dataset.editField,
       value: input.value,
-    });
-    renderEmployees(payload.rows || []);
-    raw.textContent = JSON.stringify(payload, null, 2);
+	    });
+	    renderEmployees(payload.rows || []);
+	    renderRequestContext(payload.request_context);
+	    raw.textContent = JSON.stringify(payload, null, 2);
   } catch (error) {
     raw.textContent = String(error.stack || error);
   } finally {
@@ -187,6 +233,69 @@ function showEditAuthorizationDemo(event) {
     update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
     enforcement: "The UPDATE is still executed under the end-user security context, so Deep Data Security remains the enforcement point."
   }, null, 2);
+}
+
+function showAttemptAuthorizationDemo(event) {
+  const button = event.target;
+  const field = button.dataset.attemptField;
+  raw.textContent = JSON.stringify({
+    demo: "Unauthorized edit attempt",
+    field,
+    sql_authorization_check: `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', ${field}) AS can_update_${field}`,
+    update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
+    enforcement: "The UI predicts this edit is not allowed, but Try anyway still sends the UPDATE so Oracle Deep Data Security can prove enforcement."
+  }, null, 2);
+}
+
+async function attemptUnauthorizedEdit(event) {
+  const button = event.target;
+  button.disabled = true;
+  try {
+    const payload = await postJson("/api/employees/update", {
+      employee_id: button.dataset.employeeId,
+      field: button.dataset.attemptField,
+      value: button.dataset.attemptValue,
+    });
+    renderEmployees(payload.rows || []);
+    renderRequestContext(payload.request_context);
+    raw.textContent = JSON.stringify(payload, null, 2);
+  } catch (error) {
+    raw.textContent = String(error.stack || error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderRequestContext(context) {
+  if (!context) {
+    requestContext.innerHTML = "<div><dt>Status</dt><dd>No HR request yet.</dd></div>";
+    return;
+  }
+  const identity = context.identity || {};
+  const pooled = context.pooled_connection || {};
+  const roles = (context.active_data_roles || []).map((role) => valueFor(role, "role_name")).filter(Boolean);
+  requestContext.innerHTML = `
+    <div><dt>Pooled Session</dt><dd>${escapeHtml(pooled.session_id)}</dd></div>
+    <div><dt>Service</dt><dd>${escapeHtml(pooled.service_name)}</dd></div>
+    <div><dt>End User</dt><dd>${escapeHtml(identity.END_USER_NAME || identity.end_user_name)}</dd></div>
+    <div><dt>Current User</dt><dd>${escapeHtml(identity.CURRENT_USER || identity.current_user)}</dd></div>
+    <div><dt>Active Data Roles</dt><dd>${escapeHtml(roles.join(", "))}</dd></div>
+  `;
+}
+
+function renderAuditEvents(events) {
+  if (!events.length) {
+    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
+    return;
+  }
+  auditRows.innerHTML = events.map((event) => `
+    <tr>
+      <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
+      <td>${escapeHtml(valueFor(event, "action_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "return_code"))}</td>
+    </tr>
+  `).join("");
 }
 
 

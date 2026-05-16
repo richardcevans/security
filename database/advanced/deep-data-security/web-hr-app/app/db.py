@@ -1,5 +1,6 @@
 import os
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -8,7 +9,6 @@ class WebHrDatabase(object):
         self.mode = os.getenv("WEB_HR_DB_MODE", "mock").lower()
         self.tns_alias = os.getenv("WEB_HR_TNS_ALIAS", "hrdb")
         self._pool = None
-        self._db_token = None
 
     def employees_for_user(self, user):
         if self.mode == "oracledb":
@@ -104,6 +104,7 @@ class WebHrDatabase(object):
         if not all(
             [
                 os.getenv("WEB_HR_DB_SCOPE"),
+                os.getenv("WEB_HR_APP_DB_SCOPE", os.getenv("WEB_HR_DB_SCOPE")),
                 os.getenv("WEB_HR_TOKEN_URI"),
                 os.getenv("WEB_HR_APP_CLIENT_ID"),
                 os.getenv("WEB_HR_APP_CLIENT_SECRET"),
@@ -116,29 +117,51 @@ class WebHrDatabase(object):
             min=1,
             max=4,
             increment=1,
-            access_token=lambda: self._database_access_token(),
+            access_token=lambda: self._application_access_token(),
         )
         return self._pool
 
-    def _database_access_token(self):
+    def _application_access_token(self):
         body = urlencode(
             {
                 "grant_type": "client_credentials",
                 "client_id": os.getenv("WEB_HR_APP_CLIENT_ID"),
                 "client_secret": os.getenv("WEB_HR_APP_CLIENT_SECRET"),
-                "scope": os.getenv("WEB_HR_DB_SCOPE"),
+                "scope": os.getenv("WEB_HR_APP_DB_SCOPE", os.getenv("WEB_HR_DB_SCOPE")),
             }
         ).encode("utf-8")
+        return self._request_access_token(body, "application database access token")
+
+    def _database_access_token_for_user(self, end_user_token):
+        body = urlencode(
+            {
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "client_id": os.getenv("WEB_HR_APP_CLIENT_ID"),
+                "client_secret": os.getenv("WEB_HR_APP_CLIENT_SECRET"),
+                "scope": os.getenv("WEB_HR_DB_SCOPE"),
+                "assertion": end_user_token,
+                "requested_token_use": "on_behalf_of",
+            }
+        ).encode("utf-8")
+        return self._request_access_token(body, "on-behalf-of database access token")
+
+    def _request_access_token(self, body, token_name):
         request = Request(
             os.getenv("WEB_HR_TOKEN_URI"),
             data=body,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        with urlopen(request, timeout=30) as response:
-            payload = __import__("json").loads(response.read().decode("utf-8"))
+        try:
+            with urlopen(request, timeout=30) as response:
+                payload = __import__("json").loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            message = exc.read().decode("utf-8", "replace")
+            raise RuntimeError(
+                "Could not get {0}: HTTP {1} {2}".format(token_name, exc.code, message)
+            )
         token = payload.get("access_token")
         if not token:
-            raise RuntimeError("Entra ID did not return a database access token.")
+            raise RuntimeError("Entra ID did not return an {0}.".format(token_name))
         return token
 
     def _run_with_context(self, user, data_roles, sql, fetch):
@@ -149,7 +172,7 @@ class WebHrDatabase(object):
         try:
             context = oracledb.create_end_user_security_context(
                 end_user_identity=user["access_token"],
-                database_access_token=self._database_access_token(),
+                database_access_token=self._database_access_token_for_user(user["access_token"]),
                 data_roles=data_roles,
             )
             connection.set_end_user_security_context(context)

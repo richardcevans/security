@@ -135,10 +135,11 @@ In real mode the application:
 
 1. Maintains a database connection pool as the application identity.
 2. Accepts a browser-authenticated Entra user token.
-3. Borrows a pooled connection.
-4. Sets an end user security context for that request.
-5. Runs the normal employee query.
-6. Clears the end user security context before returning the connection to the pool.
+3. Exchanges the user token for a database-scoped token using OAuth 2.0 on-behalf-of.
+4. Borrows a pooled connection authenticated as the application identity.
+5. Sets an end user security context for that request using both tokens.
+6. Runs the normal employee query.
+7. Clears the end user security context before returning the connection to the pool.
 
 For elevation, the salary-summary request sets:
 

@@ -152,7 +152,13 @@ Remove `WEB_HR_DB_MODE=mock` from `.env`, or start the app explicitly in real da
 WEB_HR_DB_MODE=oracledb ./run.sh
 ```
 
-To compare the web app token flow with `sqlplus /@hrdb`, sign in to the web app and open:
+To compare the web app token flow with `sqlplus /@hrdb`, sign in to the web app and open the **Diagnostics** page:
+
+```text
+http://127.0.0.1:8012/debug
+```
+
+The token endpoint is also available directly:
 
 ```text
 http://127.0.0.1:8012/api/debug/tokens
@@ -160,7 +166,7 @@ http://127.0.0.1:8012/api/debug/tokens
 
 This endpoint returns decoded public claims only, not raw tokens. For Marvin, the `obo_database_token.database_access_token.roles` claim should include `EMPLOYEES` and `MANAGERS`, and the database token audience should be the database app registration.
 
-Use the same browser hostname for sign-in and diagnostics. Browser cookies for `localhost` and `127.0.0.1` are separate. If the app redirects through `http://localhost:8012/callback`, open the debug URLs as `http://localhost:8012/...`, or use the Token Claims and Database Context links on the web app page.
+Use the same browser hostname for sign-in and diagnostics. Browser cookies for `localhost` and `127.0.0.1` are separate. If the app redirects through `http://localhost:8012/callback`, open the diagnostics page as `http://localhost:8012/debug`.
 
 You can also verify the database context that the web app creates without querying `HR.EMPLOYEES`:
 
@@ -178,7 +184,9 @@ In real mode the application:
 4. Borrows a pooled connection authenticated as the application identity.
 5. Sets an end user security context for that request using both tokens.
 6. Runs the normal employee query.
-7. Clears the end user security context before returning the connection to the pool.
+7. Uses `ORA_IS_COLUMN_AUTHORIZED` and `ORA_CHECK_DATA_PRIVILEGE` in the SQL query to show masked values and decide which cells the UI renders as editable.
+8. Sends ordinary `UPDATE hr.employees ...` statements for edits. Deep Data Security still enforces whether the row and column can be changed.
+9. Clears the end user security context before returning the connection to the pool.
 
 For elevation, the salary-summary request sets:
 

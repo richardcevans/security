@@ -153,7 +153,9 @@ class WebHrDatabase(object):
         if not column:
             raise ValueError("Field {0} is not editable.".format(field_name))
 
-        if column in ("salary", "department_id") and value not in (None, ""):
+        if column in ("salary", "department_id") and value == "":
+            value = None
+        if column in ("salary", "department_id") and value is not None:
             try:
                 value = float(value) if column == "salary" else int(value)
             except ValueError:

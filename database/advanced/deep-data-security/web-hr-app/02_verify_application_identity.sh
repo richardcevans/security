@@ -50,6 +50,22 @@ SELECT application_name, mapped_to
 
 prompt
 prompt ========================================================================
+prompt Pooled application user base object access
+prompt ========================================================================
+
+col owner format a12
+col table_name format a24
+col grantee format a28
+col privilege format a12
+SELECT owner, table_name, grantee, privilege
+  FROM dba_tab_privs
+ WHERE owner = 'HR'
+   AND table_name = 'EMPLOYEES'
+   AND grantee = 'WEB_HR_APP_USER'
+ ORDER BY privilege;
+
+prompt
+prompt ========================================================================
 prompt Elevation role granted to application identity
 prompt ========================================================================
 

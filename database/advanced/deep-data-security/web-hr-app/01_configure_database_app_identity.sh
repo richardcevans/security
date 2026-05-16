@@ -59,6 +59,14 @@ END;
 
 GRANT CREATE SESSION TO web_hr_app_user;
 GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
+GRANT SELECT ON hr.employees TO web_hr_app_user;
+
+prompt
+prompt ========================================================================
+prompt Require Deep Data Security data grants for HR.EMPLOYEES access
+prompt ========================================================================
+
+SET USE DATA GRANTS ONLY ON hr.employees ENABLED;
 
 prompt
 prompt ========================================================================

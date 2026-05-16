@@ -100,6 +100,9 @@ CREATE USER web_hr_app_user IDENTIFIED GLOBALLY
 
 GRANT CREATE SESSION TO web_hr_app_user;
 GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
+GRANT SELECT ON hr.employees TO web_hr_app_user;
+
+SET USE DATA GRANTS ONLY ON hr.employees ENABLED;
 
 CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=<web-hr-app-client-id>';

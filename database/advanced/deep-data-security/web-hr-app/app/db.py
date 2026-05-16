@@ -74,10 +74,10 @@ class WebHrDatabase(object):
         username = user["username"].lower()
         is_manager = "MANAGERS" in user.get("roles", [])
         rows = [
-            {"employee_id": 101, "first_name": "Marvin", "last_name": "Manager", "salary": "REDACTED", "manager_id": None},
-            {"employee_id": 102, "first_name": "Emma", "last_name": "Employee", "salary": "REDACTED", "manager_id": 101},
-            {"employee_id": 103, "first_name": "Avery", "last_name": "Analyst", "salary": "REDACTED", "manager_id": 101},
-            {"employee_id": 104, "first_name": "Sofia", "last_name": "Engineer", "salary": "REDACTED", "manager_id": 101},
+            {"employee_id": 101, "first_name": "Marvin", "last_name": "Manager", "phone_number": "555-0101", "salary": "REDACTED", "ssn": "REDACTED", "department_id": 10, "manager_id": None},
+            {"employee_id": 102, "first_name": "Emma", "last_name": "Employee", "phone_number": "555-0102", "salary": "REDACTED", "ssn": "REDACTED", "department_id": 10, "manager_id": 101},
+            {"employee_id": 103, "first_name": "Avery", "last_name": "Analyst", "phone_number": "555-0103", "salary": "REDACTED", "ssn": "REDACTED", "department_id": 20, "manager_id": 101},
+            {"employee_id": 104, "first_name": "Sofia", "last_name": "Engineer", "phone_number": "555-0104", "salary": "REDACTED", "ssn": "REDACTED", "department_id": 20, "manager_id": 101},
         ]
         if "emma" in username:
             rows = [rows[1]]
@@ -104,7 +104,7 @@ class WebHrDatabase(object):
 
     def _employees_oracle(self, user):
         sql = """
-            SELECT employee_id, first_name, last_name, ssn, salary, department_id, manager_id
+            SELECT employee_id, first_name, last_name, phone_number, salary, ssn, department_id, manager_id
               FROM hr.employees
              ORDER BY employee_id
         """

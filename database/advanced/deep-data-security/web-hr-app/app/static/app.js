@@ -116,17 +116,25 @@ async function getJson(url, outputElement = raw) {
 
 function renderEmployees(rows) {
   if (!rows.length) {
-    employeeRows.innerHTML = '<tr><td colspan="4">No visible rows.</td></tr>';
+    employeeRows.innerHTML = '<tr><td colspan="7">No visible rows.</td></tr>';
     return;
   }
   employeeRows.innerHTML = rows.map((row) => `
     <tr>
-      <td>${escapeHtml(row.employee_id || row.EMPLOYEE_ID)}</td>
-      <td>${escapeHtml((row.first_name || row.FIRST_NAME || "") + " " + (row.last_name || row.LAST_NAME || ""))}</td>
-      <td>${escapeHtml(row.salary || row.SALARY)}</td>
-      <td>${escapeHtml(row.manager_id || row.MANAGER_ID || "")}</td>
+      <td>${escapeHtml(valueFor(row, "employee_id"))}</td>
+      <td>${escapeHtml(`${valueFor(row, "first_name")} ${valueFor(row, "last_name")}`.trim())}</td>
+      <td>${escapeHtml(valueFor(row, "phone_number"))}</td>
+      <td>${escapeHtml(valueFor(row, "salary"))}</td>
+      <td>${escapeHtml(valueFor(row, "ssn"))}</td>
+      <td>${escapeHtml(valueFor(row, "department_id"))}</td>
+      <td>${escapeHtml(valueFor(row, "manager_id"))}</td>
     </tr>
   `).join("");
+}
+
+function valueFor(row, key) {
+  const upperKey = key.toUpperCase();
+  return row[key] ?? row[upperKey] ?? "";
 }
 
 function escapeHtml(value) {

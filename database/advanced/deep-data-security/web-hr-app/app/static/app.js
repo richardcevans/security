@@ -14,7 +14,7 @@ employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
 disableSalaryButton.addEventListener("click", disableSalaryEdits);
 enableSalaryButton.addEventListener("click", enableSalaryEdits);
-auditButton.addEventListener("click", loadAuditEvents);
+auditButton.addEventListener("click", () => loadAuditEvents());
 
 async function refreshConfig() {
   const response = await fetch("/config");
@@ -77,6 +77,7 @@ async function loadEmployees() {
   const payload = await getJson("/api/employees");
   renderEmployees(payload.rows || []);
   raw.textContent = JSON.stringify(payload, null, 2);
+  refreshAuditEventsQuietly();
 }
 
 async function loadSummary() {
@@ -100,31 +101,44 @@ async function loadSummary() {
     </div>
   `;
   raw.textContent = JSON.stringify(payload, null, 2);
+  refreshAuditEventsQuietly();
 }
 
-async function loadAuditEvents() {
-  const payload = await getJson("/api/audit/events");
+async function loadAuditEvents(updateRaw = true) {
+  const payload = await getJson("/api/audit/events", updateRaw ? raw : null);
   renderAuditEvents(payload.events || []);
-  raw.textContent = JSON.stringify(payload, null, 2);
+  if (updateRaw) {
+    raw.textContent = JSON.stringify(payload, null, 2);
+  }
+}
+
+function refreshAuditEventsQuietly() {
+  loadAuditEvents(false).catch((error) => {
+    auditRows.innerHTML = `<tr><td colspan="4">${escapeHtml(error.message || error)}</td></tr>`;
+  });
 }
 
 async function disableSalaryEdits() {
   const payload = await postJson("/api/policy/disable-salary-updates", {});
   renderEmployees(payload.rows || []);
   raw.textContent = JSON.stringify(payload, null, 2);
+  refreshAuditEventsQuietly();
 }
 
 async function enableSalaryEdits() {
   const payload = await postJson("/api/policy/enable-salary-updates", {});
   renderEmployees(payload.rows || []);
   raw.textContent = JSON.stringify(payload, null, 2);
+  refreshAuditEventsQuietly();
 }
 
 async function getJson(url, outputElement = raw) {
   const response = await fetch(url);
   const payload = await response.json();
   if (!response.ok) {
-    outputElement.textContent = JSON.stringify(payload, null, 2);
+    if (outputElement) {
+      outputElement.textContent = JSON.stringify(payload, null, 2);
+    }
     throw new Error(payload.error || "Request failed");
   }
   return payload;
@@ -204,6 +218,7 @@ async function saveEmployeeEdit(event) {
 	    });
 	    renderEmployees(payload.rows || []);
 	    raw.textContent = JSON.stringify(payload, null, 2);
+    refreshAuditEventsQuietly();
   } catch (error) {
     raw.textContent = String(error.stack || error);
   } finally {
@@ -268,6 +283,7 @@ async function attemptUnauthorizedEdit(event) {
     });
     renderEmployees(payload.rows || []);
     raw.textContent = JSON.stringify(payload, null, 2);
+    refreshAuditEventsQuietly();
   } catch (error) {
     raw.textContent = String(error.stack || error);
   } finally {

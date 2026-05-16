@@ -21,6 +21,11 @@ class WebHrDatabase(object):
             return self._salary_summary_oracle(user)
         return self._salary_summary_mock(user)
 
+    def update_employee_field(self, user, employee_id, field_name, value):
+        if self.mode == "oracledb":
+            return self._update_employee_field_oracle(user, employee_id, field_name, value)
+        return self._update_employee_field_mock(user, employee_id, field_name, value)
+
     def debug_tokens_for_user(self, user):
         if self.mode != "oracledb":
             return {
@@ -91,6 +96,17 @@ class WebHrDatabase(object):
             "note": "Normal request. No application elevation role was requested.",
         }
 
+    def _update_employee_field_mock(self, user, employee_id, field_name, value):
+        payload = self._employees_mock(user)
+        payload["updated"] = {
+            "employee_id": employee_id,
+            "field": field_name,
+            "value": value,
+            "row_count": 1,
+        }
+        payload["note"] = "Mock mode accepted the edit. Oracle mode enforces it with Deep Data Security."
+        return payload
+
     def _salary_summary_mock(self, user):
         return {
             "mode": "mock",
@@ -104,8 +120,18 @@ class WebHrDatabase(object):
 
     def _employees_oracle(self, user):
         sql = """
-            SELECT employee_id, first_name, last_name, phone_number, salary, ssn, department_id, manager_id
-              FROM hr.employees
+            SELECT emp.employee_id,
+                   emp.first_name,
+                   emp.last_name,
+                   emp.phone_number,
+                   emp.salary,
+                   DECODE(ORA_IS_COLUMN_AUTHORIZED(ssn), false, '000-00-0000', true, ssn) AS ssn,
+                   emp.department_id,
+                   emp.manager_id,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', phone_number) AS can_update_phone_number,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) AS can_update_salary,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', department_id) AS can_update_department_id
+              FROM hr.employees emp
              ORDER BY employee_id
         """
         rows = self._run_with_context(user, None, sql, fetch="rows")
@@ -116,6 +142,40 @@ class WebHrDatabase(object):
             "rows": rows,
             "note": "Oracle enforced visible rows and columns using the end user security context.",
         }
+
+    def _update_employee_field_oracle(self, user, employee_id, field_name, value):
+        columns = {
+            "phone_number": "phone_number",
+            "salary": "salary",
+            "department_id": "department_id",
+        }
+        column = columns.get(field_name)
+        if not column:
+            raise ValueError("Field {0} is not editable.".format(field_name))
+
+        if column in ("salary", "department_id") and value not in (None, ""):
+            try:
+                value = float(value) if column == "salary" else int(value)
+            except ValueError:
+                raise ValueError("{0} must be numeric.".format(field_name))
+
+        sql = "UPDATE hr.employees SET {0} = :value WHERE employee_id = :employee_id".format(column)
+        row_count = self._run_with_context(
+            user,
+            None,
+            sql,
+            fetch="rowcount",
+            params={"value": value, "employee_id": employee_id},
+        )
+        payload = self._employees_oracle(user)
+        payload["updated"] = {
+            "employee_id": employee_id,
+            "field": field_name,
+            "row_count": row_count,
+        }
+        if row_count == 0:
+            payload["note"] = "No rows were updated. Deep Data Security did not authorize that edit for the current end user."
+        return payload
 
     def _salary_summary_oracle(self, user):
         sql = """
@@ -239,7 +299,7 @@ class WebHrDatabase(object):
             raise RuntimeError("Entra ID did not return an {0}.".format(token_name))
         return token
 
-    def _run_with_context(self, user, data_roles, sql, fetch):
+    def _run_with_context(self, user, data_roles, sql, fetch, params=None):
         import oracledb
 
         pool = self._pool_oracle()
@@ -257,7 +317,11 @@ class WebHrDatabase(object):
             connection.set_end_user_security_context(context)
             cursor = connection.cursor()
             try:
-                cursor.execute(sql)
+                cursor.execute(sql, params or {})
+                if fetch == "rowcount":
+                    row_count = cursor.rowcount
+                    connection.commit()
+                    return row_count
                 columns = [d[0] for d in cursor.description]
                 if fetch == "one":
                     row = cursor.fetchone()

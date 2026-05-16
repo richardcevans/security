@@ -42,6 +42,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send_file(STATIC_DIR / "index.html")
             return
 
+        if path == "/debug":
+            self._send_file(STATIC_DIR / "debug.html")
+            return
+
         if path == "/config":
             self._send_json(app_config())
             return
@@ -131,6 +135,27 @@ class Handler(BaseHTTPRequestHandler):
 
         self._send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/employees/update":
+            user = self._require_user()
+            if not user:
+                return
+            try:
+                payload = self._read_json_body()
+                employee_id = int(payload.get("employee_id"))
+                field_name = str(payload.get("field", ""))
+                value = payload.get("value")
+            except Exception as exc:
+                self._send_json({"error": "invalid request", "detail": str(exc)}, HTTPStatus.BAD_REQUEST)
+                return
+            self._call_database(lambda: DATABASE.update_employee_field(user, employee_id, field_name, value))
+            return
+
+        self._send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+
     def _current_user(self):
         session = session_from_cookie(self.headers.get("Cookie", ""))
         if not session:
@@ -188,6 +213,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
             return
         self._send_file(target)
+
+    def _read_json_body(self):
+        length = int(self.headers.get("Content-Length", "0"))
+        content = self.rfile.read(length).decode("utf-8")
+        return json.loads(content or "{}")
 
     def _send_file(self, path):
         if not path.exists() or not path.is_file():

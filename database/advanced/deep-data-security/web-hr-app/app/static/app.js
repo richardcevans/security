@@ -5,15 +5,9 @@ const raw = document.querySelector("#raw");
 const employeesButton = document.querySelector("#employeesButton");
 const summaryButton = document.querySelector("#summaryButton");
 const modeBanner = document.querySelector("#modeBanner");
-const tokensButton = document.querySelector("#tokensButton");
-const contextButton = document.querySelector("#contextButton");
-const tokenDebug = document.querySelector("#tokenDebug");
-const contextDebug = document.querySelector("#contextDebug");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
-tokensButton.addEventListener("click", loadTokenDebug);
-contextButton.addEventListener("click", loadContextDebug);
 
 async function refreshConfig() {
   const response = await fetch("/config");
@@ -41,14 +35,10 @@ async function refreshPage() {
   await refreshConfig();
   const user = await refreshUser();
   if (user) {
-    await loadTokenDebug();
-    await loadContextDebug();
     raw.textContent = "Use Load Employees to run the HR.EMPLOYEES query.";
     return;
   }
   raw.textContent = "Sign in before loading employee data.";
-  tokenDebug.textContent = "Sign in to view token claims.";
-  contextDebug.textContent = "Sign in to view database context.";
 }
 
 async function loadEmployees() {
@@ -80,30 +70,6 @@ async function loadSummary() {
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
-async function loadTokenDebug() {
-  tokenDebug.textContent = "Loading token claims...";
-  try {
-    const payload = await getJson("/api/debug/tokens", tokenDebug);
-    tokenDebug.textContent = JSON.stringify(payload, null, 2);
-  } catch (error) {
-    if (!tokenDebug.textContent) {
-      tokenDebug.textContent = String(error.stack || error);
-    }
-  }
-}
-
-async function loadContextDebug() {
-  contextDebug.textContent = "Loading database context...";
-  try {
-    const payload = await getJson("/api/debug/database-context", contextDebug);
-    contextDebug.textContent = JSON.stringify(payload, null, 2);
-  } catch (error) {
-    if (!contextDebug.textContent) {
-      contextDebug.textContent = String(error.stack || error);
-    }
-  }
-}
-
 async function getJson(url, outputElement = raw) {
   const response = await fetch(url);
   const payload = await response.json();
@@ -123,18 +89,73 @@ function renderEmployees(rows) {
     <tr>
       <td>${escapeHtml(valueFor(row, "employee_id"))}</td>
       <td>${escapeHtml(`${valueFor(row, "first_name")} ${valueFor(row, "last_name")}`.trim())}</td>
-      <td>${escapeHtml(valueFor(row, "phone_number"))}</td>
-      <td>${escapeHtml(valueFor(row, "salary"))}</td>
+      <td>${renderEditableCell(row, "phone_number", "can_update_phone_number")}</td>
+      <td>${renderEditableCell(row, "salary", "can_update_salary")}</td>
       <td>${escapeHtml(valueFor(row, "ssn"))}</td>
-      <td>${escapeHtml(valueFor(row, "department_id"))}</td>
+      <td>${renderEditableCell(row, "department_id", "can_update_department_id")}</td>
       <td>${escapeHtml(valueFor(row, "manager_id"))}</td>
     </tr>
   `).join("");
+  employeeRows.querySelectorAll("[data-edit-field]").forEach((input) => {
+    input.addEventListener("change", saveEmployeeEdit);
+  });
 }
 
 function valueFor(row, key) {
   const upperKey = key.toUpperCase();
   return row[key] ?? row[upperKey] ?? "";
+}
+
+function renderEditableCell(row, field, permissionField) {
+  const value = valueFor(row, field);
+  if (!isTrue(valueFor(row, permissionField))) {
+    return escapeHtml(value);
+  }
+  return `
+    <input
+      class="cell-input"
+      data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
+      data-edit-field="${escapeHtml(field)}"
+      value="${escapeHtml(value)}"
+      aria-label="${escapeHtml(field.replace(/_/g, " "))}"
+    />
+  `;
+}
+
+async function saveEmployeeEdit(event) {
+  const input = event.target;
+  input.disabled = true;
+  try {
+    const payload = await postJson("/api/employees/update", {
+      employee_id: input.dataset.employeeId,
+      field: input.dataset.editField,
+      value: input.value,
+    });
+    renderEmployees(payload.rows || []);
+    raw.textContent = JSON.stringify(payload, null, 2);
+  } catch (error) {
+    raw.textContent = String(error.stack || error);
+  } finally {
+    input.disabled = false;
+  }
+}
+
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    raw.textContent = JSON.stringify(payload, null, 2);
+    throw new Error(payload.error || "Request failed");
+  }
+  return payload;
+}
+
+function isTrue(value) {
+  return value === true || String(value).toUpperCase() === "TRUE";
 }
 
 function escapeHtml(value) {

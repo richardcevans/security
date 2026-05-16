@@ -21,29 +21,11 @@
         <a class="button secondary" href="/login?prompt=select_account">Switch Entra User</a>
         <a class="button secondary" href="/demo/marvin">Demo Marvin</a>
         <a class="button secondary" href="/demo/emma">Demo Emma</a>
+        <a class="button ghost" href="/debug">Diagnostics</a>
         <a class="button ghost" href="/logout">Sign Out</a>
       </section>
 
       <section id="modeBanner" class="mode-banner"></section>
-
-      <section class="debug-links">
-        <button id="tokensButton" type="button">Token Claims</button>
-        <button id="contextButton" type="button">Database Context</button>
-        <a href="/api/debug/tokens" target="_blank" rel="noreferrer">Open Token JSON</a>
-        <a href="/api/debug/database-context" target="_blank" rel="noreferrer">Open Context JSON</a>
-      </section>
-
-      <section class="grid debug-grid">
-        <article class="panel">
-          <h2>Token Claims</h2>
-          <pre id="tokenDebug"></pre>
-        </article>
-
-        <article class="panel">
-          <h2>Database Context</h2>
-          <pre id="contextDebug"></pre>
-        </article>
-      </section>
 
       <section class="grid">
         <article class="panel">
@@ -56,12 +38,12 @@
                 <tr>
 	                  <th>ID</th>
 	                  <th>Name</th>
-	                  <th>Phone</th>
-	                  <th>Salary</th>
-	                  <th>SSN</th>
-	                  <th>Dept</th>
-	                  <th>Manager</th>
-	                </tr>
+                  <th>Phone</th>
+                  <th>Salary</th>
+                  <th>SSN</th>
+                  <th>Dept</th>
+                  <th>Manager</th>
+                </tr>
               </thead>
               <tbody id="employeeRows"></tbody>
             </table>

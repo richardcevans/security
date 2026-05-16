@@ -180,6 +180,25 @@ Mock mode needs no dependencies:
 WEB_HR_DB_MODE=mock ./run.sh
 ```
 
+For normal demos, run the app in the background:
+
+```bash
+./start.sh
+./status.sh
+```
+
+The background launcher writes the process id to `.web-hr-app.pid` and app output to `logs/web-hr-app.log`, so the terminal remains free for SQLcl, curl, or firewall checks. To watch the app log:
+
+```bash
+tail -f logs/web-hr-app.log
+```
+
+To stop the background server:
+
+```bash
+./stop.sh
+```
+
 Open:
 
 ```text
@@ -199,7 +218,7 @@ Real database mode requires a current python-oracledb version with Deep Data Sec
 ```bash
 ./setup_python_oracledb.sh
 source ~/web-hr-app-venv/bin/activate
-./run.sh
+./start.sh
 ```
 
 The helper creates a Python 3.9 virtual environment, installs `oracledb>=4`, exports the lab database server certificate if needed, and creates a Thin-mode trust wallet at `./python-wallet/ewallet.pem`. This keeps TLS verification enabled while trusting only the lab database certificate.
@@ -209,7 +228,7 @@ If the app returns `DPY-6005` with `CERTIFICATE_VERIFY_FAILED` or `self signed c
 ```bash
 ./setup_python_oracledb.sh
 source ~/web-hr-app-venv/bin/activate
-./run.sh
+./start.sh
 ```
 
 After `.web-hr-app.env` exists, `./run.sh` defaults to `WEB_HR_DB_MODE=oracledb`. Use `WEB_HR_DB_MODE=mock ./run.sh` only when you want the simulated UI demo.
@@ -347,6 +366,9 @@ web-hr-app/
       debug.js
       styles.css
   run.sh
+  start.sh
+  status.sh
+  stop.sh
   .env.example
 ```
 

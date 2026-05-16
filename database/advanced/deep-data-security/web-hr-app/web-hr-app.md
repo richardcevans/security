@@ -76,7 +76,7 @@ Create or reuse the Web HR App Entra application:
 ./00_setup_entra_web_app.sh
 ```
 
-By default, the setup script configures the app for a remote browser. It discovers the VM public IP, uses that public callback for the Entra redirect URI, and writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`:
+By default, the setup script configures the app for a remote browser. It discovers the VM public IP, uses an HTTPS public callback for the Entra redirect URI, creates a demo TLS certificate, and writes `WEB_HR_HOST=0.0.0.0`, `WEB_HR_TLS_CERT`, and `WEB_HR_TLS_KEY` into `.web-hr-app.env`:
 
 ```bash
 ./00_setup_entra_web_app.sh
@@ -90,10 +90,10 @@ You can also request the public behavior explicitly:
 ./00_setup_entra_web_app.sh --public-ip
 ```
 
-If you already know the public IP, pass the callback explicitly:
+Microsoft Entra ID allows `http://localhost` for local development, but public reply URLs must use HTTPS. If you already know the public IP, pass the callback explicitly with `https://`:
 
 ```bash
-./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:8012/callback
+./00_setup_entra_web_app.sh --redirect-uri https://<public-ip>:8012/callback
 ```
 
 For a local-only browser on the DBSec-Lab VM, use:
@@ -113,6 +113,8 @@ It grants the app delegated access to the existing database app scope and create
 If browser sign-in redirects back to `/callback` with a token exchange error such as `HTTP 401: Unauthorized`, restart `./run.sh` after running this setup script. The app must load `WEB_HR_APP_CLIENT_SECRET` from `.web-hr-app.env` before it can exchange the authorization code for tokens.
 
 If a remote browser is redirected to `http://localhost:8012/callback`, rerun the setup script with the default public behavior or `--redirect-uri`, then restart `./run.sh`. The browser must use the same host that is stored in `WEB_HR_REDIRECT_URI`.
+
+The public HTTPS mode uses a self-signed demo certificate. The first time you open the app, your browser will warn that the certificate is not trusted. Continue to the site for the lab demo, then sign in with Entra ID. For a production-style demo, use a DNS name and a certificate from a trusted certificate authority.
 
 ## Configure Database Application Identity
 
@@ -182,10 +184,10 @@ http://127.0.0.1:8012
 With the default public setup, open it from your workstation at:
 
 ```text
-http://<public-ip>:8012
+https://<public-ip>:8012
 ```
 
-The default public setup writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`, so `./run.sh` listens on the VM public interface after that environment file is sourced.
+The default public setup writes `WEB_HR_HOST=0.0.0.0` and the demo TLS certificate paths into `.web-hr-app.env`, so `./run.sh` listens on the VM public interface with HTTPS after that environment file is sourced.
 
 Real database mode requires a current python-oracledb version with Deep Data Security support:
 

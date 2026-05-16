@@ -37,6 +37,17 @@ SELECT username, authentication_type, external_name
   FROM dba_users
  WHERE username = 'WEB_HR_APP_USER';
 
+col privilege format a36
+SELECT grantee, privilege
+  FROM dba_sys_privs
+ WHERE grantee = 'WEB_HR_APP_USER'
+   AND privilege IN (
+     'CREATE SESSION',
+     'CREATE END USER SECURITY CONTEXT',
+     'UPDATE ANY END USER CONTEXT'
+   )
+ ORDER BY privilege;
+
 prompt
 prompt ========================================================================
 prompt Application identity

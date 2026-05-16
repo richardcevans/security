@@ -35,10 +35,35 @@ async function refreshPage() {
   await refreshConfig();
   const user = await refreshUser();
   if (user) {
-    raw.textContent = "Use Load Employees to run the HR.EMPLOYEES query.";
+    showAuthenticationContextDemo(user);
     return;
   }
   raw.textContent = "Sign in before loading employee data.";
+}
+
+function showAuthenticationContextDemo(user) {
+  raw.textContent = JSON.stringify({
+    demo: "Authenticated end-user security context",
+    signed_in_user: {
+      name: user.name,
+      username: user.username,
+      browser_token_roles: user.roles || []
+    },
+    python: {
+      token_exchange: "WebHrDatabase._database_access_token_for_user(user['access_token'])",
+      context_creation: "oracledb.create_end_user_security_context(end_user_identity=end_user_database_token, database_access_token=application_database_token)",
+      context_attach: "connection.set_end_user_security_context(context)",
+      context_clear: "connection.clear_end_user_security_context()"
+    },
+    deepsec_attributes_visible_in_database: [
+      "ORA_END_USER_CONTEXT.username",
+      "SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY')",
+      "SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY')",
+      "SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD')",
+      "v$end_user_data_role"
+    ],
+    enforcement: "Every HR query and update runs after Python attaches this context to a pooled database connection."
+  }, null, 2);
 }
 
 async function loadEmployees() {
@@ -98,6 +123,8 @@ function renderEmployees(rows) {
   `).join("");
   employeeRows.querySelectorAll("[data-edit-field]").forEach((input) => {
     input.addEventListener("change", saveEmployeeEdit);
+    input.addEventListener("focus", showEditAuthorizationDemo);
+    input.addEventListener("mouseenter", showEditAuthorizationDemo);
   });
 }
 
@@ -142,6 +169,26 @@ async function saveEmployeeEdit(event) {
     input.disabled = false;
   }
 }
+
+function showEditAuthorizationDemo(event) {
+  const input = event.target;
+  const field = input.dataset.editField;
+  const employeeId = input.dataset.employeeId;
+  raw.textContent = JSON.stringify({
+    demo: "Editable cell authorization",
+    employee_id: employeeId,
+    field,
+    python: {
+      query_function: "WebHrDatabase._employees_oracle()",
+      update_function: "WebHrDatabase._update_employee_field_oracle()",
+      note: "Python does not decide whether this field is editable. It asks Oracle, then renders the input only when Oracle returns TRUE."
+    },
+    sql_authorization_check: `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', ${field}) AS can_update_${field}`,
+    update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
+    enforcement: "The UPDATE is still executed under the end-user security context, so Deep Data Security remains the enforcement point."
+  }, null, 2);
+}
+
 
 async function postJson(url, body) {
   const response = await fetch(url, {

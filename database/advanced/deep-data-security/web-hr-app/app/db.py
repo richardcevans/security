@@ -125,13 +125,25 @@ class WebHrDatabase(object):
         ):
             raise RuntimeError("Missing Web HR App database token settings. Run 00_setup_entra_web_app.sh.")
 
-        self._pool = oracledb.create_pool(
-            dsn=self.tns_alias,
-            min=1,
-            max=4,
-            increment=1,
-            access_token=lambda: self._application_access_token(),
-        )
+        pool_kwargs = {
+            "dsn": self.tns_alias,
+            "min": 1,
+            "max": 4,
+            "increment": 1,
+            "access_token": lambda: self._application_access_token(),
+        }
+
+        config_dir = os.getenv("WEB_HR_CONFIG_DIR") or os.getenv("TNS_ADMIN")
+        wallet_location = os.getenv("WEB_HR_WALLET_LOCATION")
+        wallet_password = os.getenv("WEB_HR_WALLET_PASSWORD")
+        if config_dir:
+            pool_kwargs["config_dir"] = config_dir
+        if wallet_location:
+            pool_kwargs["wallet_location"] = wallet_location
+        if wallet_password:
+            pool_kwargs["wallet_password"] = wallet_password
+
+        self._pool = oracledb.create_pool(**pool_kwargs)
         return self._pool
 
     def _application_access_token(self):

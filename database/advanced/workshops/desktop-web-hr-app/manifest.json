@@ -1,0 +1,29 @@
+{
+  "workshoptitle": "DB Security - Web HR App with Oracle Deep Data Security Application Identities",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture of this workshop and what it can do",
+      "publisheddate": "05/15/2026",
+      "filename": "../../intro/intro-entra-id-data-grants.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Using noVNC Remote Desktop",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Web HR App with Oracle Deep Data Security Application Identities",
+      "description": "Run a simple web application that authenticates users with Microsoft Entra ID, uses a database connection pool, and demonstrates application data-role elevation",
+      "publisheddate": "05/15/2026",
+      "filename": "../../deep-data-security/web-hr-app/web-hr-app.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}
+

@@ -1,0 +1,178 @@
+import os
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+class WebHrDatabase(object):
+    def __init__(self):
+        self.mode = os.getenv("WEB_HR_DB_MODE", "mock").lower()
+        self.tns_alias = os.getenv("WEB_HR_TNS_ALIAS", "hrdb")
+        self._pool = None
+        self._db_token = None
+
+    def employees_for_user(self, user):
+        if self.mode == "oracledb":
+            return self._employees_oracle(user)
+        return self._employees_mock(user)
+
+    def salary_summary(self, user):
+        if self.mode == "oracledb":
+            return self._salary_summary_oracle(user)
+        return self._salary_summary_mock(user)
+
+    def _employees_mock(self, user):
+        username = user["username"].lower()
+        is_manager = "MANAGERS" in user.get("roles", [])
+        rows = [
+            {"employee_id": 101, "first_name": "Marvin", "last_name": "Manager", "salary": "REDACTED", "manager_id": None},
+            {"employee_id": 102, "first_name": "Emma", "last_name": "Employee", "salary": "REDACTED", "manager_id": 101},
+            {"employee_id": 103, "first_name": "Avery", "last_name": "Analyst", "salary": "REDACTED", "manager_id": 101},
+            {"employee_id": 104, "first_name": "Sofia", "last_name": "Engineer", "salary": "REDACTED", "manager_id": 101},
+        ]
+        if "emma" in username:
+            rows = [rows[1]]
+        elif not is_manager:
+            rows = rows[:1]
+        return {
+            "mode": "mock",
+            "user": user["username"],
+            "elevated": False,
+            "rows": rows,
+            "note": "Normal request. No application elevation role was requested.",
+        }
+
+    def _salary_summary_mock(self, user):
+        return {
+            "mode": "mock",
+            "user": user["username"],
+            "elevated": True,
+            "data_roles": ["HRAPP_COMPENSATION_ANALYST"],
+            "average_salary": 9826.00,
+            "employee_count": 5,
+            "note": "Elevated request. In real mode the app asks Oracle for HRAPP_COMPENSATION_ANALYST.",
+        }
+
+    def _employees_oracle(self, user):
+        sql = """
+            SELECT employee_id, first_name, last_name, ssn, salary, department_id, manager_id
+              FROM hr.employees
+             ORDER BY employee_id
+        """
+        rows = self._run_with_context(user, [], sql, fetch="rows")
+        return {
+            "mode": "oracledb",
+            "user": user["username"],
+            "elevated": False,
+            "rows": rows,
+            "note": "Oracle enforced visible rows and columns using the end user security context.",
+        }
+
+    def _salary_summary_oracle(self, user):
+        sql = """
+            SELECT ROUND(AVG(salary), 2) AS average_salary, COUNT(*) AS employee_count
+              FROM hr.employees
+        """
+        rows = self._run_with_context(
+            user,
+            ["HRAPP_COMPENSATION_ANALYST"],
+            sql,
+            fetch="one",
+        )
+        row = rows or {}
+        return {
+            "mode": "oracledb",
+            "user": user["username"],
+            "elevated": True,
+            "data_roles": ["HRAPP_COMPENSATION_ANALYST"],
+            "average_salary": row.get("AVERAGE_SALARY"),
+            "employee_count": row.get("EMPLOYEE_COUNT"),
+            "note": "Oracle allowed this only because the data role is granted to the application identity.",
+        }
+
+    def _pool_oracle(self):
+        if self._pool is not None:
+            return self._pool
+
+        try:
+            import oracledb
+            import oracledb.plugins.end_user_sec_provider  # noqa: F401
+        except ImportError as exc:
+            raise RuntimeError(
+                "WEB_HR_DB_MODE=oracledb requires python-oracledb with Deep Data Security support."
+            ) from exc
+
+        if not all(
+            [
+                os.getenv("WEB_HR_DB_SCOPE"),
+                os.getenv("WEB_HR_TOKEN_URI"),
+                os.getenv("WEB_HR_APP_CLIENT_ID"),
+                os.getenv("WEB_HR_APP_CLIENT_SECRET"),
+            ]
+        ):
+            raise RuntimeError("Missing Web HR App database token settings. Run 00_setup_entra_web_app.sh.")
+
+        self._pool = oracledb.create_pool(
+            dsn=self.tns_alias,
+            min=1,
+            max=4,
+            increment=1,
+            access_token=lambda: self._database_access_token(),
+        )
+        return self._pool
+
+    def _database_access_token(self):
+        body = urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": os.getenv("WEB_HR_APP_CLIENT_ID"),
+                "client_secret": os.getenv("WEB_HR_APP_CLIENT_SECRET"),
+                "scope": os.getenv("WEB_HR_DB_SCOPE"),
+            }
+        ).encode("utf-8")
+        request = Request(
+            os.getenv("WEB_HR_TOKEN_URI"),
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        with urlopen(request, timeout=30) as response:
+            payload = __import__("json").loads(response.read().decode("utf-8"))
+        token = payload.get("access_token")
+        if not token:
+            raise RuntimeError("Entra ID did not return a database access token.")
+        return token
+
+    def _run_with_context(self, user, data_roles, sql, fetch):
+        import oracledb
+
+        pool = self._pool_oracle()
+        connection = pool.acquire()
+        try:
+            context = oracledb.create_end_user_security_context(
+                end_user_identity=user["access_token"],
+                database_access_token=self._database_access_token(),
+                data_roles=data_roles,
+            )
+            connection.set_end_user_security_context(context)
+            cursor = connection.cursor()
+            try:
+                cursor.execute(sql)
+                columns = [d[0] for d in cursor.description]
+                if fetch == "one":
+                    row = cursor.fetchone()
+                    return _row_to_dict(columns, row) if row else None
+                return [_row_to_dict(columns, row) for row in cursor.fetchall()]
+            finally:
+                cursor.close()
+                connection.clear_end_user_security_context()
+        finally:
+            pool.release(connection)
+
+
+def _row_to_dict(columns, row):
+    result = {}
+    for index, column in enumerate(columns):
+        value = row[index]
+        if hasattr(value, "read"):
+            value = value.read()
+        result[column] = value
+    return result

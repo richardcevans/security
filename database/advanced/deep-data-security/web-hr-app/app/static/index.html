@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web HR App</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security</p>
+          <h1>Web HR App</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section class="actions">
+        <a class="button" href="/login" id="entraLogin">Sign In With Entra ID</a>
+        <a class="button secondary" href="/demo/marvin">Demo Marvin</a>
+        <a class="button secondary" href="/demo/emma">Demo Emma</a>
+        <a class="button ghost" href="/logout">Sign Out</a>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Normal Employee Query</h2>
+          <p class="small">Uses the signed-in end user security context.</p>
+          <button id="employeesButton">Load Employees</button>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Salary</th>
+                  <th>Manager</th>
+                </tr>
+              </thead>
+              <tbody id="employeeRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Elevated Salary Summary</h2>
+          <p class="small">Requests HRAPP_COMPENSATION_ANALYST for this action only.</p>
+          <button id="summaryButton">Run Elevated Action</button>
+          <dl id="summary"></dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Raw Response</h2>
+        <pre id="raw"></pre>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

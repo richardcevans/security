@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env}"
+
+if [ -f "$ENTRA_LAB_ENV" ]; then
+  # shellcheck disable=SC1090
+  source "$ENTRA_LAB_ENV"
+fi
+if [ -f "${SCRIPT_DIR}/.web-hr-app.env" ]; then
+  # shellcheck disable=SC1091
+  source "${SCRIPT_DIR}/.web-hr-app.env"
+fi
+
+: "${PDB_NAME:?PDB_NAME is required}"
+DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+
+sqlplus -s / as sysdba <<EOF
+set echo off
+set lines 160
+set pages 9999
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+prompt
+prompt ========================================================================
+prompt Web HR App database user
+prompt ========================================================================
+
+col username format a22
+col authentication_type format a22
+col external_name format a80
+SELECT username, authentication_type, external_name
+  FROM dba_users
+ WHERE username = 'WEB_HR_APP_USER';
+
+prompt
+prompt ========================================================================
+prompt Application identity
+prompt ========================================================================
+
+col app_name format a28
+col mapped_to format a80
+SELECT app_name, mapped_to
+  FROM dba_application_identities
+ WHERE app_name = 'WEB_HR_APP';
+
+prompt
+prompt ========================================================================
+prompt Elevation role granted to application identity
+prompt ========================================================================
+
+col grantee format a28
+col granted_role format a32
+SELECT grantee, granted_role
+  FROM dba_data_role_privs
+ WHERE grantee = 'WEB_HR_APP'
+ ORDER BY granted_role;
+
+prompt
+prompt ========================================================================
+prompt Compensation summary data grant
+prompt ========================================================================
+
+col grant_name format a36
+col privilege format a20
+col grantee format a32
+SELECT grant_name, privilege, grantee
+  FROM dba_data_grants
+ WHERE grant_name = 'HRAPP_COMPENSATION_SUMMARY'
+ ORDER BY grant_name;
+
+exit;
+EOF
+

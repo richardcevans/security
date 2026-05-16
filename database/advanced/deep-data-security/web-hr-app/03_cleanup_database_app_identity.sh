@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env}"
+
+if [ -f "$ENTRA_LAB_ENV" ]; then
+  # shellcheck disable=SC1090
+  source "$ENTRA_LAB_ENV"
+fi
+
+: "${PDB_NAME:?PDB_NAME is required}"
+DB_SID="${DB_SID:-FREE}"
+export ORACLE_SID="$DB_SID"
+
+sqlplus -s / as sysdba <<EOF
+set echo off
+set serveroutput on
+whenever sqlerror exit sql.sqlcode
+
+ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+BEGIN
+  BEGIN EXECUTE IMMEDIATE 'DROP DATA GRANT hr.HRAPP_COMPENSATION_SUMMARY'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN EXECUTE IMMEDIATE 'DROP DATA ROLE HRAPP_COMPENSATION_ANALYST'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN EXECUTE IMMEDIATE 'DROP APPLICATION IDENTITY web_hr_app'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN EXECUTE IMMEDIATE 'DROP USER web_hr_app_user'; EXCEPTION WHEN OTHERS THEN NULL; END;
+END;
+/
+
+exit;
+EOF
+
+echo "Web HR App database objects removed."
+

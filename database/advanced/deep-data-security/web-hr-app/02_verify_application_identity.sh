@@ -42,11 +42,11 @@ prompt ========================================================================
 prompt Application identity
 prompt ========================================================================
 
-col app_name format a28
+col application_name format a28
 col mapped_to format a80
-SELECT app_name, mapped_to
+SELECT application_name, mapped_to
   FROM dba_application_identities
- WHERE app_name = 'WEB_HR_APP';
+ WHERE application_name = 'WEB_HR_APP';
 
 prompt
 prompt ========================================================================
@@ -75,4 +75,3 @@ SELECT grant_name, privilege, grantee
 
 exit;
 EOF
-

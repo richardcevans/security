@@ -23,6 +23,8 @@ Options:
       Discover this OCI VM public IP from instance metadata and use
       http://<public-ip>:${WEB_HR_PORT:-8012}/callback as the Entra redirect URI.
       Also writes WEB_HR_HOST=0.0.0.0 to .web-hr-app.env.
+      If metadata discovery fails, the script tries an internet IP service and
+      then prompts for the public IP when running interactively.
 
   --redirect-uri URI
       Use an explicit redirect URI such as http://203.0.113.10:8012/callback.
@@ -123,10 +125,66 @@ for vnic in vnics if isinstance(vnics, list) else []:
 ' 2>/dev/null || true)"
 
   if [ -z "$public_ip" ]; then
-    return 1
+    public_ip="$(discover_public_ip_from_internet || true)"
+  fi
+
+  if [ -z "$public_ip" ]; then
+    public_ip="$(prompt_for_public_ip || true)"
   fi
 
   printf '%s\n' "$public_ip"
+}
+
+discover_public_ip_from_internet() {
+  local public_ip=""
+  local service
+
+  for service in \
+    "https://api.ipify.org" \
+    "https://ifconfig.me/ip" \
+    "https://icanhazip.com"
+  do
+    public_ip="$(curl -fsS --connect-timeout 5 "$service" 2>/dev/null | tr -d '[:space:]' || true)"
+    if is_ipv4 "$public_ip"; then
+      echo "Using public IP discovered from ${service}: ${public_ip}" >&2
+      printf '%s\n' "$public_ip"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+prompt_for_public_ip() {
+  local public_ip=""
+
+  if [ ! -t 0 ]; then
+    return 1
+  fi
+
+  echo "Could not automatically discover the VM public IP." >&2
+  echo "Enter the public IP address for this DBSec-Lab VM." >&2
+  echo "You can find it in the OCI Console, or paste the IP you use in your browser." >&2
+  while true; do
+    read -r -p "Public IP: " public_ip
+    public_ip="$(printf '%s' "$public_ip" | tr -d '[:space:]')"
+    if is_ipv4 "$public_ip"; then
+      printf '%s\n' "$public_ip"
+      return 0
+    fi
+    echo "That does not look like an IPv4 address. Try again, or press Ctrl+C to stop." >&2
+  done
+}
+
+is_ipv4() {
+  python3 - "$1" <<'PY'
+import ipaddress
+import sys
+try:
+    ipaddress.IPv4Address(sys.argv[1])
+except Exception:
+    sys.exit(1)
+PY
 }
 
 WEB_HR_APP_NAME="${WEB_HR_APP_NAME:-Web HR App - ${PDB_NAME}}"
@@ -150,7 +208,7 @@ if [ -n "$REDIRECT_URI_ARG" ]; then
 elif [ "$PUBLIC_IP_REDIRECT" -eq 1 ]; then
   public_ip="$(discover_public_ip || true)"
   if [ -z "$public_ip" ]; then
-    echo "ERROR: Could not discover a public IP from OCI instance metadata."
+    echo "ERROR: Could not discover or prompt for a public IP."
     echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:${WEB_HR_PORT}/callback"
     echo "       Or use local-only mode: ./00_setup_entra_web_app.sh --localhost"
     exit 1

@@ -172,7 +172,7 @@ button:hover {
 
 table {
   width: 100%;
-  min-width: 820px;
+  min-width: 980px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -189,6 +189,21 @@ th {
   color: var(--muted);
   font-size: 12px;
   text-transform: uppercase;
+}
+
+.cell-input {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: var(--ink);
+  font: inherit;
+}
+
+.cell-input:focus {
+  outline: 2px solid rgba(11, 111, 133, 0.2);
+  border-color: var(--accent);
 }
 
 dl {

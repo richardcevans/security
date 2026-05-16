@@ -21,13 +21,14 @@ Options:
 
   --public-ip
       Discover this OCI VM public IP from instance metadata and use
-      http://<public-ip>:${WEB_HR_PORT:-8012}/callback as the Entra redirect URI.
-      Also writes WEB_HR_HOST=0.0.0.0 to .web-hr-app.env.
+      https://<public-ip>:${WEB_HR_PORT:-8012}/callback as the Entra redirect URI.
+      Also writes WEB_HR_HOST=0.0.0.0 and demo TLS settings to .web-hr-app.env.
       If metadata discovery fails, the script tries an internet IP service and
       then prompts for the public IP when running interactively.
 
   --redirect-uri URI
-      Use an explicit redirect URI such as http://203.0.113.10:8012/callback.
+      Use an explicit redirect URI such as https://203.0.113.10:8012/callback.
+      Public redirect URIs must use https. Localhost may use http.
 
   -h, --help
       Show this help.
@@ -135,6 +136,61 @@ for vnic in vnics if isinstance(vnics, list) else []:
   printf '%s\n' "$public_ip"
 }
 
+ensure_tls_certificate() {
+  local public_host="$1"
+  local tls_dir="${SCRIPT_DIR}/tls"
+  local cert_file="${tls_dir}/web-hr-app.crt"
+  local key_file="${tls_dir}/web-hr-app.key"
+  local config_file="${tls_dir}/web-hr-app-openssl.cnf"
+  local san_line=""
+
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "ERROR: openssl is required to create a demo HTTPS certificate." >&2
+    echo "       Install openssl or use --localhost for local-only HTTP." >&2
+    return 1
+  fi
+
+  mkdir -p "$tls_dir"
+  chmod 700 "$tls_dir"
+
+  if is_ipv4 "$public_host"; then
+    san_line="IP.1 = ${public_host}"
+  else
+    san_line="DNS.1 = ${public_host}"
+  fi
+
+  cat > "$config_file" <<EOF
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+x509_extensions = v3_req
+
+[dn]
+CN = ${public_host}
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+${san_line}
+EOF
+
+  echo "Creating or replacing demo HTTPS certificate for ${public_host}:"
+  echo "  Certificate = ${cert_file}"
+  echo "  Private key = ${key_file}"
+  openssl req -x509 -nodes -newkey rsa:2048 \
+    -keyout "$key_file" \
+    -out "$cert_file" \
+    -days 30 \
+    -config "$config_file" >/dev/null 2>&1
+  chmod 600 "$cert_file" "$key_file"
+
+  WEB_HR_TLS_CERT_TO_WRITE="$cert_file"
+  WEB_HR_TLS_KEY_TO_WRITE="$key_file"
+}
+
 discover_public_ip_from_internet() {
   local public_ip=""
   local service
@@ -187,37 +243,83 @@ except Exception:
 PY
 }
 
+is_local_http_redirect() {
+  case "$1" in
+    http://localhost:*|http://127.0.0.1:*|http://[::1]:*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+validate_redirect_uri() {
+  local uri="$1"
+
+  case "$uri" in
+    https://*)
+      return 0
+      ;;
+    http://*)
+      if is_local_http_redirect "$uri"; then
+        return 0
+      fi
+      echo "ERROR: Microsoft Entra ID requires public reply URLs to use https." >&2
+      echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri https://<public-ip>:${WEB_HR_PORT}/callback" >&2
+      echo "       Or local-only mode: ./00_setup_entra_web_app.sh --localhost" >&2
+      return 1
+      ;;
+    *)
+      echo "ERROR: Redirect URI must start with https://, or http://localhost for local-only mode." >&2
+      return 1
+      ;;
+  esac
+}
+
 WEB_HR_APP_NAME="${WEB_HR_APP_NAME:-Web HR App - ${PDB_NAME}}"
 WEB_HR_PORT="${WEB_HR_PORT:-8012}"
 WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST:-}"
+WEB_HR_TLS_CERT_TO_WRITE="${WEB_HR_TLS_CERT:-}"
+WEB_HR_TLS_KEY_TO_WRITE="${WEB_HR_TLS_KEY:-}"
 if [ -n "${WEB_HR_REDIRECT_URI:-}" ] && [ "$REDIRECT_MODE_EXPLICIT" -eq 0 ]; then
   unset WEB_HR_REDIRECT_URI
 fi
 
 if [ -n "$REDIRECT_URI_ARG" ]; then
   WEB_HR_REDIRECT_URI="$REDIRECT_URI_ARG"
+  validate_redirect_uri "$WEB_HR_REDIRECT_URI"
   PUBLIC_IP_REDIRECT=0
   case "$WEB_HR_REDIRECT_URI" in
-    http://localhost:*|http://127.0.0.1:*)
+    http://localhost:*|http://127.0.0.1:*|http://[::1]:*)
       WEB_HR_HOST_TO_WRITE=""
+      WEB_HR_TLS_CERT_TO_WRITE=""
+      WEB_HR_TLS_KEY_TO_WRITE=""
       ;;
     *)
       WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST_TO_WRITE:-0.0.0.0}"
+      if [[ "$WEB_HR_REDIRECT_URI" == https://* ]]; then
+        redirect_host="$(printf '%s' "$WEB_HR_REDIRECT_URI" | python3 -c 'from urllib.parse import urlparse; import sys; print(urlparse(sys.stdin.read().strip()).hostname or "")')"
+        ensure_tls_certificate "$redirect_host"
+      fi
       ;;
   esac
 elif [ "$PUBLIC_IP_REDIRECT" -eq 1 ]; then
   public_ip="$(discover_public_ip || true)"
   if [ -z "$public_ip" ]; then
     echo "ERROR: Could not discover or prompt for a public IP."
-    echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:${WEB_HR_PORT}/callback"
+    echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri https://<public-ip>:${WEB_HR_PORT}/callback"
     echo "       Or use local-only mode: ./00_setup_entra_web_app.sh --localhost"
     exit 1
   fi
-  WEB_HR_REDIRECT_URI="http://${public_ip}:${WEB_HR_PORT}/callback"
+  WEB_HR_REDIRECT_URI="https://${public_ip}:${WEB_HR_PORT}/callback"
   WEB_HR_HOST_TO_WRITE="${WEB_HR_HOST_TO_WRITE:-0.0.0.0}"
+  ensure_tls_certificate "$public_ip"
 elif [ "$LOCALHOST_REDIRECT" -eq 1 ]; then
   WEB_HR_REDIRECT_URI="http://localhost:${WEB_HR_PORT}/callback"
   WEB_HR_HOST_TO_WRITE=""
+  WEB_HR_TLS_CERT_TO_WRITE=""
+  WEB_HR_TLS_KEY_TO_WRITE=""
 else
   WEB_HR_REDIRECT_URI="${WEB_HR_REDIRECT_URI:-http://localhost:${WEB_HR_PORT}/callback}"
 fi
@@ -380,6 +482,12 @@ EOF
 if [ -n "$WEB_HR_HOST_TO_WRITE" ]; then
   cat >> "$ENV_FILE" <<EOF
 export WEB_HR_HOST='${WEB_HR_HOST_TO_WRITE}'
+EOF
+fi
+if [ -n "$WEB_HR_TLS_CERT_TO_WRITE" ] && [ -n "$WEB_HR_TLS_KEY_TO_WRITE" ]; then
+  cat >> "$ENV_FILE" <<EOF
+export WEB_HR_TLS_CERT='${WEB_HR_TLS_CERT_TO_WRITE}'
+export WEB_HR_TLS_KEY='${WEB_HR_TLS_KEY_TO_WRITE}'
 EOF
 fi
 chmod 600 "$ENV_FILE"

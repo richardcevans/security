@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+import ssl
 import sys
 import traceback
 from http import HTTPStatus
@@ -286,6 +287,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     host = os.getenv("WEB_HR_HOST", "127.0.0.1")
     port = int(os.getenv("WEB_HR_PORT", "8012"))
+    tls_cert = os.getenv("WEB_HR_TLS_CERT", "")
+    tls_key = os.getenv("WEB_HR_TLS_KEY", "")
     try:
         server = WebHrServer((host, port), Handler)
     except OSError as exc:
@@ -297,7 +300,16 @@ def main():
             )
             raise SystemExit(1)
         raise
-    print("Web HR App running at http://{0}:{1}".format(host, port))
+    scheme = "http"
+    if tls_cert and tls_key:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+        scheme = "https"
+        print("TLS enabled with certificate: {0}".format(tls_cert))
+    print("Web HR App running at {0}://{1}:{2}".format(scheme, host, port))
+    if os.getenv("WEB_HR_REDIRECT_URI"):
+        print("Redirect URI: {0}".format(os.getenv("WEB_HR_REDIRECT_URI")))
     print("Database mode: {0}".format(os.getenv("WEB_HR_DB_MODE", "mock")))
     server.serve_forever()
 

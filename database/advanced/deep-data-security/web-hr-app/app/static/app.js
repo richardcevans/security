@@ -5,15 +5,11 @@ const raw = document.querySelector("#raw");
 const employeesButton = document.querySelector("#employeesButton");
 const summaryButton = document.querySelector("#summaryButton");
 const modeBanner = document.querySelector("#modeBanner");
-const requestContext = document.querySelector("#requestContext");
-const auditButton = document.querySelector("#auditButton");
-const auditRows = document.querySelector("#auditRows");
 const disableSalaryButton = document.querySelector("#disableSalaryButton");
 const enableSalaryButton = document.querySelector("#enableSalaryButton");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
-auditButton.addEventListener("click", loadAuditEvents);
 disableSalaryButton.addEventListener("click", disableSalaryEdits);
 enableSalaryButton.addEventListener("click", enableSalaryEdits);
 
@@ -77,7 +73,6 @@ function showAuthenticationContextDemo(user) {
 async function loadEmployees() {
   const payload = await getJson("/api/employees");
   renderEmployees(payload.rows || []);
-  renderRequestContext(payload.request_context);
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
@@ -104,23 +99,15 @@ async function loadSummary() {
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
-async function loadAuditEvents() {
-  const payload = await getJson("/api/audit/events");
-  renderAuditEvents(payload.events || []);
-  raw.textContent = JSON.stringify(payload, null, 2);
-}
-
 async function disableSalaryEdits() {
   const payload = await postJson("/api/policy/disable-salary-updates", {});
   renderEmployees(payload.rows || []);
-  renderRequestContext(payload.request_context);
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
 async function enableSalaryEdits() {
   const payload = await postJson("/api/policy/enable-salary-updates", {});
   renderEmployees(payload.rows || []);
-  renderRequestContext(payload.request_context);
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
@@ -207,7 +194,6 @@ async function saveEmployeeEdit(event) {
       value: input.value,
 	    });
 	    renderEmployees(payload.rows || []);
-	    renderRequestContext(payload.request_context);
 	    raw.textContent = JSON.stringify(payload, null, 2);
   } catch (error) {
     raw.textContent = String(error.stack || error);
@@ -257,7 +243,6 @@ async function attemptUnauthorizedEdit(event) {
       value: button.dataset.attemptValue,
     });
     renderEmployees(payload.rows || []);
-    renderRequestContext(payload.request_context);
     raw.textContent = JSON.stringify(payload, null, 2);
   } catch (error) {
     raw.textContent = String(error.stack || error);
@@ -265,39 +250,6 @@ async function attemptUnauthorizedEdit(event) {
     button.disabled = false;
   }
 }
-
-function renderRequestContext(context) {
-  if (!context) {
-    requestContext.innerHTML = "<div><dt>Status</dt><dd>No HR request yet.</dd></div>";
-    return;
-  }
-  const identity = context.identity || {};
-  const pooled = context.pooled_connection || {};
-  const roles = (context.active_data_roles || []).map((role) => valueFor(role, "role_name")).filter(Boolean);
-  requestContext.innerHTML = `
-    <div><dt>Pooled Session</dt><dd>${escapeHtml(pooled.session_id)}</dd></div>
-    <div><dt>Service</dt><dd>${escapeHtml(pooled.service_name)}</dd></div>
-    <div><dt>End User</dt><dd>${escapeHtml(identity.END_USER_NAME || identity.end_user_name)}</dd></div>
-    <div><dt>Current User</dt><dd>${escapeHtml(identity.CURRENT_USER || identity.current_user)}</dd></div>
-    <div><dt>Active Data Roles</dt><dd>${escapeHtml(roles.join(", "))}</dd></div>
-  `;
-}
-
-function renderAuditEvents(events) {
-  if (!events.length) {
-    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
-    return;
-  }
-  auditRows.innerHTML = events.map((event) => `
-    <tr>
-      <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
-      <td>${escapeHtml(valueFor(event, "action_name"))}</td>
-      <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
-      <td>${escapeHtml(valueFor(event, "return_code"))}</td>
-    </tr>
-  `).join("");
-}
-
 
 async function postJson(url, body) {
   const response = await fetch(url, {

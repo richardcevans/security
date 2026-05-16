@@ -18,10 +18,38 @@
 
       <section class="actions">
         <a class="button ghost" href="/">Back To App</a>
+        <button id="auditButton" type="button">Refresh Audit Events</button>
+        <button id="requestContextButton" type="button">Refresh Pooled Context</button>
         <button id="tokensButton" type="button">Refresh Token Claims</button>
         <button id="contextButton" type="button">Refresh Database Context</button>
         <a class="button secondary" href="/api/debug/tokens" target="_blank" rel="noreferrer">Open Token JSON</a>
         <a class="button secondary" href="/api/debug/database-context" target="_blank" rel="noreferrer">Open Context JSON</a>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Unified Audit Trail</h2>
+          <p class="small">Shows SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
+          <div class="table-wrap">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Action</th>
+                  <th>End User</th>
+                  <th>Return</th>
+                </tr>
+              </thead>
+              <tbody id="auditRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Pooled Request Context</h2>
+          <p class="small">Runs the HR employee query and shows the end user context attached to the pooled database connection.</p>
+          <dl id="requestContext"></dl>
+        </article>
       </section>
 
       <section class="grid debug-grid">

@@ -62,33 +62,6 @@
         </article>
       </section>
 
-      <section class="grid">
-        <article class="panel">
-          <h2>Pooled Request Context</h2>
-          <p class="small">Shows the end user context attached to the pooled database connection for the latest HR request.</p>
-          <dl id="requestContext"></dl>
-        </article>
-
-        <article class="panel">
-          <h2>Unified Audit Trail</h2>
-          <p class="small">Shows SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
-          <button id="auditButton" type="button">Refresh Audit Events</button>
-          <div class="table-wrap">
-            <table class="audit-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Action</th>
-                  <th>End User</th>
-                  <th>Return</th>
-                </tr>
-              </thead>
-              <tbody id="auditRows"></tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
       <section class="panel">
         <h2>Raw Response</h2>
         <pre id="raw"></pre>

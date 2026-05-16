@@ -1,11 +1,17 @@
 const userBox = document.querySelector("#userBox");
 const tokensButton = document.querySelector("#tokensButton");
 const contextButton = document.querySelector("#contextButton");
+const auditButton = document.querySelector("#auditButton");
+const requestContextButton = document.querySelector("#requestContextButton");
 const tokenDebug = document.querySelector("#tokenDebug");
 const contextDebug = document.querySelector("#contextDebug");
+const auditRows = document.querySelector("#auditRows");
+const requestContext = document.querySelector("#requestContext");
 
 tokensButton.addEventListener("click", loadTokenDebug);
 contextButton.addEventListener("click", loadContextDebug);
+auditButton.addEventListener("click", loadAuditEvents);
+requestContextButton.addEventListener("click", loadRequestContext);
 
 async function refreshUser() {
   const response = await fetch("/api/me");
@@ -45,6 +51,16 @@ async function loadContextDebug() {
   }
 }
 
+async function loadAuditEvents() {
+  const payload = await getJson("/api/audit/events", contextDebug);
+  renderAuditEvents(payload.events || []);
+}
+
+async function loadRequestContext() {
+  const payload = await getJson("/api/employees", contextDebug);
+  renderRequestContext(payload.request_context);
+}
+
 async function getJson(url, outputElement) {
   const response = await fetch(url);
   const payload = await response.json();
@@ -64,8 +80,47 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function valueFor(row, key) {
+  const upperKey = key.toUpperCase();
+  return row[key] ?? row[upperKey] ?? "";
+}
+
+function renderRequestContext(context) {
+  if (!context) {
+    requestContext.innerHTML = "<div><dt>Status</dt><dd>No HR request yet.</dd></div>";
+    return;
+  }
+  const identity = context.identity || {};
+  const pooled = context.pooled_connection || {};
+  const roles = (context.active_data_roles || []).map((role) => valueFor(role, "role_name")).filter(Boolean);
+  requestContext.innerHTML = `
+    <div><dt>Pooled Session</dt><dd>${escapeHtml(pooled.session_id)}</dd></div>
+    <div><dt>Service</dt><dd>${escapeHtml(pooled.service_name)}</dd></div>
+    <div><dt>End User</dt><dd>${escapeHtml(identity.END_USER_NAME || identity.end_user_name)}</dd></div>
+    <div><dt>Current User</dt><dd>${escapeHtml(identity.CURRENT_USER || identity.current_user)}</dd></div>
+    <div><dt>Active Data Roles</dt><dd>${escapeHtml(roles.join(", "))}</dd></div>
+  `;
+}
+
+function renderAuditEvents(events) {
+  if (!events.length) {
+    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
+    return;
+  }
+  auditRows.innerHTML = events.map((event) => `
+    <tr>
+      <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
+      <td>${escapeHtml(valueFor(event, "action_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "return_code"))}</td>
+    </tr>
+  `).join("");
+}
+
 refreshUser().then((user) => {
   if (user) {
+    loadAuditEvents();
+    loadRequestContext();
     loadTokenDebug();
     loadContextDebug();
   }

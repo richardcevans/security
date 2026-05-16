@@ -246,7 +246,7 @@ web-hr-app/
 Drop database objects created by this lab:
 
 ```bash
-./03_cleanup_database_app_identity.sh
+./99_cleanup_database_app_identity.sh
 ```
 
 The Entra application is left in place by default so repeated demos keep the same client ID. Delete `Web HR App - ${PDB_NAME}` from the Azure portal if you no longer need it.

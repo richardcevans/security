@@ -54,11 +54,13 @@ prompt Elevation role granted to application identity
 prompt ========================================================================
 
 col grantee format a28
-col granted_role format a32
-SELECT grantee, granted_role
-  FROM dba_data_role_privs
+col data_role format a32
+col grantee_type format a20
+SELECT grantee, grantee_type, data_role
+  FROM dba_data_role_grants
  WHERE grantee = 'WEB_HR_APP'
- ORDER BY granted_role;
+   AND data_role = 'HRAPP_COMPENSATION_ANALYST'
+ ORDER BY data_role;
 
 prompt
 prompt ========================================================================

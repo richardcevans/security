@@ -102,7 +102,7 @@ GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
 CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=<web-hr-app-client-id>';
 
-CREATE OR REPLACE DATA ROLE hrapp_compensation_analyst DISABLED;
+CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
 GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 ```
 

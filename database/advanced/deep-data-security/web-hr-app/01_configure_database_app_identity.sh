@@ -73,7 +73,7 @@ prompt ========================================================================
 prompt Create a disabled elevation role for application-mediated access
 prompt ========================================================================
 
-CREATE OR REPLACE DATA ROLE hrapp_compensation_analyst DISABLED;
+CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
 
 GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 
@@ -100,11 +100,13 @@ SELECT application_name, mapped_to
  WHERE application_name = 'WEB_HR_APP';
 
 col grantee format a28
-col granted_role format a32
-SELECT grantee, granted_role
-  FROM dba_data_role_privs
+col data_role format a32
+col grantee_type format a20
+SELECT grantee, grantee_type, data_role
+  FROM dba_data_role_grants
  WHERE grantee = 'WEB_HR_APP'
- ORDER BY granted_role;
+   AND data_role = 'HRAPP_COMPENSATION_ANALYST'
+ ORDER BY data_role;
 
 col grant_name format a36
 col privilege format a20

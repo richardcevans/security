@@ -159,7 +159,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _merge_debug_payload(self, payload, user):
         payload["obo_database_token"] = DATABASE.debug_tokens_for_user(user)
+        self._log_debug_payload("Token diagnostics", payload)
         return payload
+
+    def _log_debug_payload(self, label, payload):
+        print("")
+        print("========================================================================")
+        print(label)
+        print("========================================================================")
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        print("========================================================================")
+        print("")
 
     def _set_session_and_redirect(self, session_id):
         self.send_response(HTTPStatus.FOUND)

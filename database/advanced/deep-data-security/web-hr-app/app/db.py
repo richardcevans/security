@@ -54,13 +54,21 @@ class WebHrDatabase(object):
               FROM v$end_user_data_role
              ORDER BY role_name
         """
-        identity = self._run_with_context(user, [], identity_sql, fetch="one")
-        roles = self._run_with_context(user, [], roles_sql, fetch="rows")
-        return {
+        identity = self._run_with_context(user, None, identity_sql, fetch="one")
+        roles = self._run_with_context(user, None, roles_sql, fetch="rows")
+        payload = {
             "mode": "oracledb",
             "identity": identity,
             "active_data_roles": roles,
         }
+        print("")
+        print("========================================================================")
+        print("Database context diagnostics")
+        print("========================================================================")
+        print(__import__("json").dumps(payload, indent=2, sort_keys=True))
+        print("========================================================================")
+        print("")
+        return payload
 
     def _employees_mock(self, user):
         username = user["username"].lower()
@@ -100,7 +108,7 @@ class WebHrDatabase(object):
               FROM hr.employees
              ORDER BY employee_id
         """
-        rows = self._run_with_context(user, [], sql, fetch="rows")
+        rows = self._run_with_context(user, None, sql, fetch="rows")
         return {
             "mode": "oracledb",
             "user": user["username"],
@@ -237,11 +245,13 @@ class WebHrDatabase(object):
         pool = self._pool_oracle()
         connection = pool.acquire()
         try:
-            context = oracledb.create_end_user_security_context(
-                end_user_identity=user["access_token"],
-                database_access_token=self._database_access_token_for_user(user["access_token"]),
-                data_roles=data_roles,
-            )
+            context_kwargs = {
+                "end_user_identity": user["access_token"],
+                "database_access_token": self._database_access_token_for_user(user["access_token"]),
+            }
+            if data_roles:
+                context_kwargs["data_roles"] = data_roles
+            context = oracledb.create_end_user_security_context(**context_kwargs)
             connection.set_end_user_security_context(context)
             cursor = connection.cursor()
             try:

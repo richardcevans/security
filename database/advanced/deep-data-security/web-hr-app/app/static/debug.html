@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web HR App Diagnostics</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security</p>
+          <h1>Diagnostics</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section class="actions">
+        <a class="button ghost" href="/">Back To App</a>
+        <button id="tokensButton" type="button">Refresh Token Claims</button>
+        <button id="contextButton" type="button">Refresh Database Context</button>
+        <a class="button secondary" href="/api/debug/tokens" target="_blank" rel="noreferrer">Open Token JSON</a>
+        <a class="button secondary" href="/api/debug/database-context" target="_blank" rel="noreferrer">Open Context JSON</a>
+      </section>
+
+      <section class="grid debug-grid">
+        <article class="panel">
+          <h2>Token Claims</h2>
+          <pre id="tokenDebug"></pre>
+        </article>
+
+        <article class="panel">
+          <h2>Database Context</h2>
+          <pre id="contextDebug"></pre>
+        </article>
+      </section>
+    </main>
+    <script src="/static/debug.js"></script>
+  </body>
+</html>

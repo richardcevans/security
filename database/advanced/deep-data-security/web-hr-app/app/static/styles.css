@@ -256,7 +256,19 @@ th {
 }
 
 .audit-table {
-  min-width: 620px;
+  min-width: 1060px;
+}
+
+.audit-table code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.audit-detail {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .token-flow {

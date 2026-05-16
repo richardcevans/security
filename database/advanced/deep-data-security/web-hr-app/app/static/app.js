@@ -114,7 +114,7 @@ async function loadAuditEvents(updateRaw = true) {
 
 function refreshAuditEventsQuietly() {
   loadAuditEvents(false).catch((error) => {
-    auditRows.innerHTML = `<tr><td colspan="4">${escapeHtml(error.message || error)}</td></tr>`;
+    auditRows.innerHTML = `<tr><td colspan="7">${escapeHtml(error.message || error)}</td></tr>`;
   });
 }
 
@@ -259,7 +259,7 @@ function showAttemptAuthorizationDemo(event) {
 
 function renderAuditEvents(events) {
   if (!events.length) {
-    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
+    auditRows.innerHTML = '<tr><td colspan="7">No audit records in the last 3 minutes. Run Load Employees or edit a field, then refresh.</td></tr>';
     return;
   }
   auditRows.innerHTML = events.map((event) => `
@@ -267,6 +267,16 @@ function renderAuditEvents(events) {
       <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
       <td>${escapeHtml(valueFor(event, "action_name"))}</td>
       <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
+      <td>
+        <strong>${escapeHtml(valueFor(event, "dbusername"))}</strong>
+        <span class="audit-detail">${escapeHtml(valueFor(event, "authentication_type"))}</span>
+      </td>
+      <td>
+        ${escapeHtml(valueFor(event, "userhost"))}
+        <span class="audit-detail">${escapeHtml(valueFor(event, "client_program_name") || valueFor(event, "os_username"))}</span>
+        <span class="audit-detail">SESSIONID ${escapeHtml(valueFor(event, "sessionid"))}</span>
+      </td>
+      <td><code>${escapeHtml(valueFor(event, "sql_text_preview"))}</code></td>
       <td>${escapeHtml(valueFor(event, "return_code"))}</td>
     </tr>
   `).join("");

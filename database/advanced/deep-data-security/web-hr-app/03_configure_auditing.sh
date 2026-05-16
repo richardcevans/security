@@ -74,10 +74,13 @@ SELECT policy_name, audit_option, object_schema, object_name
 prompt
 prompt Run app SELECT/UPDATE actions, then refresh the app audit panel or query:
 prompt
-prompt SELECT event_timestamp, dbusername, end_user_name, action_name, return_code
+prompt SELECT event_timestamp, dbusername, end_user_name, userhost, client_program_name,
+prompt        action_name, return_code, DBMS_LOB.SUBSTR(sql_text, 100, 1) AS sql_text_preview
 prompt   FROM unified_audit_trail
 prompt  WHERE object_schema = 'HR'
 prompt    AND object_name = 'EMPLOYEES'
+prompt    AND action_name IN ('SELECT', 'UPDATE')
+prompt    AND event_timestamp >= SYSTIMESTAMP - INTERVAL '3' MINUTE
 prompt  ORDER BY event_timestamp DESC;
 
 prompt

@@ -381,22 +381,30 @@ class WebHrDatabase(object):
             SELECT event_timestamp,
                    dbusername,
                    end_user_name,
+                   os_username,
+                   userhost,
+                   client_program_name,
+                   authentication_type,
+                   sessionid,
                    action_name,
                    object_schema,
                    object_name,
-                   return_code
+                   return_code,
+                   DBMS_LOB.SUBSTR(sql_text, 100, 1) AS sql_text_preview
               FROM unified_audit_trail
              WHERE object_schema = 'HR'
                AND object_name = 'EMPLOYEES'
                AND action_name IN ('SELECT', 'UPDATE')
+               AND event_timestamp >= SYSTIMESTAMP - INTERVAL '3' MINUTE
              ORDER BY event_timestamp DESC
              FETCH FIRST 20 ROWS ONLY
         """
         rows = self._run_app_query(sql, fetch="rows")
         return {
             "mode": "oracledb",
+            "window": "last 3 minutes",
             "events": rows,
-            "note": "END_USER_NAME identifies the Deep Data Security end user on pooled app connections.",
+            "note": "END_USER_NAME identifies the Deep Data Security end user. DBUSERNAME identifies the pooled application database account.",
         }
 
     def _set_salary_update_policy_oracle(self, user, enabled):

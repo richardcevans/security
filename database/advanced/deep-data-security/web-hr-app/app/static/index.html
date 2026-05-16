@@ -63,8 +63,13 @@
       </section>
 
       <section class="panel">
+        <h2>Raw Response</h2>
+        <pre id="raw"></pre>
+      </section>
+
+      <section class="panel">
         <h2>Unified Audit Trail</h2>
-        <p class="small">Shows SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
+        <p class="small">Shows recent SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
         <button id="auditButton" type="button">Refresh Audit Events</button>
         <div class="table-wrap">
           <table class="audit-table">
@@ -73,17 +78,15 @@
                 <th>Time</th>
                 <th>Action</th>
                 <th>End User</th>
+                <th>Database User</th>
+                <th>Host / Client</th>
+                <th>SQL Text</th>
                 <th>Return</th>
               </tr>
             </thead>
             <tbody id="auditRows"></tbody>
           </table>
         </div>
-      </section>
-
-      <section class="panel">
-        <h2>Raw Response</h2>
-        <pre id="raw"></pre>
       </section>
     </main>
     <script src="/static/app.js"></script>

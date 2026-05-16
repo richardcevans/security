@@ -58,10 +58,10 @@ async function loadSummary() {
       <dt>Data Roles</dt>
       <dd>${escapeHtml((payload.data_roles || []).join(", "))}</dd>
     </div>
-    <div>
-      <dt>Average Salary</dt>
-      <dd>${escapeHtml(payload.average_salary)}</dd>
-    </div>
+	    <div>
+	      <dt>Average Salary</dt>
+	      <dd>${escapeHtml(formatCurrency(payload.average_salary))}</dd>
+	    </div>
     <div>
       <dt>Employee Count</dt>
       <dd>${escapeHtml(payload.employee_count)}</dd>
@@ -112,13 +112,16 @@ function renderEditableCell(row, field, permissionField) {
     return escapeHtml(value);
   }
   return `
-    <input
-      class="cell-input"
-      data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
-      data-edit-field="${escapeHtml(field)}"
-      value="${escapeHtml(value)}"
-      aria-label="${escapeHtml(field.replace(/_/g, " "))}"
-    />
+    <div class="editable-cell">
+      <input
+        class="cell-input"
+        data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
+        data-edit-field="${escapeHtml(field)}"
+        value="${escapeHtml(value)}"
+        aria-label="${escapeHtml(field.replace(/_/g, " "))}"
+      />
+      <span class="edit-chip">Editable</span>
+    </div>
   `;
 }
 
@@ -156,6 +159,22 @@ async function postJson(url, body) {
 
 function isTrue(value) {
   return value === true || String(value).toUpperCase() === "TRUE";
+}
+
+function formatCurrency(value) {
+  if (value == null || value === "") {
+    return "";
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return value;
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(number);
 }
 
 function escapeHtml(value) {

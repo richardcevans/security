@@ -84,21 +84,7 @@ prompt ========================================================================
 
 CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
 
-DECLARE
-  role_exists NUMBER;
-BEGIN
-  SELECT COUNT(*) INTO role_exists
-    FROM dba_roles
-   WHERE role = 'WEB_HR_APP_ELEVATION_ROLE';
-
-  IF role_exists = 0 THEN
-    EXECUTE IMMEDIATE 'CREATE ROLE web_hr_app_elevation_role';
-  END IF;
-END;
-/
-
-GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app_elevation_role;
-GRANT web_hr_app_elevation_role TO web_hr_app_user;
+GRANT DATA ROLE hrapp_compensation_analyst TO web_hr_app;
 
 prompt
 prompt ========================================================================
@@ -127,16 +113,9 @@ col data_role format a32
 col grantee_type format a20
 SELECT grantee, grantee_type, data_role
   FROM dba_data_role_grants
- WHERE grantee = 'WEB_HR_APP_ELEVATION_ROLE'
+ WHERE grantee = 'WEB_HR_APP'
    AND data_role = 'HRAPP_COMPENSATION_ANALYST'
  ORDER BY data_role;
-
-col granted_role format a32
-col grantee format a28
-SELECT grantee, granted_role
-  FROM dba_role_privs
- WHERE grantee = 'WEB_HR_APP_USER'
-   AND granted_role = 'WEB_HR_APP_ELEVATION_ROLE';
 
 col grant_name format a36
 col privilege format a20

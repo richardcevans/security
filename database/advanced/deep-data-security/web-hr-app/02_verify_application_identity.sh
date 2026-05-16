@@ -77,7 +77,7 @@ SELECT owner, table_name, grantee, privilege
 
 prompt
 prompt ========================================================================
-prompt Elevation data role granted through the pooled user's database role
+prompt Elevation data role granted to application identity
 prompt ========================================================================
 
 col grantee format a28
@@ -85,16 +85,9 @@ col data_role format a32
 col grantee_type format a20
 SELECT grantee, grantee_type, data_role
   FROM dba_data_role_grants
- WHERE grantee = 'WEB_HR_APP_ELEVATION_ROLE'
+ WHERE grantee = 'WEB_HR_APP'
    AND data_role = 'HRAPP_COMPENSATION_ANALYST'
  ORDER BY data_role;
-
-col granted_role format a32
-col grantee format a28
-SELECT grantee, granted_role
-  FROM dba_role_privs
- WHERE grantee = 'WEB_HR_APP_USER'
-   AND granted_role = 'WEB_HR_APP_ELEVATION_ROLE';
 
 prompt
 prompt ========================================================================

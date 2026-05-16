@@ -36,6 +36,13 @@ if [ -z "${WEB_HR_DB_MODE:-}" ]; then
   fi
 fi
 
+if [ "$WEB_HR_ENV_LOADED" -eq 1 ] && [ "${WEB_HR_DB_MODE}" = "mock" ]; then
+  echo "WARNING: .web-hr-app.env exists, but WEB_HR_DB_MODE=mock."
+  echo "This will simulate responses and will not prove Oracle Deep Data Security."
+  echo "Use WEB_HR_DB_MODE=oracledb ./run.sh or remove WEB_HR_DB_MODE=mock from .env."
+  echo
+fi
+
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [ -z "$PYTHON_BIN" ]; then
   if command -v python3 >/dev/null 2>&1; then

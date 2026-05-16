@@ -133,6 +133,18 @@ python3 -m pip install python-oracledb
 
 After `.web-hr-app.env` exists, `./run.sh` defaults to `WEB_HR_DB_MODE=oracledb`. Use `WEB_HR_DB_MODE=mock ./run.sh` only when you want the simulated UI demo.
 
+If the raw response shows `"mode": "mock"`, check for a local `.env` override:
+
+```bash
+grep WEB_HR_DB_MODE .env
+```
+
+Remove `WEB_HR_DB_MODE=mock` from `.env`, or start the app explicitly in real database mode:
+
+```bash
+WEB_HR_DB_MODE=oracledb ./run.sh
+```
+
 In real mode the application:
 
 1. Maintains a database connection pool as the application identity.

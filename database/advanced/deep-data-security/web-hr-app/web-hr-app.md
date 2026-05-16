@@ -124,7 +124,7 @@ Create a Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`:
 ./04_configure_auditing.sh
 ```
 
-The policy audits app activity on `HR.EMPLOYEES`. The app's audit panel queries `UNIFIED_AUDIT_TRAIL` and shows `END_USER_NAME`, so DBAs can see whether Marvin or Emma performed the operation even though the app uses pooled database connections.
+The policy audits app activity on `HR.EMPLOYEES` and grants `AUDIT_VIEWER` to `WEB_HR_APP_USER`. The app's audit panel queries `UNIFIED_AUDIT_TRAIL` and shows `END_USER_NAME`, so DBAs can see whether Marvin or Emma performed the operation even though the app uses pooled database connections.
 
 ## Configure DBA Policy Toggle Demo
 

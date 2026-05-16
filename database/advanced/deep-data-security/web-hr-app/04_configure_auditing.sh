@@ -36,7 +36,7 @@ CREATE AUDIT POLICY web_hr_app_employee_audit
 
 AUDIT POLICY web_hr_app_employee_audit;
 
-GRANT SELECT ON sys.unified_audit_trail TO web_hr_app_user;
+GRANT AUDIT_VIEWER TO web_hr_app_user;
 
 prompt
 prompt ========================================================================
@@ -57,6 +57,9 @@ prompt   FROM unified_audit_trail
 prompt  WHERE object_schema = 'HR'
 prompt    AND object_name = 'EMPLOYEES'
 prompt  ORDER BY event_timestamp DESC;
+
+prompt
+prompt The web app queries UNIFIED_AUDIT_TRAIL through the AUDIT_VIEWER role.
 
 exit;
 EOF

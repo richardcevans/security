@@ -216,4 +216,5 @@ if [ "$VERBOSE" = "1" ]; then
   print_verbose_startup
 fi
 
-"$PYTHON_BIN" -m app.main
+export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
+exec "$PYTHON_BIN" -m app.main

@@ -189,6 +189,8 @@ For normal demos, run the app in the background:
 
 The background launcher writes the process id to `.web-hr-app.pid` and app output to `logs/web-hr-app.log`, so the terminal remains free for SQLcl, curl, or firewall checks. To watch the app log:
 
+The PID file points to the Python web server process. If port `8012` is already in use, `start.sh` prints the process that owns the listener instead of starting a second copy.
+
 ```bash
 tail -f logs/web-hr-app.log
 ```

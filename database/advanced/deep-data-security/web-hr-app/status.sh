@@ -27,6 +27,17 @@ if [ ! -f "$PID_FILE" ]; then
   echo "Web HR App is not running. No PID file found."
   echo "  Expected PID file = ${PID_FILE}"
   [ -f "$LOG_FILE" ] && echo "  Log = ${LOG_FILE}"
+  if command -v ss >/dev/null 2>&1; then
+    listener="$(ss -ltnp 2>/dev/null | grep ":${WEB_HR_PORT} " || true)"
+    if [ -n "$listener" ]; then
+      echo
+      echo "But port ${WEB_HR_PORT} is already in use by another process:"
+      echo "$listener"
+      echo
+      echo "Stop that process, or start Web HR App on another port:"
+      echo "  WEB_HR_PORT=<other-port> ./start.sh"
+    fi
+  fi
   exit 1
 fi
 

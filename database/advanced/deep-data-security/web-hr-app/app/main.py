@@ -65,6 +65,18 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_text(str(exc), HTTPStatus.BAD_REQUEST)
             return
 
+        if path == "/switch-account":
+            clear_session(self.headers.get("Cookie", ""))
+            try:
+                self._redirect(
+                    new_login(prompt="select_account"),
+                    clear_cookie=True,
+                    no_store=True,
+                )
+            except Exception as exc:
+                self._send_text(str(exc), HTTPStatus.BAD_REQUEST)
+            return
+
         if path == "/demo/marvin":
             self._set_session_and_redirect(demo_session("marvin"))
             return
@@ -90,6 +102,7 @@ class Handler(BaseHTTPRequestHandler):
             clear_session(self.headers.get("Cookie", ""))
             self.send_response(HTTPStatus.FOUND)
             self.send_header("Set-Cookie", "web_hr_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax")
+            self.send_header("Cache-Control", "no-store")
             self.send_header("Location", "/")
             self.end_headers()
             return
@@ -275,8 +288,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _redirect(self, location):
+    def _redirect(self, location, clear_cookie=False, no_store=False):
         self.send_response(HTTPStatus.FOUND)
+        if clear_cookie:
+            self.send_header("Set-Cookie", "web_hr_session=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax")
+        if no_store:
+            self.send_header("Cache-Control", "no-store")
         self.send_header("Location", location)
         self.end_headers()
 

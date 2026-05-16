@@ -204,6 +204,14 @@ source ~/web-hr-app-venv/bin/activate
 
 The helper creates a Python 3.9 virtual environment, installs `oracledb>=4`, exports the lab database server certificate if needed, and creates a Thin-mode trust wallet at `./python-wallet/ewallet.pem`. This keeps TLS verification enabled while trusting only the lab database certificate.
 
+If the app returns `DPY-6005` with `CERTIFICATE_VERIFY_FAILED` or `self signed certificate`, the browser HTTPS certificate is not the problem. The Python database client does not trust the database listener certificate yet. Rerun:
+
+```bash
+./setup_python_oracledb.sh
+source ~/web-hr-app-venv/bin/activate
+./run.sh
+```
+
 After `.web-hr-app.env` exists, `./run.sh` defaults to `WEB_HR_DB_MODE=oracledb`. Use `WEB_HR_DB_MODE=mock ./run.sh` only when you want the simulated UI demo.
 
 If the raw response shows `"mode": "mock"`, check for a local `.env` override:

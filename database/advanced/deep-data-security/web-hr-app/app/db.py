@@ -1,5 +1,6 @@
 import os
 from decimal import Decimal
+from pathlib import Path
 from app.identity import decode_jwt_without_validation, public_claims
 from urllib.parse import urlencode
 from urllib.error import HTTPError
@@ -490,15 +491,38 @@ class WebHrDatabase(object):
 
         config_dir = os.getenv("WEB_HR_CONFIG_DIR") or os.getenv("TNS_ADMIN")
         wallet_location = os.getenv("WEB_HR_WALLET_LOCATION")
+        if not wallet_location:
+            default_wallet = Path(__file__).resolve().parent.parent / "python-wallet"
+            if (default_wallet / "ewallet.pem").is_file():
+                wallet_location = str(default_wallet)
         wallet_password = os.getenv("WEB_HR_WALLET_PASSWORD")
         if config_dir:
             pool_kwargs["config_dir"] = config_dir
         if wallet_location:
+            wallet_pem = Path(wallet_location) / "ewallet.pem"
+            if not wallet_pem.is_file():
+                raise RuntimeError(
+                    "WEB_HR_WALLET_LOCATION is set to {0}, but {1} does not exist. "
+                    "Run ./setup_python_oracledb.sh to export the database server certificate "
+                    "into the python-oracledb trust wallet.".format(wallet_location, wallet_pem)
+                )
             pool_kwargs["wallet_location"] = wallet_location
         if wallet_password:
             pool_kwargs["wallet_password"] = wallet_password
 
-        self._pool = oracledb.create_pool(**pool_kwargs)
+        try:
+            self._pool = oracledb.create_pool(**pool_kwargs)
+        except Exception as exc:
+            message = str(exc)
+            if "CERTIFICATE_VERIFY_FAILED" in message or "self signed certificate" in message:
+                wallet_hint = wallet_location or "(not set)"
+                raise RuntimeError(
+                    "python-oracledb could not verify the database TLS certificate. "
+                    "This is the database TCPS trust store, not the browser HTTPS certificate. "
+                    "Run ./setup_python_oracledb.sh, then restart ./run.sh. "
+                    "Current WEB_HR_WALLET_LOCATION={0}.".format(wallet_hint)
+                ) from exc
+            raise
         return self._pool
 
     def _application_access_token(self, *args):

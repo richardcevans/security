@@ -15,6 +15,20 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+upsert_export() {
+  local name="$1"
+  local value="$2"
+  local escaped
+  escaped="$(printf '%s' "$value" | sed "s/'/'\\\\''/g")"
+  if grep -Eq "^(export[[:space:]]+)?${name}=" "$ENV_FILE"; then
+    echo "Updating ${name} in ${ENV_FILE}."
+    sed -i -E "s|^(export[[:space:]]+)?${name}=.*|export ${name}='${escaped}'|" "$ENV_FILE"
+  else
+    echo "Adding ${name} to ${ENV_FILE}."
+    echo "export ${name}='${escaped}'" >> "$ENV_FILE"
+  fi
+}
+
 install_python39() {
   if command_exists "$PYTHON_BIN"; then
     return
@@ -101,22 +115,10 @@ echo "Created:"
 echo "${PYTHON_WALLET_DIR}/ewallet.pem"
 
 touch "$ENV_FILE"
-if grep -q '^WEB_HR_WALLET_LOCATION=' "$ENV_FILE"; then
-  echo "Updating WEB_HR_WALLET_LOCATION in ${ENV_FILE}."
-  sed -i "s|^WEB_HR_WALLET_LOCATION=.*|WEB_HR_WALLET_LOCATION='${PYTHON_WALLET_DIR}'|" "$ENV_FILE"
-else
-  echo "Adding WEB_HR_WALLET_LOCATION to ${ENV_FILE}."
-  echo "WEB_HR_WALLET_LOCATION='${PYTHON_WALLET_DIR}'" >> "$ENV_FILE"
-fi
+upsert_export "WEB_HR_WALLET_LOCATION" "$PYTHON_WALLET_DIR"
 
 if [ -n "${TNS_ADMIN:-}" ]; then
-  if grep -q '^WEB_HR_CONFIG_DIR=' "$ENV_FILE"; then
-    echo "Updating WEB_HR_CONFIG_DIR in ${ENV_FILE}."
-    sed -i "s|^WEB_HR_CONFIG_DIR=.*|WEB_HR_CONFIG_DIR='${TNS_ADMIN}'|" "$ENV_FILE"
-  else
-    echo "Adding WEB_HR_CONFIG_DIR to ${ENV_FILE}."
-    echo "WEB_HR_CONFIG_DIR='${TNS_ADMIN}'" >> "$ENV_FILE"
-  fi
+  upsert_export "WEB_HR_CONFIG_DIR" "$TNS_ADMIN"
 fi
 
 echo

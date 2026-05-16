@@ -115,6 +115,7 @@ echo "Created:"
 echo "${PYTHON_WALLET_DIR}/ewallet.pem"
 
 touch "$ENV_FILE"
+upsert_export "PYTHON_BIN" "${VENV_DIR}/bin/python"
 upsert_export "WEB_HR_WALLET_LOCATION" "$PYTHON_WALLET_DIR"
 
 if [ -n "${TNS_ADMIN:-}" ]; then
@@ -124,5 +125,4 @@ fi
 echo
 echo "Ready."
 echo "Next:"
-echo "source ${VENV_DIR}/bin/activate"
-echo "./run.sh"
+echo "./start.sh --verbose"

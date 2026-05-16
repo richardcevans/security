@@ -26,7 +26,7 @@ touch "$LOG_FILE"
 echo "Starting Web HR App in the background..."
 echo "  Log = ${LOG_FILE}"
 
-nohup ./run.sh >>"$LOG_FILE" 2>&1 &
+nohup ./run.sh "$@" >>"$LOG_FILE" 2>&1 &
 pid="$!"
 echo "$pid" > "$PID_FILE"
 

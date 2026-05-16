@@ -454,7 +454,10 @@ class WebHrDatabase(object):
             import oracledb.plugins.end_user_sec_provider  # noqa: F401
         except ImportError as exc:
             raise RuntimeError(
-                "WEB_HR_DB_MODE=oracledb requires python-oracledb with Deep Data Security support."
+                "WEB_HR_DB_MODE=oracledb requires python-oracledb with Deep Data Security support. "
+                "The current Python environment cannot import oracledb.plugins.end_user_sec_provider. "
+                "Run ./setup_python_oracledb.sh, then restart with ./start.sh --verbose so run.sh uses "
+                "~/web-hr-app-venv/bin/python."
             ) from exc
 
         version = getattr(oracledb, "__version__", "unknown")

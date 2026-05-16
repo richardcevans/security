@@ -199,6 +199,19 @@ To stop the background server:
 ./stop.sh
 ```
 
+For troubleshooting, start with verbose diagnostics. The log will include safe startup details such as loaded environment files, selected redirect URI, wallet and certificate file checks, Python/oracledb versions, and listener hints. Client secrets, passwords, and tokens are redacted.
+
+```bash
+./start.sh --verbose
+tail -f logs/web-hr-app.log
+```
+
+`run.sh` prefers the lab virtual environment at `~/web-hr-app-venv/bin/python` when it exists. If the shell default Python is different, the log prints a warning similar to:
+
+```text
+WARNING: default Python is /usr/bin/python3; using lab Python /home/oracle/web-hr-app-venv/bin/python.
+```
+
 Open:
 
 ```text

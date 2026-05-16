@@ -101,6 +101,19 @@ class WebHrDatabase(object):
                 "WEB_HR_DB_MODE=oracledb requires python-oracledb with Deep Data Security support."
             ) from exc
 
+        version = getattr(oracledb, "__version__", "unknown")
+        missing = []
+        if not hasattr(oracledb, "create_end_user_security_context"):
+            missing.append("oracledb.create_end_user_security_context")
+        if missing:
+            raise RuntimeError(
+                "python-oracledb {0} does not expose the required Deep Data Security API: {1}. "
+                "Install python-oracledb 4.0 or later in a supported Python environment.".format(
+                    version,
+                    ", ".join(missing),
+                )
+            )
+
         if not all(
             [
                 os.getenv("WEB_HR_DB_SCOPE"),

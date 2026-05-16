@@ -127,7 +127,8 @@ http://127.0.0.1:8012
 Real database mode requires a current python-oracledb version with Deep Data Security support:
 
 ```bash
-python3 -m pip install python-oracledb
+./setup_python_oracledb.sh
+source ~/web-hr-app-venv/bin/activate
 ./run.sh
 ```
 
@@ -170,6 +171,7 @@ web-hr-app/
   00_setup_entra_web_app.sh
   01_configure_database_app_identity.sh
   02_verify_application_identity.sh
+  setup_python_oracledb.sh
   app/
     main.py
     db.py

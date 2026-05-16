@@ -74,6 +74,7 @@ async function getJson(url) {
   const response = await fetch(url);
   const payload = await response.json();
   if (!response.ok) {
+    raw.textContent = JSON.stringify(payload, null, 2);
     throw new Error(payload.error || "Request failed");
   }
   return payload;
@@ -104,5 +105,7 @@ function escapeHtml(value) {
 }
 
 refreshPage().catch((error) => {
-  raw.textContent = String(error.stack || error);
+  if (!raw.textContent || raw.textContent === "Sign in before loading employee data.") {
+    raw.textContent = String(error.stack || error);
+  }
 });

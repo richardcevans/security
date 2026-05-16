@@ -2,6 +2,7 @@ import json
 import mimetypes
 import os
 import sys
+import traceback
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -129,7 +130,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self._send_json(fn())
         except Exception as exc:
-            self._send_json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            traceback.print_exc()
+            self._send_json(
+                {
+                    "error": str(exc),
+                    "detail": traceback.format_exc(),
+                },
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
 
     def _set_session_and_redirect(self, session_id):
         self.send_response(HTTPStatus.FOUND)

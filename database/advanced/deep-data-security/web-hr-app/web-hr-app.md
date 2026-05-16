@@ -165,7 +165,12 @@ Create two demo-only DBA procedures that can recreate the manager data grant wit
 ./04_configure_policy_toggle_demo.sh
 ```
 
-The web app buttons call these procedures to demonstrate a DBA policy change. When salary updates are disabled, the app code does not change; the next employee query asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again, and salary cells stop rendering as editable.
+The web app buttons call these procedures to demonstrate a DBA policy change:
+
+- `Disable Salary Edits` calls `SYS.WEB_HR_DISABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` without `UPDATE(salary)`.
+- `Restore Salary Edits` calls `SYS.WEB_HR_ENABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` with `UPDATE(salary, department_id)`.
+
+The app code does not change the authorization rule itself. After either procedure runs, the app reloads the employee rows and asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again. Salary cells render as editable only when Deep Data Security says the current end user can update that row and column.
 
 ## Run The Web App
 

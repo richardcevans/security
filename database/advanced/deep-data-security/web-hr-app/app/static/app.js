@@ -14,6 +14,10 @@ employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
 disableSalaryButton.addEventListener("click", disableSalaryEdits);
 enableSalaryButton.addEventListener("click", enableSalaryEdits);
+disableSalaryButton.addEventListener("focus", () => showPolicyToggleDemo(false));
+disableSalaryButton.addEventListener("mouseenter", () => showPolicyToggleDemo(false));
+enableSalaryButton.addEventListener("focus", () => showPolicyToggleDemo(true));
+enableSalaryButton.addEventListener("mouseenter", () => showPolicyToggleDemo(true));
 auditButton.addEventListener("click", () => loadAuditEvents());
 
 async function refreshConfig() {
@@ -254,6 +258,22 @@ function showAttemptAuthorizationDemo(event) {
     sql_authorization_check: `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', ${field}) AS can_update_${field}`,
     update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
     enforcement: "The UI predicts this edit is not allowed, but Try anyway still sends the UPDATE so Oracle Deep Data Security can prove enforcement."
+  }, null, 2);
+}
+
+function showPolicyToggleDemo(enabled) {
+  raw.textContent = JSON.stringify({
+    demo: enabled ? "Restore Salary Edits" : "Disable Salary Edits",
+    what_happens_when_pressed: {
+      api_call: enabled ? "POST /api/policy/enable-salary-updates" : "POST /api/policy/disable-salary-updates",
+      python_function: "WebHrDatabase._set_salary_update_policy_oracle(user, enabled)",
+      database_procedure: enabled ? "SYS.WEB_HR_ENABLE_SALARY_UPDATES" : "SYS.WEB_HR_DISABLE_SALARY_UPDATES",
+      deepsec_policy_change: enabled
+        ? "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary, department_id)."
+        : "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(department_id) only, removing UPDATE(salary).",
+      authorization_refresh: "The app reloads employees and calls ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) again for each row.",
+      enforcement: "Salary edit enforcement stays in Oracle Deep Data Security. The UI only reflects Oracle's current policy decision."
+    }
   }, null, 2);
 }
 

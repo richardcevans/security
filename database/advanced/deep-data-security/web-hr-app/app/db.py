@@ -41,6 +41,7 @@ class WebHrDatabase(object):
             return self._set_salary_update_policy_oracle(user, enabled=False)
         payload = self._employees_mock(user)
         payload["policy_change"] = "Mock mode: salary updates disabled."
+        payload["policy_demo"] = _policy_toggle_demo(False)
         return payload
 
     def enable_salary_updates(self, user):
@@ -48,6 +49,7 @@ class WebHrDatabase(object):
             return self._set_salary_update_policy_oracle(user, enabled=True)
         payload = self._employees_mock(user)
         payload["policy_change"] = "Mock mode: salary updates enabled."
+        payload["policy_demo"] = _policy_toggle_demo(True)
         return payload
 
     def debug_tokens_for_user(self, user):
@@ -417,6 +419,7 @@ class WebHrDatabase(object):
             else "Manager salary updates disabled by recreating HR.HRAPP_MANAGER_ACCESS without UPDATE(salary)."
         )
         payload["dba_demo_procedure"] = proc
+        payload["policy_demo"] = _policy_toggle_demo(enabled)
         return payload
 
     def _salary_summary_oracle(self, user):
@@ -648,3 +651,33 @@ def _preflight_summary(checks):
         if status in counts:
             counts[status] += 1
     return counts
+
+
+def _policy_toggle_demo(enabled):
+    update_clause = "UPDATE (salary, department_id)" if enabled else "UPDATE (department_id)"
+    return {
+        "button_effect": "Restore Salary Edits" if enabled else "Disable Salary Edits",
+        "what_changes": "The app calls a SYS definer-rights procedure installed by 04_configure_policy_toggle_demo.sh.",
+        "procedure": (
+            "SYS.WEB_HR_ENABLE_SALARY_UPDATES"
+            if enabled
+            else "SYS.WEB_HR_DISABLE_SALARY_UPDATES"
+        ),
+        "deepsec_change": (
+            "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary), so manager salary cells become editable again."
+            if enabled
+            else "Recreates HR.HRAPP_MANAGER_ACCESS without UPDATE(salary), so manager salary cells are no longer editable."
+        ),
+        "data_grant_core": (
+            "CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS "
+            "AS SELECT (ALL COLUMNS EXCEPT ssn), {0} "
+            "ON hr.employees "
+            "WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID "
+            "TO HRAPP_MANAGERS"
+        ).format(update_clause),
+        "application_behavior": (
+            "After the procedure runs, the app reloads employees and asks Oracle "
+            "ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) again. The UI follows "
+            "Oracle's answer; the app does not hard-code the salary rule."
+        ),
+    }

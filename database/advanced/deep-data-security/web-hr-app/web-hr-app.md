@@ -76,11 +76,13 @@ Create or reuse the Web HR App Entra application:
 ./00_setup_entra_web_app.sh
 ```
 
-By default, the setup script configures the app for a remote browser. It discovers the OCI VM public IP, uses that public callback for the Entra redirect URI, and writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`:
+By default, the setup script configures the app for a remote browser. It discovers the VM public IP, uses that public callback for the Entra redirect URI, and writes `WEB_HR_HOST=0.0.0.0` into `.web-hr-app.env`:
 
 ```bash
 ./00_setup_entra_web_app.sh
 ```
+
+The script tries OCI instance metadata first. If metadata is unavailable, it tries an external public-IP service. If that still fails and the script is running interactively, it prompts you to enter the VM public IP.
 
 You can also request the public behavior explicitly:
 
@@ -88,7 +90,7 @@ You can also request the public behavior explicitly:
 ./00_setup_entra_web_app.sh --public-ip
 ```
 
-If public IP discovery is not available, pass the callback explicitly:
+If you already know the public IP, pass the callback explicitly:
 
 ```bash
 ./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:8012/callback

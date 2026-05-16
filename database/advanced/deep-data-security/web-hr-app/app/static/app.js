@@ -7,11 +7,14 @@ const summaryButton = document.querySelector("#summaryButton");
 const modeBanner = document.querySelector("#modeBanner");
 const disableSalaryButton = document.querySelector("#disableSalaryButton");
 const enableSalaryButton = document.querySelector("#enableSalaryButton");
+const auditButton = document.querySelector("#auditButton");
+const auditRows = document.querySelector("#auditRows");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
 disableSalaryButton.addEventListener("click", disableSalaryEdits);
 enableSalaryButton.addEventListener("click", enableSalaryEdits);
+auditButton.addEventListener("click", loadAuditEvents);
 
 async function refreshConfig() {
   const response = await fetch("/config");
@@ -96,6 +99,12 @@ async function loadSummary() {
       <dd>${escapeHtml(payload.employee_count)}</dd>
     </div>
   `;
+  raw.textContent = JSON.stringify(payload, null, 2);
+}
+
+async function loadAuditEvents() {
+  const payload = await getJson("/api/audit/events");
+  renderAuditEvents(payload.events || []);
   raw.textContent = JSON.stringify(payload, null, 2);
 }
 
@@ -231,6 +240,21 @@ function showAttemptAuthorizationDemo(event) {
     update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
     enforcement: "The UI predicts this edit is not allowed, but Try anyway still sends the UPDATE so Oracle Deep Data Security can prove enforcement."
   }, null, 2);
+}
+
+function renderAuditEvents(events) {
+  if (!events.length) {
+    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
+    return;
+  }
+  auditRows.innerHTML = events.map((event) => `
+    <tr>
+      <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
+      <td>${escapeHtml(valueFor(event, "action_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
+      <td>${escapeHtml(valueFor(event, "return_code"))}</td>
+    </tr>
+  `).join("");
 }
 
 async function attemptUnauthorizedEdit(event) {

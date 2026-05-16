@@ -1,16 +1,13 @@
 const userBox = document.querySelector("#userBox");
 const tokensButton = document.querySelector("#tokensButton");
 const contextButton = document.querySelector("#contextButton");
-const auditButton = document.querySelector("#auditButton");
 const requestContextButton = document.querySelector("#requestContextButton");
 const tokenDebug = document.querySelector("#tokenDebug");
 const contextDebug = document.querySelector("#contextDebug");
-const auditRows = document.querySelector("#auditRows");
 const requestContext = document.querySelector("#requestContext");
 
 tokensButton.addEventListener("click", loadTokenDebug);
 contextButton.addEventListener("click", loadContextDebug);
-auditButton.addEventListener("click", loadAuditEvents);
 requestContextButton.addEventListener("click", loadRequestContext);
 
 async function refreshUser() {
@@ -49,11 +46,6 @@ async function loadContextDebug() {
       contextDebug.textContent = String(error.stack || error);
     }
   }
-}
-
-async function loadAuditEvents() {
-  const payload = await getJson("/api/audit/events", contextDebug);
-  renderAuditEvents(payload.events || []);
 }
 
 async function loadRequestContext() {
@@ -102,24 +94,8 @@ function renderRequestContext(context) {
   `;
 }
 
-function renderAuditEvents(events) {
-  if (!events.length) {
-    auditRows.innerHTML = '<tr><td colspan="4">No audit records yet. Run Load Employees or edit a field, then refresh.</td></tr>';
-    return;
-  }
-  auditRows.innerHTML = events.map((event) => `
-    <tr>
-      <td>${escapeHtml(valueFor(event, "event_timestamp"))}</td>
-      <td>${escapeHtml(valueFor(event, "action_name"))}</td>
-      <td>${escapeHtml(valueFor(event, "end_user_name"))}</td>
-      <td>${escapeHtml(valueFor(event, "return_code"))}</td>
-    </tr>
-  `).join("");
-}
-
 refreshUser().then((user) => {
   if (user) {
-    loadAuditEvents();
     loadRequestContext();
     loadTokenDebug();
     loadContextDebug();

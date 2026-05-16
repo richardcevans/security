@@ -245,12 +245,19 @@ class WebHrDatabase(object):
         pool = self._pool_oracle()
         connection = pool.acquire()
         try:
+            db_token = self._database_access_token_for_user(user["access_token"])
+            effective_data_roles = self._mapped_data_roles_from_database_token(db_token)
+            if data_roles:
+                effective_data_roles.extend(data_roles)
+            effective_data_roles = sorted(set(effective_data_roles))
+
             context_kwargs = {
                 "end_user_identity": user["access_token"],
-                "database_access_token": self._database_access_token_for_user(user["access_token"]),
+                "database_access_token": db_token,
             }
-            if data_roles:
-                context_kwargs["data_roles"] = data_roles
+            if effective_data_roles:
+                context_kwargs["data_roles"] = effective_data_roles
+                print("Requesting data roles: {0}".format(", ".join(effective_data_roles)))
             context = oracledb.create_end_user_security_context(**context_kwargs)
             connection.set_end_user_security_context(context)
             cursor = connection.cursor()
@@ -266,6 +273,19 @@ class WebHrDatabase(object):
                 connection.clear_end_user_security_context()
         finally:
             pool.release(connection)
+
+    def _mapped_data_roles_from_database_token(self, db_token):
+        claims = decode_jwt_without_validation(db_token)
+        roles = claims.get("roles") or []
+        if isinstance(roles, str):
+            roles = roles.split()
+
+        mapped_roles = []
+        for role in roles:
+            role_name = str(role).upper()
+            if role_name in ("EMPLOYEES", "MANAGERS"):
+                mapped_roles.append("HRAPP_{0}".format(role_name))
+        return mapped_roles
 
 
 def _row_to_dict(columns, row):

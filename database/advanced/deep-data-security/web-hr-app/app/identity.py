@@ -36,7 +36,7 @@ def app_config():
     }
 
 
-def new_login():
+def new_login(prompt=None):
     config = app_config()
     _require_login_config(config)
     state = uuid.uuid4().hex
@@ -56,6 +56,8 @@ def new_login():
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     }
+    if prompt:
+        params["prompt"] = prompt
     return "{0}?{1}".format(config["auth_uri"], urlencode(params))
 
 

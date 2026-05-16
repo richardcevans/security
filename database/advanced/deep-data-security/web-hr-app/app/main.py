@@ -53,7 +53,9 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/login":
             try:
-                self._redirect(new_login())
+                params = parse_qs(parsed.query)
+                prompt = params.get("prompt", ["select_account"])[0]
+                self._redirect(new_login(prompt=prompt))
             except Exception as exc:
                 self._send_text(str(exc), HTTPStatus.BAD_REQUEST)
             return

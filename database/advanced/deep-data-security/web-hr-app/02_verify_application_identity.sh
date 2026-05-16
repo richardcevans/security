@@ -17,6 +17,10 @@ fi
 DB_SID="${DB_SID:-FREE}"
 export ORACLE_SID="$DB_SID"
 
+echo "Verifying Web HR App database configuration in PDB ${PDB_NAME}"
+echo "This script is read-only. It does not create, replace, grant, or drop objects."
+echo
+
 sqlplus -s / as sysdba <<EOF
 set echo off
 set lines 160

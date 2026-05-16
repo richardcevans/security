@@ -14,6 +14,9 @@ DB_SID="${DB_SID:-FREE}"
 export ORACLE_SID="$DB_SID"
 
 echo "Configuring Unified Audit policy for HR.EMPLOYEES in PDB ${PDB_NAME}"
+echo
+echo "This script will replace WEB_HR_APP_EMPLOYEE_AUDIT, enable it,"
+echo "and grant AUDIT_VIEWER to WEB_HR_APP_USER."
 
 sqlplus -s / as sysdba <<EOF
 set echo off
@@ -24,18 +27,37 @@ whenever sqlerror exit sql.sqlcode
 
 ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
+prompt
+prompt ========================================================================
+prompt Replace Web HR App employee audit policy
+prompt ========================================================================
+prompt Disabling and dropping WEB_HR_APP_EMPLOYEE_AUDIT if it already exists.
+
 BEGIN
-  BEGIN EXECUTE IMMEDIATE 'NOAUDIT POLICY web_hr_app_employee_audit'; EXCEPTION WHEN OTHERS THEN NULL; END;
-  BEGIN EXECUTE IMMEDIATE 'DROP AUDIT POLICY web_hr_app_employee_audit'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN
+    EXECUTE IMMEDIATE 'NOAUDIT POLICY web_hr_app_employee_audit';
+    DBMS_OUTPUT.PUT_LINE('Disabled existing WEB_HR_APP_EMPLOYEE_AUDIT policy.');
+  EXCEPTION WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('No existing enabled WEB_HR_APP_EMPLOYEE_AUDIT policy to disable.');
+  END;
+  BEGIN
+    EXECUTE IMMEDIATE 'DROP AUDIT POLICY web_hr_app_employee_audit';
+    DBMS_OUTPUT.PUT_LINE('Dropped existing WEB_HR_APP_EMPLOYEE_AUDIT policy.');
+  EXCEPTION WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('No existing WEB_HR_APP_EMPLOYEE_AUDIT policy to drop.');
+  END;
 END;
 /
 
+prompt Creating WEB_HR_APP_EMPLOYEE_AUDIT for SELECT and UPDATE on HR.EMPLOYEES.
 CREATE AUDIT POLICY web_hr_app_employee_audit
   ACTIONS SELECT ON hr.employees,
           UPDATE ON hr.employees;
 
+prompt Enabling WEB_HR_APP_EMPLOYEE_AUDIT.
 AUDIT POLICY web_hr_app_employee_audit;
 
+prompt Granting AUDIT_VIEWER to WEB_HR_APP_USER so the app can show Unified Audit records.
 GRANT AUDIT_VIEWER TO web_hr_app_user;
 
 prompt

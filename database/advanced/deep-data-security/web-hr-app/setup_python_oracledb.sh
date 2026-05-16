@@ -56,7 +56,11 @@ echo "Using Python:"
 "$PYTHON_BIN" --version
 
 echo
-echo "Creating virtual environment:"
+if [ -d "$VENV_DIR" ]; then
+  echo "Reusing existing virtual environment and updating packages:"
+else
+  echo "Creating virtual environment:"
+fi
 echo "$VENV_DIR"
 "$PYTHON_BIN" -m venv "$VENV_DIR"
 
@@ -64,7 +68,7 @@ echo "$VENV_DIR"
 source "${VENV_DIR}/bin/activate"
 
 echo
-echo "Installing python-oracledb 4.x..."
+echo "Installing or updating python-oracledb 4.x in the virtual environment..."
 python -m pip install --upgrade pip
 python -m pip install "oracledb>=4"
 
@@ -87,6 +91,8 @@ if [ ! -f "$SERVER_CERT" ]; then
 fi
 
 mkdir -p "$PYTHON_WALLET_DIR"
+echo "Writing or replacing python-oracledb Thin-mode trust wallet:"
+echo "${PYTHON_WALLET_DIR}/ewallet.pem"
 cp "$SERVER_CERT" "${PYTHON_WALLET_DIR}/ewallet.pem"
 chmod 700 "$PYTHON_WALLET_DIR"
 chmod 600 "${PYTHON_WALLET_DIR}/ewallet.pem"
@@ -96,15 +102,19 @@ echo "${PYTHON_WALLET_DIR}/ewallet.pem"
 
 touch "$ENV_FILE"
 if grep -q '^WEB_HR_WALLET_LOCATION=' "$ENV_FILE"; then
+  echo "Updating WEB_HR_WALLET_LOCATION in ${ENV_FILE}."
   sed -i "s|^WEB_HR_WALLET_LOCATION=.*|WEB_HR_WALLET_LOCATION='${PYTHON_WALLET_DIR}'|" "$ENV_FILE"
 else
+  echo "Adding WEB_HR_WALLET_LOCATION to ${ENV_FILE}."
   echo "WEB_HR_WALLET_LOCATION='${PYTHON_WALLET_DIR}'" >> "$ENV_FILE"
 fi
 
 if [ -n "${TNS_ADMIN:-}" ]; then
   if grep -q '^WEB_HR_CONFIG_DIR=' "$ENV_FILE"; then
+    echo "Updating WEB_HR_CONFIG_DIR in ${ENV_FILE}."
     sed -i "s|^WEB_HR_CONFIG_DIR=.*|WEB_HR_CONFIG_DIR='${TNS_ADMIN}'|" "$ENV_FILE"
   else
+    echo "Adding WEB_HR_CONFIG_DIR to ${ENV_FILE}."
     echo "WEB_HR_CONFIG_DIR='${TNS_ADMIN}'" >> "$ENV_FILE"
   fi
 fi

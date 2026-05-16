@@ -26,6 +26,10 @@ export ORACLE_SID="$DB_SID"
 echo "Configuring database application identity in PDB ${PDB_NAME}"
 echo "  WEB_HR_APP_CLIENT_ID = ${WEB_HR_APP_CLIENT_ID}"
 echo
+echo "This script will create or reuse WEB_HR_APP_USER, then update grants,"
+echo "the WEB_HR_APP application identity, the compensation data role, and"
+echo "the compensation summary data grant."
+echo
 
 sqlplus -s / as sysdba <<EOF
 set echo off
@@ -49,14 +53,22 @@ BEGIN
    WHERE username = 'WEB_HR_APP_USER';
 
   IF user_exists = 0 THEN
+    DBMS_OUTPUT.PUT_LINE('Creating WEB_HR_APP_USER mapped to AZURE_CLIENT_ID=${WEB_HR_APP_CLIENT_ID}');
     EXECUTE IMMEDIATE q'[
       CREATE USER web_hr_app_user IDENTIFIED GLOBALLY
       AS 'AZURE_CLIENT_ID=${WEB_HR_APP_CLIENT_ID}'
     ]';
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('Reusing WEB_HR_APP_USER and updating privileges for AZURE_CLIENT_ID=${WEB_HR_APP_CLIENT_ID}');
   END IF;
 END;
 /
 
+prompt Granting or refreshing required system privileges and HR.EMPLOYEES access:
+prompt   CREATE SESSION
+prompt   CREATE END USER SECURITY CONTEXT
+prompt   UPDATE ANY END USER CONTEXT
+prompt   SELECT ON HR.EMPLOYEES
 GRANT CREATE SESSION TO web_hr_app_user;
 GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
 GRANT UPDATE ANY END USER CONTEXT TO web_hr_app_user;
@@ -73,6 +85,8 @@ prompt
 prompt ========================================================================
 prompt Create Oracle application identity mapped to the same Entra client ID
 prompt ========================================================================
+prompt Creating or replacing WEB_HR_APP application identity mapped to:
+prompt   AZURE_CLIENT_ID=${WEB_HR_APP_CLIENT_ID}
 
 CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=${WEB_HR_APP_CLIENT_ID}';
@@ -81,6 +95,7 @@ prompt
 prompt ========================================================================
 prompt Create a disabled elevation data role for application-mediated access
 prompt ========================================================================
+prompt Creating HRAPP_COMPENSATION_ANALYST if it does not exist, then granting it to WEB_HR_APP.
 
 CREATE DATA ROLE IF NOT EXISTS hrapp_compensation_analyst DISABLED;
 
@@ -90,6 +105,8 @@ prompt
 prompt ========================================================================
 prompt Create a salary summary grant available only during application elevation
 prompt ========================================================================
+prompt Creating or replacing HR.HRAPP_COMPENSATION_SUMMARY data grant.
+prompt This controls what the elevated salary-summary action can see.
 
 CREATE OR REPLACE DATA GRANT hr.HRAPP_COMPENSATION_SUMMARY
   AS SELECT (salary, employee_id, department_id)

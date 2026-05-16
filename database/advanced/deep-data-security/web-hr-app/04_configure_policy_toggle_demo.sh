@@ -14,6 +14,11 @@ DB_SID="${DB_SID:-FREE}"
 export ORACLE_SID="$DB_SID"
 
 echo "Configuring DBA policy toggle demo procedures in PDB ${PDB_NAME}"
+echo
+echo "This script will create or replace two SYS definer-rights procedures"
+echo "and grant WEB_HR_APP_USER execute rights on them:"
+echo "  SYS.WEB_HR_DISABLE_SALARY_UPDATES"
+echo "  SYS.WEB_HR_ENABLE_SALARY_UPDATES"
 
 sqlplus -s / as sysdba <<EOF
 set echo off
@@ -23,6 +28,13 @@ set pages 9999
 whenever sqlerror exit sql.sqlcode
 
 ALTER SESSION SET CONTAINER = ${PDB_NAME};
+
+prompt
+prompt ========================================================================
+prompt Create or replace DBA policy toggle procedures
+prompt ========================================================================
+prompt WEB_HR_DISABLE_SALARY_UPDATES recreates HR.HRAPP_MANAGER_ACCESS without UPDATE(salary).
+prompt WEB_HR_ENABLE_SALARY_UPDATES recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary).
 
 CREATE OR REPLACE PROCEDURE sys.web_hr_disable_salary_updates
 AUTHID DEFINER
@@ -52,6 +64,7 @@ BEGIN
 END;
 /
 
+prompt Granting execute on DBA policy toggle procedures to WEB_HR_APP_USER.
 GRANT EXECUTE ON sys.web_hr_disable_salary_updates TO web_hr_app_user;
 GRANT EXECUTE ON sys.web_hr_enable_salary_updates TO web_hr_app_user;
 

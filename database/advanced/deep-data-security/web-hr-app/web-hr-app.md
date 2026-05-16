@@ -148,7 +148,7 @@ The disabled role is not automatically active for all requests. The application 
 Create a Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`:
 
 ```bash
-./04_configure_auditing.sh
+./03_configure_auditing.sh
 ```
 
 The policy audits app activity on `HR.EMPLOYEES` and grants `AUDIT_VIEWER` to `WEB_HR_APP_USER`. The app's audit panel queries `UNIFIED_AUDIT_TRAIL` and shows `END_USER_NAME`, so DBAs can see whether Marvin or Emma performed the operation even though the app uses pooled database connections.
@@ -158,7 +158,7 @@ The policy audits app activity on `HR.EMPLOYEES` and grants `AUDIT_VIEWER` to `W
 Create two demo-only DBA procedures that can recreate the manager data grant with or without `UPDATE(salary)`:
 
 ```bash
-./05_configure_policy_toggle_demo.sh
+./04_configure_policy_toggle_demo.sh
 ```
 
 The web app buttons call these procedures to demonstrate a DBA policy change. When salary updates are disabled, the app code does not change; the next employee query asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again, and salary cells stop rendering as editable.
@@ -316,8 +316,8 @@ web-hr-app/
   00_setup_entra_web_app.sh
   01_configure_database_app_identity.sh
   02_verify_application_identity.sh
-  04_configure_auditing.sh
-  05_configure_policy_toggle_demo.sh
+  03_configure_auditing.sh
+  04_configure_policy_toggle_demo.sh
   setup_python_oracledb.sh
   app/
     main.py

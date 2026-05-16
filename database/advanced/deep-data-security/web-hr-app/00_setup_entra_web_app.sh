@@ -93,16 +93,40 @@ discover_public_ip() {
     return 1
   fi
 
-  curl -fsS --connect-timeout 3 http://169.254.169.254/opc/v1/vnics/ \
-    | python3 -c '
+  local payload=""
+  local public_ip=""
+
+  payload="$(curl -fsS --connect-timeout 3 \
+    -H "Authorization: Bearer Oracle" \
+    http://169.254.169.254/opc/v2/vnics/ 2>/dev/null || true)"
+
+  if [ -z "$payload" ]; then
+    payload="$(curl -fsS --connect-timeout 3 \
+      http://169.254.169.254/opc/v1/vnics/ 2>/dev/null || true)"
+  fi
+
+  if [ -z "$payload" ]; then
+    return 1
+  fi
+
+  public_ip="$(printf '%s' "$payload" | python3 -c '
 import json, sys
-vnics = json.load(sys.stdin)
-for vnic in vnics:
+try:
+    vnics = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for vnic in vnics if isinstance(vnics, list) else []:
     public_ip = vnic.get("publicIp")
     if public_ip:
         print(public_ip)
         break
-'
+' 2>/dev/null || true)"
+
+  if [ -z "$public_ip" ]; then
+    return 1
+  fi
+
+  printf '%s\n' "$public_ip"
 }
 
 WEB_HR_APP_NAME="${WEB_HR_APP_NAME:-Web HR App - ${PDB_NAME}}"
@@ -124,7 +148,7 @@ if [ -n "$REDIRECT_URI_ARG" ]; then
       ;;
   esac
 elif [ "$PUBLIC_IP_REDIRECT" -eq 1 ]; then
-  public_ip="$(discover_public_ip)"
+  public_ip="$(discover_public_ip || true)"
   if [ -z "$public_ip" ]; then
     echo "ERROR: Could not discover a public IP from OCI instance metadata."
     echo "       Use: ./00_setup_entra_web_app.sh --redirect-uri http://<public-ip>:${WEB_HR_PORT}/callback"

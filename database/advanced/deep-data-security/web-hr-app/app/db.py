@@ -33,7 +33,7 @@ class WebHrDatabase(object):
         return {
             "mode": "mock",
             "events": [],
-            "note": "Audit events are available in oracledb mode after running 04_configure_auditing.sh.",
+            "note": "Audit events are available in oracledb mode after running 03_configure_auditing.sh.",
         }
 
     def disable_salary_updates(self, user):

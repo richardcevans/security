@@ -81,6 +81,8 @@ Web HR App - ${PDB_NAME}
 
 It grants the app delegated access to the existing database app scope and creates a client secret for client-credentials database tokens.
 
+If browser sign-in redirects back to `/callback` with a token exchange error such as `HTTP 401: Unauthorized`, restart `./run.sh` after running this setup script. The app must load `WEB_HR_APP_CLIENT_SECRET` from `.web-hr-app.env` before it can exchange the authorization code for tokens.
+
 ## Configure Database Application Identity
 
 Create the application identity and elevation data role:

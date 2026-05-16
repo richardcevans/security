@@ -5,6 +5,7 @@ import os
 import time
 import uuid
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -65,23 +66,29 @@ def finish_login(state, code):
 
     config = app_config()
     _require_login_config(config)
-    body = urlencode(
-        {
-            "grant_type": "authorization_code",
-            "client_id": config["client_id"],
-            "code": code,
-            "redirect_uri": config["redirect_uri"],
-            "code_verifier": session["code_verifier"],
-            "scope": "openid profile email {0}".format(config["user_scope"]).strip(),
-        }
-    ).encode("utf-8")
+    token_request = {
+        "grant_type": "authorization_code",
+        "client_id": config["client_id"],
+        "code": code,
+        "redirect_uri": config["redirect_uri"],
+        "code_verifier": session["code_verifier"],
+        "scope": "openid profile email {0}".format(config["user_scope"]).strip(),
+    }
+    client_secret = os.getenv("WEB_HR_APP_CLIENT_SECRET", "")
+    if client_secret:
+        token_request["client_secret"] = client_secret
+    body = urlencode(token_request).encode("utf-8")
     request = Request(
         config["token_uri"],
         data=body,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    with urlopen(request, timeout=30) as response:
-        token_response = json.loads(response.read().decode("utf-8"))
+    try:
+        with urlopen(request, timeout=30) as response:
+            token_response = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        message = exc.read().decode("utf-8", "replace")
+        raise RuntimeError("Token exchange failed: HTTP {0} {1}".format(exc.code, message))
 
     access_token = token_response.get("access_token", "")
     id_token = token_response.get("id_token", "")

@@ -179,4 +179,6 @@ chmod 600 "$ENV_FILE"
 
 echo
 echo "Saved: ${ENV_FILE}"
-echo "Next: source ./.web-hr-app.env && ./01_configure_database_app_identity.sh"
+echo "Next:"
+echo "source ./.web-hr-app.env"
+echo "./01_configure_database_app_identity.sh"

@@ -4,9 +4,20 @@ const summary = document.querySelector("#summary");
 const raw = document.querySelector("#raw");
 const employeesButton = document.querySelector("#employeesButton");
 const summaryButton = document.querySelector("#summaryButton");
+const modeBanner = document.querySelector("#modeBanner");
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
+
+async function refreshConfig() {
+  const response = await fetch("/config");
+  const config = await response.json();
+  const mode = config.db_mode || "mock";
+  modeBanner.className = `mode-banner ${mode === "oracledb" ? "real" : "mock"}`;
+  modeBanner.innerHTML = mode === "oracledb"
+    ? "<strong>Oracle mode:</strong> requests use the database connection pool and Deep Data Security context."
+    : "<strong>Mock mode:</strong> this page is only simulating results. Run with <code>WEB_HR_DB_MODE=oracledb ./run.sh</code> for a real database test.";
+}
 
 async function refreshUser() {
   const response = await fetch("/api/me");
@@ -14,9 +25,20 @@ async function refreshUser() {
   const user = payload.user;
   if (!user) {
     userBox.innerHTML = "<strong>Not signed in</strong><br />Use Entra ID or a demo user";
-    return;
+    return null;
   }
   userBox.innerHTML = `<strong>${escapeHtml(user.name)}</strong><br />${escapeHtml(user.username)}<br />${escapeHtml((user.roles || []).join(", "))}`;
+  return user;
+}
+
+async function refreshPage() {
+  await refreshConfig();
+  const user = await refreshUser();
+  if (user) {
+    await loadEmployees();
+    return;
+  }
+  raw.textContent = "Sign in before loading employee data.";
 }
 
 async function loadEmployees() {
@@ -81,6 +103,6 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-refreshUser().then(loadEmployees).catch((error) => {
+refreshPage().catch((error) => {
   raw.textContent = String(error.stack || error);
 });

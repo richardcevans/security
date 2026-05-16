@@ -73,6 +73,32 @@ h2 {
   gap: 8px;
 }
 
+.mode-banner {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: #fff;
+  padding: 11px 12px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.mode-banner.mock {
+  border-left-color: #a45700;
+  background: #fff8ed;
+}
+
+.mode-banner.real {
+  border-left-color: #147344;
+  background: #eefaf4;
+}
+
+.mode-banner code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
 .button,
 button {
   min-height: 40px;
@@ -178,4 +204,3 @@ pre {
     grid-template-columns: 1fr;
   }
 }
-

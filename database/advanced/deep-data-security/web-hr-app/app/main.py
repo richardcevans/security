@@ -44,6 +44,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(app_config())
             return
 
+        if path == "/favicon.ico":
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.end_headers()
+            return
+
         if path == "/login":
             try:
                 self._redirect(new_login())
@@ -193,6 +198,7 @@ def main():
             raise SystemExit(1)
         raise
     print("Web HR App running at http://{0}:{1}".format(host, port))
+    print("Database mode: {0}".format(os.getenv("WEB_HR_DB_MODE", "mock")))
     server.serve_forever()
 
 

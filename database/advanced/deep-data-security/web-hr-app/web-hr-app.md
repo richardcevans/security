@@ -115,7 +115,7 @@ The disabled role is not automatically active for all requests. The application 
 Mock mode needs no dependencies:
 
 ```bash
-./run.sh
+WEB_HR_DB_MODE=mock ./run.sh
 ```
 
 Open:
@@ -128,8 +128,10 @@ Real database mode requires a current python-oracledb version with Deep Data Sec
 
 ```bash
 python3 -m pip install python-oracledb
-WEB_HR_DB_MODE=oracledb ./run.sh
+./run.sh
 ```
+
+After `.web-hr-app.env` exists, `./run.sh` defaults to `WEB_HR_DB_MODE=oracledb`. Use `WEB_HR_DB_MODE=mock ./run.sh` only when you want the simulated UI demo.
 
 In real mode the application:
 

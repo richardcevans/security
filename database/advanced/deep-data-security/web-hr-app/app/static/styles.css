@@ -99,6 +99,18 @@ h2 {
   padding: 1px 4px;
 }
 
+.debug-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.debug-links a {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}
+
 .button,
 button {
   min-height: 40px;

@@ -159,6 +159,8 @@ http://127.0.0.1:8012/api/debug/tokens
 
 This endpoint returns decoded public claims only, not raw tokens. For Marvin, the `obo_database_token.database_access_token.roles` claim should include `EMPLOYEES` and `MANAGERS`, and the database token audience should be the database app registration.
 
+Use the same browser hostname for sign-in and diagnostics. Browser cookies for `localhost` and `127.0.0.1` are separate. If the app redirects through `http://localhost:8012/callback`, open the debug URLs as `http://localhost:8012/...`, or use the Token Claims and Database Context links on the web app page.
+
 You can also verify the database context that the web app creates without querying `HR.EMPLOYEES`:
 
 ```text

@@ -60,14 +60,14 @@ prompt ========================================================================
 prompt DBA policy toggle demo configured
 prompt ========================================================================
 
-col object_name format a36
+col table_name format a36
 col grantee format a28
 col privilege format a12
-SELECT object_name, grantee, privilege
+SELECT table_name, grantee, privilege
   FROM dba_tab_privs
  WHERE owner = 'SYS'
-   AND object_name IN ('WEB_HR_DISABLE_SALARY_UPDATES', 'WEB_HR_ENABLE_SALARY_UPDATES')
- ORDER BY object_name, grantee;
+   AND table_name IN ('WEB_HR_DISABLE_SALARY_UPDATES', 'WEB_HR_ENABLE_SALARY_UPDATES')
+ ORDER BY table_name, grantee;
 
 exit;
 EOF

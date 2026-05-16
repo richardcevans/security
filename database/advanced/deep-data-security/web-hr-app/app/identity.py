@@ -163,6 +163,36 @@ def user_from_session(session):
     }
 
 
+def token_debug_from_session(session):
+    if not session:
+        return None
+    access_claims = decode_jwt_without_validation((session or {}).get("access_token", ""))
+    id_claims = decode_jwt_without_validation((session or {}).get("id_token", ""))
+    return {
+        "id_token": public_claims(id_claims),
+        "user_access_token": public_claims(access_claims),
+    }
+
+
+def public_claims(claims):
+    keys = [
+        "aud",
+        "azp",
+        "appid",
+        "iss",
+        "name",
+        "oid",
+        "preferred_username",
+        "roles",
+        "scp",
+        "sub",
+        "tid",
+        "upn",
+        "ver",
+    ]
+    return {key: claims.get(key) for key in keys if key in claims}
+
+
 def extract_roles(claims):
     roles = []
     for key in ("roles", "groups", "scp"):

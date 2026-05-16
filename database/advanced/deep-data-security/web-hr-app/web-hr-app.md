@@ -151,6 +151,22 @@ Remove `WEB_HR_DB_MODE=mock` from `.env`, or start the app explicitly in real da
 WEB_HR_DB_MODE=oracledb ./run.sh
 ```
 
+To compare the web app token flow with `sqlplus /@hrdb`, sign in to the web app and open:
+
+```text
+http://127.0.0.1:8012/api/debug/tokens
+```
+
+This endpoint returns decoded public claims only, not raw tokens. For Marvin, the `obo_database_token.database_access_token.roles` claim should include `EMPLOYEES` and `MANAGERS`, and the database token audience should be the database app registration.
+
+You can also verify the database context that the web app creates without querying `HR.EMPLOYEES`:
+
+```text
+http://127.0.0.1:8012/api/debug/database-context
+```
+
+For Marvin, this should show `USERNAME` as Marvin's Entra username and active data roles `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`.
+
 In real mode the application:
 
 1. Maintains a database connection pool as the application identity.

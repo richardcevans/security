@@ -1,4 +1,5 @@
 import os
+from app.identity import decode_jwt_without_validation, public_claims
 from urllib.parse import urlencode
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -19,6 +20,47 @@ class WebHrDatabase(object):
         if self.mode == "oracledb":
             return self._salary_summary_oracle(user)
         return self._salary_summary_mock(user)
+
+    def debug_tokens_for_user(self, user):
+        if self.mode != "oracledb":
+            return {
+                "mode": self.mode,
+                "message": "Database token diagnostics are available in oracledb mode.",
+            }
+
+        db_token = self._database_access_token_for_user(user["access_token"])
+        return {
+            "mode": "oracledb",
+            "database_access_token": public_claims(decode_jwt_without_validation(db_token)),
+        }
+
+    def debug_context_for_user(self, user):
+        if self.mode != "oracledb":
+            return {
+                "mode": self.mode,
+                "message": "Database context diagnostics are available in oracledb mode.",
+            }
+
+        identity_sql = """
+            SELECT ORA_END_USER_CONTEXT.username AS username,
+                   SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                   SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
+                   SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
+                   SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user
+              FROM dual
+        """
+        roles_sql = """
+            SELECT role_name
+              FROM v$end_user_data_role
+             ORDER BY role_name
+        """
+        identity = self._run_with_context(user, [], identity_sql, fetch="one")
+        roles = self._run_with_context(user, [], roles_sql, fetch="rows")
+        return {
+            "mode": "oracledb",
+            "identity": identity,
+            "active_data_roles": roles,
+        }
 
     def _employees_mock(self, user):
         username = user["username"].lower()

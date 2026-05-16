@@ -17,6 +17,7 @@ from app.identity import (
     finish_login,
     new_login,
     session_from_cookie,
+    token_debug_from_session,
     user_from_session,
 )
 
@@ -90,6 +91,23 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"user": self._current_user()})
             return
 
+        if path == "/api/debug/tokens":
+            session = session_from_cookie(self.headers.get("Cookie", ""))
+            if not session:
+                self._send_json({"error": "not signed in"}, HTTPStatus.UNAUTHORIZED)
+                return
+            user = user_from_session(session)
+            payload = token_debug_from_session(session) or {}
+            self._call_database(lambda: self._merge_debug_payload(payload, user))
+            return
+
+        if path == "/api/debug/database-context":
+            user = self._require_user()
+            if not user:
+                return
+            self._call_database(lambda: DATABASE.debug_context_for_user(user))
+            return
+
         if path == "/api/employees":
             user = self._require_user()
             if not user:
@@ -138,6 +156,10 @@ class Handler(BaseHTTPRequestHandler):
                 },
                 HTTPStatus.INTERNAL_SERVER_ERROR,
             )
+
+    def _merge_debug_payload(self, payload, user):
+        payload["obo_database_token"] = DATABASE.debug_tokens_for_user(user)
+        return payload
 
     def _set_session_and_redirect(self, session_id):
         self.send_response(HTTPStatus.FOUND)

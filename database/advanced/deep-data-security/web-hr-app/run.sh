@@ -82,6 +82,45 @@ if [ "$WEB_HR_ENV_LOADED" -eq 1 ] && [ "${WEB_HR_DB_MODE}" = "mock" ]; then
   echo
 fi
 
+tns_has_alias() {
+  local dir="$1"
+  local alias_name="${WEB_HR_TNS_ALIAS:-hrdb}"
+  [ -f "${dir}/tnsnames.ora" ] || return 1
+  grep -Eiq "^[[:space:]]*${alias_name}[[:space:]]*=" "${dir}/tnsnames.ora"
+}
+
+find_tns_admin_with_alias() {
+  local dir
+  for dir in \
+    "${WEB_HR_CONFIG_DIR:-}" \
+    "${TNS_ADMIN:-}" \
+    "${ORACLE_HOME:-}/network/admin" \
+    /opt/oracle/product/*/dbhome_*/network/admin \
+    /u01/app/oracle/product/*/dbhome_*/network/admin
+  do
+    [ -n "$dir" ] || continue
+    [ -d "$dir" ] || continue
+    if tns_has_alias "$dir"; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+detected_config_dir="$(find_tns_admin_with_alias || true)"
+if [ -n "$detected_config_dir" ]; then
+  if [ -z "${WEB_HR_CONFIG_DIR:-}" ]; then
+    export WEB_HR_CONFIG_DIR="$detected_config_dir"
+    echo "WARNING: WEB_HR_CONFIG_DIR was not set; using ${WEB_HR_CONFIG_DIR} for ${WEB_HR_TNS_ALIAS:-hrdb}."
+  elif [ "$WEB_HR_CONFIG_DIR" != "$detected_config_dir" ] && ! tns_has_alias "$WEB_HR_CONFIG_DIR"; then
+    echo "WARNING: WEB_HR_CONFIG_DIR=${WEB_HR_CONFIG_DIR} does not contain ${WEB_HR_TNS_ALIAS:-hrdb}; using ${detected_config_dir}."
+    export WEB_HR_CONFIG_DIR="$detected_config_dir"
+  fi
+elif [ -z "${WEB_HR_CONFIG_DIR:-}" ] && [ -n "${TNS_ADMIN:-}" ] && ! tns_has_alias "$TNS_ADMIN"; then
+  echo "WARNING: TNS_ADMIN=${TNS_ADMIN} does not contain ${WEB_HR_TNS_ALIAS:-hrdb}. Run ./setup_python_oracledb.sh."
+fi
+
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [ -z "$PYTHON_BIN" ]; then
   VENV_DIR="${WEB_HR_VENV_DIR:-${HOME}/web-hr-app-venv}"

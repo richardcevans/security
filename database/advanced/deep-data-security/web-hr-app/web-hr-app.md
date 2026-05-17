@@ -214,6 +214,8 @@ tail -f logs/web-hr-app.log
 WARNING: default Python is /usr/bin/python3; using lab Python /home/oracle/web-hr-app-venv/bin/python.
 ```
 
+The same startup path also verifies the Oracle Net directory. If `WEB_HR_CONFIG_DIR` is missing or points at a `tnsnames.ora` without the `hrdb` alias, `run.sh` searches common Oracle homes and uses the directory that contains `hrdb`. `setup_python_oracledb.sh` saves that detected directory into `.env` so later starts use the same config.
+
 Open:
 
 ```text

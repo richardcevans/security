@@ -517,6 +517,17 @@ class WebHrDatabase(object):
             self._pool = oracledb.create_pool(**pool_kwargs)
         except Exception as exc:
             message = str(exc)
+            if "DPY-4000" in message and self.tns_alias in message:
+                raise RuntimeError(
+                    "python-oracledb could not resolve the {0} TNS alias. "
+                    "Set WEB_HR_CONFIG_DIR to the directory whose tnsnames.ora contains {0}, "
+                    "or rerun ./setup_python_oracledb.sh so it can find and save that directory. "
+                    "Current WEB_HR_CONFIG_DIR={1}; TNS_ADMIN={2}.".format(
+                        self.tns_alias,
+                        os.getenv("WEB_HR_CONFIG_DIR", "(not set)"),
+                        os.getenv("TNS_ADMIN", "(not set)"),
+                    )
+                ) from exc
             if "CERTIFICATE_VERIFY_FAILED" in message or "self signed certificate" in message:
                 wallet_hint = wallet_location or "(not set)"
                 raise RuntimeError(

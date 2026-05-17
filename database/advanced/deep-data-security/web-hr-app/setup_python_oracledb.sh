@@ -29,6 +29,32 @@ upsert_export() {
   fi
 }
 
+tns_has_alias() {
+  local dir="$1"
+  local alias_name="${WEB_HR_TNS_ALIAS:-hrdb}"
+  [ -f "${dir}/tnsnames.ora" ] || return 1
+  grep -Eiq "^[[:space:]]*${alias_name}[[:space:]]*=" "${dir}/tnsnames.ora"
+}
+
+find_tns_admin_with_alias() {
+  local dir
+  for dir in \
+    "${WEB_HR_CONFIG_DIR:-}" \
+    "${TNS_ADMIN:-}" \
+    "${ORACLE_HOME:-}/network/admin" \
+    /opt/oracle/product/*/dbhome_*/network/admin \
+    /u01/app/oracle/product/*/dbhome_*/network/admin
+  do
+    [ -n "$dir" ] || continue
+    [ -d "$dir" ] || continue
+    if tns_has_alias "$dir"; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
 install_python39() {
   if command_exists "$PYTHON_BIN"; then
     return
@@ -118,8 +144,14 @@ touch "$ENV_FILE"
 upsert_export "PYTHON_BIN" "${VENV_DIR}/bin/python"
 upsert_export "WEB_HR_WALLET_LOCATION" "$PYTHON_WALLET_DIR"
 
-if [ -n "${TNS_ADMIN:-}" ]; then
-  upsert_export "WEB_HR_CONFIG_DIR" "$TNS_ADMIN"
+NETWORK_CONFIG_DIR="$(find_tns_admin_with_alias || true)"
+if [ -n "$NETWORK_CONFIG_DIR" ]; then
+  echo "Using Oracle network config with ${WEB_HR_TNS_ALIAS:-hrdb} alias:"
+  echo "$NETWORK_CONFIG_DIR"
+  upsert_export "WEB_HR_CONFIG_DIR" "$NETWORK_CONFIG_DIR"
+else
+  echo "WARNING: Could not find a tnsnames.ora containing ${WEB_HR_TNS_ALIAS:-hrdb}."
+  echo "         Rerun ../entra-id-data-grants/02_configure_network.sh, or set WEB_HR_CONFIG_DIR manually."
 fi
 
 echo

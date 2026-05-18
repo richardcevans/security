@@ -1,0 +1,192 @@
+name: Touched LiveLabs Page Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Optional changed files or directories, separated by spaces, commas, or new lines. Leave blank to diff base_ref...HEAD."
+        required: false
+        type: string
+      base_ref:
+        description: "Base ref used when paths is blank."
+        required: false
+        default: "main"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  touched-pages:
+    name: Build touched markdown pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve touched markdown pages
+        id: touched
+        shell: bash
+        env:
+          INPUT_PATHS: ${{ inputs.paths }}
+          BASE_REF: ${{ inputs.base_ref }}
+        run: |
+          set -euo pipefail
+
+          input_paths="$INPUT_PATHS"
+          base_ref="${BASE_REF:-main}"
+          tmp_input="$(mktemp)"
+          tmp_files="$(mktemp)"
+
+          if [ -n "$input_paths" ]; then
+            printf '%s\n' "$input_paths" \
+              | tr ',\r\t' '\n\n\n' \
+              | tr ' ' '\n' \
+              | sed '/^$/d' \
+              | sort -u > "$tmp_input"
+          else
+            git fetch --no-tags --prune origin "+refs/heads/${base_ref}:refs/remotes/origin/${base_ref}" || true
+            git diff --name-only --diff-filter=AM "origin/${base_ref}...HEAD" > "$tmp_input"
+
+            if [ ! -s "$tmp_input" ] && git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              echo "No diff found against origin/${base_ref}; falling back to HEAD~1..HEAD."
+              git diff --name-only --diff-filter=AM HEAD~1..HEAD > "$tmp_input"
+            fi
+          fi
+
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+
+            if [ -d "$path" ]; then
+              find "$path" -name '*.md' -type f
+            elif [ -f "$path" ] && [[ "$path" == *.md ]]; then
+              printf '%s\n' "$path"
+            fi
+          done < "$tmp_input" \
+            | awk '$0 !~ /^\.github\// && $0 !~ /^node_modules\//' \
+            | sort -u > "$tmp_files"
+
+          if [ ! -s "$tmp_files" ]; then
+            echo "No touched markdown pages found."
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Touched markdown pages:"
+          cat "$tmp_files"
+
+          {
+            echo "markdown_files<<EOF"
+            cat "$tmp_files"
+            echo "EOF"
+            echo "any_changed=true"
+          } >> "$GITHUB_OUTPUT"
+
+          mkdir -p .touched-pages
+          cp "$tmp_files" .touched-pages/markdown-files.txt
+
+      - name: Setup Node.js
+        if: steps.touched.outputs.any_changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install markdownlint-cli
+        if: steps.touched.outputs.any_changed == 'true'
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint on touched pages
+        if: steps.touched.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          echo "${{ steps.touched.outputs.markdown_files }}" \
+            | xargs markdownlint --config .markdownlint.json || true
+
+      - name: Run LiveLabs validation on touched pages
+        if: steps.touched.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          chmod +x .github/scripts/validate-livelabs-markdown.sh
+          echo "${{ steps.touched.outputs.markdown_files }}" \
+            | xargs .github/scripts/validate-livelabs-markdown.sh
+
+      - name: Check referenced images for touched pages
+        if: steps.touched.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            dir="$(dirname "$file")"
+            image_refs="$(grep -oP '!\[[^\]]*\]\(images/[^"\s\)]+' "$file" 2>/dev/null | grep -oP 'images/[^"\s\)]+' || true)"
+
+            while IFS= read -r img; do
+              [ -z "$img" ] && continue
+              full_path="$dir/$img"
+              if [ ! -f "$full_path" ]; then
+                echo "::error file=$file::Missing referenced image: $img"
+                echo "missing" > /tmp/touched_pages_missing_images
+              fi
+            done <<< "$image_refs"
+          done <<< "${{ steps.touched.outputs.markdown_files }}"
+
+          if [ -f /tmp/touched_pages_missing_images ]; then
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Prepare touched page artifact
+        if: steps.touched.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          mkdir -p .touched-pages/content
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            mkdir -p ".touched-pages/content/$(dirname "$file")"
+            cp "$file" ".touched-pages/content/$file"
+
+            dir="$(dirname "$file")"
+            image_refs="$(grep -oP '!\[[^\]]*\]\(images/[^"\s\)]+' "$file" 2>/dev/null | grep -oP 'images/[^"\s\)]+' || true)"
+
+            while IFS= read -r img; do
+              [ -z "$img" ] && continue
+              full_path="$dir/$img"
+              if [ -f "$full_path" ]; then
+                mkdir -p ".touched-pages/content/$(dirname "$full_path")"
+                cp "$full_path" ".touched-pages/content/$full_path"
+              fi
+            done <<< "$image_refs"
+          done <<< "${{ steps.touched.outputs.markdown_files }}"
+
+          {
+            echo "## Touched LiveLabs Pages"
+            echo
+            echo "Validated markdown pages:"
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              echo "- \`$file\`"
+            done <<< "${{ steps.touched.outputs.markdown_files }}"
+            echo
+            echo "This workflow intentionally builds only the touched markdown page set."
+            echo "It does not deploy a partial GitHub Pages artifact, because a partial Pages deploy can remove unrelated site content."
+          } | tee .touched-pages/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload touched page artifact
+        if: steps.touched.outputs.any_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: touched-livelabs-pages
+          path: .touched-pages
+
+      - name: No touched pages
+        if: steps.touched.outputs.any_changed != 'true'
+        run: echo "No touched markdown pages to build."

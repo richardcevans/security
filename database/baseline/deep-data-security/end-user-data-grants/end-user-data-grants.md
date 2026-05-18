@@ -86,6 +86,8 @@ GRANT CREATE USER TO deepsec_admin;
 GRANT ALTER USER TO deepsec_admin;
 GRANT DROP USER TO deepsec_admin;
 GRANT CREATE ANY TABLE TO deepsec_admin;
+GRANT ALTER ANY TABLE TO deepsec_admin;
+GRANT DROP ANY TABLE TO deepsec_admin;
 GRANT INSERT ANY TABLE TO deepsec_admin;
 GRANT SELECT ANY TABLE TO deepsec_admin;
 GRANT CREATE ANY INDEX TO deepsec_admin;
@@ -141,7 +143,7 @@ connect deepsec_admin/Oracle123@freepdb1
 
       ```sql
       <copy>
-      sqlplus sys/<password>@freepdb1 as sysdba
+      connect sys/<password>@freepdb1 as sysdba
       </copy>
       ```
 
@@ -359,11 +361,12 @@ connect deepsec_admin/Oracle123@freepdb1
       </copy>
       ```
 
-4. Finally, grant the `DIRECT_LOGON_ROLE` database role to the `HRAPP_EMPLOYEES` data role. You do not need to grant it to the `HRAPP_MANAGERS` data role because all managers are employees.
+4. Finally, grant the `DIRECT_LOGON_ROLE` database role to both data roles. This role carries the `CREATE SESSION` privilege that allows Emma and Marvin to connect directly through SQL*Plus.
 
       ```sql
       <copy>
       GRANT direct_logon_role TO hrapp_employees;
+      GRANT direct_logon_role TO hrapp_managers;
       </copy>
       ```
 
@@ -382,9 +385,26 @@ connect deepsec_admin/Oracle123@freepdb1
       | HRAPP\_EMPLOYEES | DATA ROLE | EMMA | END USER |
       | HRAPP\_MANAGERS | DATA ROLE | MARVIN | END USER |
       | DIRECT\_LOGON\_ROLE | DATABASE ROLE | HRAPP\_EMPLOYEES | DATA ROLE |
+      | DIRECT\_LOGON\_ROLE | DATABASE ROLE | HRAPP\_MANAGERS | DATA ROLE |
       {: title="Data role grants"}
 
-      Emma and Marvin both have `HRAPP_EMPLOYEES`. Only Marvin has `HRAPP_MANAGERS`. The last row shows `DIRECT_LOGON_ROLE` — a standard database role — granted to the `HRAPP_EMPLOYEES` data role, which is what allows direct SQL*Plus connections for both users.
+      Emma and Marvin both have `HRAPP_EMPLOYEES`. Only Marvin has `HRAPP_MANAGERS`. The last two rows show `DIRECT_LOGON_ROLE` — a standard database role — granted to the data roles, which is what allows direct SQL*Plus connections for both users.
+
+6. Verify that `DIRECT_LOGON_ROLE` has `CREATE SESSION`.
+
+      ```sql
+      <copy>
+      SELECT grantee, privilege
+        FROM dba_sys_privs
+       WHERE grantee = 'DIRECT_LOGON_ROLE'
+         AND privilege = 'CREATE SESSION';
+      </copy>
+      ```
+
+      | GRANTEE | PRIVILEGE |
+      |---|---|
+      | DIRECT\_LOGON\_ROLE | CREATE SESSION |
+      {: title="Direct logon role privilege"}
 
 ## Task 4: Create Data Grants for Employees and Managers
 

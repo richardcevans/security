@@ -526,7 +526,8 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
 
       ```sql
       <copy>
-      SELECT * FROM hr.employees;
+      SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number
+        FROM hr.employees;
       </copy>
       ```
 
@@ -660,36 +661,22 @@ As you have experienced, Emma has only the privileges necessary to query and upd
 
       ```sql
       <copy>
-      SELECT employee_id, first_name, phone_number, salary FROM hr.employees;
+      SELECT employee_id, first_name, ssn, phone_number, salary FROM hr.employees;
       </copy>
       ```
 
     Marvin sees **4 rows** — his 3 direct reports and himself. 
-      | EMPLOYEE\_ID | FIRST\_NAME | PHONE\_NUMBER | SALARY |
-      |-------------|------------|---------------|--------|
-      | 2           | Marvin     | 555-100-0002  | 175000 |
-      | 3           | Emma       | 555-100-0003  | 120000 |
-      | 4           | Charlie    | 555-100-0004  | 95000  |
-      | 5           | Dana       | 555-100-0005  | 130000 |
+      | EMPLOYEE\_ID | FIRST\_NAME | SSN | PHONE\_NUMBER | SALARY |
+      |-------------|------------|-------------|---------------|--------|
+      | 2           | Marvin     | 222-22-2222 | 555-100-0002  | 175000 |
+      | 3           | Emma       |             | 555-100-0003  | 120000 |
+      | 4           | Charlie    |             | 555-100-0004  | 95000  |
+      | 5           | Dana       |             | 555-100-0005  | 130000 |
       {: title="Marvin's query result"}
 
-4. But if he tries to query the Social Security Number, instead of phone number, he only sees his own SSN. 
+4. Notice the Social Security Number column. Marvin sees his own SSN, but not the SSNs for his direct reports.
 
-      ```sql
-      <copy>
-      SELECT employee_id, first_name, ssn, salary FROM hr.employees;
-      </copy>
-      ```
-
-      | EMPLOYEE\_ID | FIRST\_NAME | SSN         | SALARY |
-      |------------|------------|-------------|--------|
-      | 2          | Marvin     | 222-22-2222 | 175000 |
-      | 3          | Emma       |             | 120000 |
-      | 4          | Charlie    |             | 95000  |
-      | 5          | Dana       |             | 130000 |
-      {: title="Manager-related rows returned."}
-      
-      The table has 7 employees. Marvin sees his own row because he is an employee — `HRAPP_EMPLOYEE_ACCESS` matches his identity. That result is joined with the rows returned by `HRAPP_MANAGER_ACCESS`, which matches employees who report to him. Grace, Bob, and Fiona are outside both grants entirely. The query was not written to filter by user — Oracle Database applied both data grant predicates automatically.
+    The table has 7 employees. Marvin sees his own row because he is an employee — `HRAPP_EMPLOYEE_ACCESS` matches his identity. That result is joined with the rows returned by `HRAPP_MANAGER_ACCESS`, which matches employees who report to him. Grace, Bob, and Fiona are outside both grants entirely. The query was not written to filter by user — Oracle Database applied both data grant predicates automatically.
 
 5. Next, Marvin tries to request a row for a specific employee outside his scope:
 
@@ -828,7 +815,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
 
       ```sql
       <copy>
-      sqlplus sys/<password>@freepdb1 as sysdba
+      sqlplus sys/Oracle123@freepdb1 as sysdba
       </copy>
       ```
 
@@ -842,17 +829,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
 
 7. Choose one HR cleanup option.
 
-   **Option A: Drop the lab-created HR schema.** Use this option only if `HR` was created for this lab and you do not need to preserve any existing HR schema or tables. Drop the schema from the current `SYS` session.
-
-      > **Important:** Skip this step if you renamed an existing `HR.EMPLOYEES` table before running the lab. `DROP USER hr CASCADE` removes the entire `HR` schema, including any tables you moved out of the way.
-
-      ```sql
-      <copy>
-      DROP USER hr CASCADE;
-      </copy>
-      ```
-
-   **Option B: Restore an existing HR schema.** Use this option if you renamed existing HR tables before running the lab. Do not run `DROP USER hr CASCADE`. From the current `SYS` session, drop the lab-created HR tables and put the original table names back.
+   **Option A: Restore an existing HR schema.** Use this option if you renamed existing HR tables before running the lab. Do not run `DROP USER hr CASCADE`. From the current `SYS` session, drop the lab-created HR tables and put the original table names back.
 
       ```sql
       <copy>
@@ -869,7 +846,17 @@ If you want to remove everything created in this lab and start fresh, reconnect 
 
       ```sql
       <copy>
-      ALTER USER hr IDENTIFIED BY <password>;
+      ALTER USER hr IDENTIFIED BY Oracle123;
+      </copy>
+      ```
+
+   **Option B: Drop the lab-created HR schema.** Use this option only if `HR` was created for this lab and you do not need to preserve any existing HR schema or tables. Drop the schema from the current `SYS` session.
+
+      > **Important:** Do not use this option if you renamed an existing `HR.EMPLOYEES` table before running the lab. `DROP USER hr CASCADE` removes the entire `HR` schema, including any tables you moved out of the way.
+
+      ```sql
+      <copy>
+      DROP USER hr CASCADE;
       </copy>
       ```
 
@@ -887,7 +874,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
 
    The first query should return `0`. The remaining queries should return no rows.
 
-   If you dropped the `HR` schema with Option A, verify that `HR` was removed.
+   If you dropped the `HR` schema with Option B, verify that `HR` was removed.
 
       ```sql
       <copy>
@@ -895,7 +882,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       </copy>
       ```
 
-   This query should return no rows. If you restored an existing `HR` schema with Option B, this query should return `HR`.
+   This query should return no rows. If you restored an existing `HR` schema with Option A, this query should return `HR`.
 
 ## What You Built
 

@@ -73,7 +73,7 @@ To enforce a least-privilege model, you can create a dedicated `DEEPSEC_ADMIN` u
 CREATE USER deepsec_admin IDENTIFIED BY Oracle123;
 
 -- Standard Oracle privileges
-GRANT CREATE SESSION TO deepsec_admin;
+GRANT CREATE SESSION TO deepsec_admin WITH ADMIN OPTION;
 GRANT CREATE USER TO deepsec_admin;
 GRANT ALTER USER TO deepsec_admin;
 GRANT DROP USER TO deepsec_admin;
@@ -112,9 +112,79 @@ sqlplus deepsec_admin/Oracle123@freepdb1
 
 > **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
-1. Create a schema-only account for the HR data and grant it tablespace quota.
+> **Important:** This lab creates and owns the `HR.EMPLOYEES` table. If your PDB already has a sample `HR.EMPLOYEES` table, move it out of the way before creating the lab table. If `CREATE TABLE hr.employees` fails with `ORA-00955`, the later inserts may be going into an existing table with a different column layout, which can cause date-format errors such as `ORA-01861` or `ORA-01847`.
+
+1. Check whether the `HR` schema and the `EMPLOYEES` or `MANAGERS` tables already exist.
+
+      ```sql
+      <copy>
+      SELECT username
+        FROM dba_users
+       WHERE username = 'HR';
+
+      SELECT table_name
+        FROM dba_tables
+       WHERE owner = 'HR'
+         AND table_name IN ('EMPLOYEES', 'MANAGERS');
+      </copy>
+      ```
+
+2. If the `HR` schema already exists and either table is returned, connect as `SYS` to `freepdb1` from your OS command prompt and move the existing HR tables out of the way before creating the lab tables.
+
+      ```sql
+      <copy>
+      sqlplus sys/<password>@freepdb1 as sysdba
+      </copy>
+      ```
+
+      Run only the rename statements for tables returned by the query in the previous step.
+
+      ```sql
+      <copy>
+      ALTER TABLE hr.employees RENAME TO employees_before_deepsec_lab;
+      </copy>
+      ```
+
+      If `HR.MANAGERS` also exists, rename it too.
+
+      ```sql
+      <copy>
+      ALTER TABLE hr.managers RENAME TO managers_before_deepsec_lab;
+      </copy>
+      ```
+
+      Exit the `SYS` session before continuing.
+
+      ```sql
+      <copy>
+      EXIT
+      </copy>
+      ```
+
+      If the `HR` schema does not exist, skip this step and use `CREATE USER hr...` in the next step instead.
+
+3. Connect or reconnect as `deepsec_admin`.
+
+      ```sql
+      <copy>
+      sqlplus deepsec_admin/Oracle123@freepdb1
+      </copy>
+      ```
+
+4. Create or convert the schema-only account for the HR data and grant it tablespace quota.
 
     `CREATE USER hr NO AUTHENTICATION` creates a schema that owns tables and objects but cannot be used to connect to the database directly. This is the recommended pattern for application schemas — the schema holds data, but nobody logs in as `hr`.
+
+    If the `HR` schema already exists, use `ALTER USER hr NO AUTHENTICATION`. This preserves the existing schema while making it schema-only for the lab.
+
+      ```sql
+      <copy>
+      ALTER USER hr NO AUTHENTICATION;
+      ALTER USER hr QUOTA UNLIMITED ON users;
+      </copy>
+      ```
+
+    If the `HR` schema does not exist, create it instead.
 
       ```sql
       <copy>
@@ -123,7 +193,7 @@ sqlplus deepsec_admin/Oracle123@freepdb1
       </copy>
       ```
 
-2. Create the `EMPLOYEES` table and insert sample data. A `MANAGERS` lookup table is also created — it maps each employee to their manager's username, which the manager data grant uses to identify direct reports.
+5. Create the `EMPLOYEES` table and insert sample data. A `MANAGERS` lookup table is also created — it maps each employee to their manager's username, which the manager data grant uses to identify direct reports.
 
       ```sql
       <copy>
@@ -141,19 +211,43 @@ sqlplus deepsec_admin/Oracle123@freepdb1
         manager_id    NUMBER);
 
       -- CEO
-      INSERT INTO hr.employees VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', NULL, '555-100-0001', 235000, 'grace', NULL);
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', NULL, '555-100-0001', 235000, 'grace', NULL);
 
       -- Manager
-      INSERT INTO hr.employees VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', NULL, '555-100-0002', 175000, 'marvin', 1);
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', NULL, '555-100-0002', 175000, 'marvin', 1);
 
       -- Software engineering team
-      INSERT INTO hr.employees VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', NULL, '555-100-0003', 120000, 'emma', 2);
-      INSERT INTO hr.employees VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', NULL, '555-100-0004', 95000, 'charlie', 2);
-      INSERT INTO hr.employees VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', NULL, '555-100-0005', 130000, 'dana', 2);
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', NULL, '555-100-0003', 120000, 'emma', 2);
+
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', NULL, '555-100-0004', 95000, 'charlie', 2);
+
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', NULL, '555-100-0005', 130000, 'dana', 2);
 
       -- Other departments
-      INSERT INTO hr.employees VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', NULL, '555-100-0006', 145000, 'bob', 1);
-      INSERT INTO hr.employees VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', NULL, '555-100-0007', 92000, 'fiona', 1);
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', NULL, '555-100-0006', 145000, 'bob', 1);
+
+      INSERT INTO hr.employees (
+        employee_id, first_name, last_name, job_code, department_id, ssn,
+        photo, phone_number, salary, user_name, manager_id)
+      VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', NULL, '555-100-0007', 92000, 'fiona', 1);
 
       -- Build a Manager lookup table
 
@@ -181,7 +275,7 @@ sqlplus deepsec_admin/Oracle123@freepdb1
       </copy>
       ```
 
-3. Verify you can see all the data, including SSNs and the `user_name` column that data grants will use to identify each employee.
+6. Verify you can see all the data, including SSNs and the `user_name` column that data grants will use to identify each employee.
 
       ```sql
       <copy>
@@ -295,7 +389,7 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       ```sql
       <copy>
       CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEE_ACCESS
-        AS SELECT, UPDATE(phone_number, first_name)
+        AS SELECT, UPDATE(phone_number)
         ON hr.employees
         WHERE upper(user_name) = upper(ORA_END_USER_CONTEXT.username)
         TO HRAPP_EMPLOYEES;
@@ -309,7 +403,7 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       ```sql
       <copy>
       CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
+      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id)
       ON hr.employees
       WHERE manager_id IN (SELECT m.manager_id
                              FROM hr.managers m
@@ -361,6 +455,14 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       {: title="Data grant predicates"}
 
       The employee predicate is a direct identity match — the row is visible only when `user_name` equals the authenticated user. The manager predicate looks up the authenticated user in `hr.managers` to find their `manager_id`, then returns all employees who report to them. Both predicates are evaluated at query time by Oracle Database — no application code required.
+
+5. Exit SQL*Plus so you can reconnect as Emma in the next task.
+
+      ```sql
+      <copy>
+      EXIT
+      </copy>
+      ```
 
 ## Task 5: Connect as Emma
 
@@ -414,7 +516,7 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       <copy>
       SELECT employee_id, first_name, last_name, ssn, salary
         FROM hr.employees
-        where user_name = 'marvin';
+       WHERE user_name = 'marvin';
       </copy>
       ```
 
@@ -488,7 +590,15 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       Help: https://docs.oracle.com/error-help/db/ora-41900/
       ```
 
-As you have experienced, Emma has only the privileges necessary to query, update, or delete the data we allow her to. This same security model will apply no matter how Emma's identity is used - applications, analytic tools, and AI agents or skills.
+As you have experienced, Emma has only the privileges necessary to query and update the data we allow her to. This same security model will apply no matter how Emma's identity is used - applications, analytic tools, and AI agents or skills.
+
+9. Exit SQL*Plus so you can reconnect as Marvin in the next task.
+
+      ```sql
+      <copy>
+      EXIT
+      </copy>
+      ```
 
 ## Task 6: Connect as Marvin
 
@@ -557,7 +667,7 @@ As you have experienced, Emma has only the privileges necessary to query, update
       <copy>
       SELECT employee_id, first_name, last_name, ssn, salary
         FROM hr.employees
-        where user_name = 'grace';
+       WHERE user_name = 'grace';
       </copy>
       ```
 
@@ -633,13 +743,29 @@ As you have experienced, Emma has only the privileges necessary to query, update
 
 Again, both Marvin and Emma have only the privileges necessary to query and update the data we allow them to. This same security model will apply no matter how the end user's identity is used - applications, analytic tools, and AI agents or skills.
 
+9. Exit SQL*Plus before starting the optional cleanup task.
+
+      ```sql
+      <copy>
+      EXIT
+      </copy>
+      ```
+
 ## Task 7 (Optional): Clean Up
 
-If you want to remove everything created in this lab and start fresh, run the following steps as your **DBA user** in SQL*Plus.
+If you want to remove everything created in this lab and start fresh, reconnect as `deepsec_admin` in SQL*Plus.
 
 > **Note:** If you plan to continue with Next Steps, you should skip the Clean Up task because you will use most of these objects in the next lab. 
 
-1. Drop the data grants
+1. Connect as `deepsec_admin`.
+
+      ```sql
+      <copy>
+      sqlplus deepsec_admin/Oracle123@freepdb1
+      </copy>
+      ```
+
+2. Drop the data grants.
 
       ```sql
       <copy>
@@ -648,7 +774,7 @@ If you want to remove everything created in this lab and start fresh, run the fo
       </copy>
       ```
 
-2. Drop the database role, data roles, and end users. 
+3. Drop the database role, data roles, and end users.
 
       ```sql
       <copy>
@@ -660,7 +786,25 @@ If you want to remove everything created in this lab and start fresh, run the fo
       </copy>
       ```
 
-3. Performing this step removes the HR schema along with the `employees` table and all dependent objects.
+4. Exit `deepsec_admin`.
+
+      ```sql
+      <copy>
+      EXIT
+      </copy>
+      ```
+
+5. Choose one HR cleanup option.
+
+   **Option A: Drop the lab-created HR schema.** Use this option only if `HR` was created for this lab and you do not need to preserve any existing HR schema or tables. Reconnect as `SYS` to `freepdb1` from your OS command prompt and drop the schema.
+
+      > **Important:** Skip this step if you renamed an existing `HR.EMPLOYEES` table before running the lab. `DROP USER hr CASCADE` removes the entire `HR` schema, including any tables you moved out of the way.
+
+      ```sql
+      <copy>
+      sqlplus sys/<password>@freepdb1 as sysdba
+      </copy>
+      ```
 
       ```sql
       <copy>
@@ -668,19 +812,55 @@ If you want to remove everything created in this lab and start fresh, run the fo
       </copy>
       ```
 
-4. Verify everything is removed.
+   **Option B: Restore an existing HR schema.** Use this option if you renamed existing HR tables before running the lab. Do not run `DROP USER hr CASCADE`. Reconnect as `SYS` to `freepdb1` from your OS command prompt, drop the lab-created HR tables, and put the original table names back.
+
+      ```sql
+      <copy>
+      sqlplus sys/<password>@freepdb1 as sysdba
+      </copy>
+      ```
+
+      ```sql
+      <copy>
+      DROP TABLE hr.employees PURGE;
+      DROP TABLE hr.managers PURGE;
+      ALTER TABLE hr.employees_before_deepsec_lab RENAME TO employees;
+      ALTER TABLE hr.managers_before_deepsec_lab RENAME TO managers;
+      </copy>
+      ```
+
+      If you only renamed `HR.EMPLOYEES`, run only the `DROP TABLE hr.employees` and `ALTER TABLE hr.employees_before_deepsec_lab...` statements.
+
+      If you changed the existing `HR` schema to `NO AUTHENTICATION` and need to restore password authentication, run:
+
+      ```sql
+      <copy>
+      ALTER USER hr IDENTIFIED BY <password>;
+      </copy>
+      ```
+
+6. Verify the Deep Data Security objects are removed. You can run these queries as `SYS` or reconnect as `deepsec_admin`.
 
       ```sql
       <copy>
       SELECT count(*) FROM dba_data_grants WHERE grant_name LIKE '%HRAPP%';
       SELECT data_role FROM dba_data_roles WHERE data_role IN ('HRAPP_EMPLOYEES','HRAPP_MANAGERS');
       SELECT grant_name FROM dba_data_grants WHERE object_owner = 'HR';
-      SELECT username FROM dba_users WHERE username = 'HR';
       SELECT role FROM dba_roles WHERE role = 'DIRECT_LOGON_ROLE';
       </copy>
       ```
 
-   All queries should return no rows.
+   The first query should return `0`. The remaining queries should return no rows.
+
+   If you dropped the `HR` schema in step 5, verify that `HR` was removed.
+
+      ```sql
+      <copy>
+      SELECT username FROM dba_users WHERE username = 'HR';
+      </copy>
+      ```
+
+   This query should return no rows. If you restored an existing `HR` schema in step 6, this query should return `HR`.
 
 ## What You Built
 

@@ -143,7 +143,7 @@ connect deepsec_admin/Oracle123@freepdb1
 
       ```sql
       <copy>
-      connect sys/<password>@freepdb1 as sysdba
+      connect sys/Oracle123@freepdb1 as sysdba
       </copy>
       ```
 

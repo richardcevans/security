@@ -410,14 +410,14 @@ connect deepsec_admin/Oracle123@freepdb1
 
 > **Connection:** Run as a DBA user or `deepsec_admin` in SQL*Plus.
 
-Next, you will ensure that Emma and Marvin can see all of their own data and update only their phone number. Marvin, as a manager, will also see his direct reports — but with limited column access.
+Next, you will ensure that Emma and Marvin can see all of their own data and update only their phone number and first name. Marvin, as a manager, will also see his direct reports — but with limited column access.
 
 1. Create a data grant based on the employee role. 
 
       ```sql
       <copy>
       CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEE_ACCESS
-        AS SELECT, UPDATE(phone_number)
+        AS SELECT, UPDATE(phone_number, first_name)
         ON hr.employees
         WHERE upper(user_name) = upper(ORA_END_USER_CONTEXT.username)
         TO HRAPP_EMPLOYEES;
@@ -431,7 +431,7 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       ```sql
       <copy>
       CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id)
+      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
       ON hr.employees
       WHERE manager_id IN (SELECT m.manager_id
                              FROM hr.managers m
@@ -455,10 +455,12 @@ Next, you will ensure that Emma and Marvin can see all of their own data and upd
       | COLUMN\_NAME | GRANT\_NAME | PRIVILEGE | GRANTEE |
       |---|---|---|---|
       | | HRAPP\_EMPLOYEE\_ACCESS | SELECT | HRAPP\_EMPLOYEES |
+      | FIRST\_NAME | HRAPP\_EMPLOYEE\_ACCESS | UPDATE | HRAPP\_EMPLOYEES |
       | PHONE\_NUMBER | HRAPP\_EMPLOYEE\_ACCESS | UPDATE | HRAPP\_EMPLOYEES |
       | EMPLOYEE\_ID | HRAPP\_MANAGER\_ACCESS | SELECT | HRAPP\_MANAGERS |
       | SALARY | HRAPP\_MANAGER\_ACCESS | SELECT | HRAPP\_MANAGERS |
       | DEPARTMENT\_ID | HRAPP\_MANAGER\_ACCESS | UPDATE | HRAPP\_MANAGERS |
+      | FIRST\_NAME | HRAPP\_MANAGER\_ACCESS | UPDATE | HRAPP\_MANAGERS |
       | SALARY | HRAPP\_MANAGER\_ACCESS | UPDATE | HRAPP\_MANAGERS |
       {: title="Key columns and privileges"}
 
@@ -903,8 +905,8 @@ You configured database-level security for an AI copilot so that each user can o
 |---|---|
 | **END USER** | `emma` and `marvin` — Oracle Database end users authenticated by database password or using OCI IAM or Microsoft Entra ID |
 | **DATA ROLE** | `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS` — named policy holders; data grants attach to the role, the role grants to many users |
-| **DATA GRANT** | `HRAPP_EMPLOYEE_ACCESS` — employees see all of their own columns and can update their phone number |
-| **DATA GRANT** | `HRAPP_MANAGER_ACCESS` — managers see their direct reports (SSN excluded) and can update salary and department |
+| **DATA GRANT** | `HRAPP_EMPLOYEE_ACCESS` — employees see all of their own columns and can update their phone number and first name |
+| **DATA GRANT** | `HRAPP_MANAGER_ACCESS` — managers see their direct reports (SSN excluded) and can update salary, department, and first name |
 | **`ORA_END_USER_CONTEXT.username`** | Built-in function that resolves to the authenticated user's identity at query time — the key to the row-filter predicate |
 | **`DIRECT_LOGON_ROLE`** | Database role granting `CREATE SESSION`, required for direct SQL*Plus connections |
 {: title="Lab components"}

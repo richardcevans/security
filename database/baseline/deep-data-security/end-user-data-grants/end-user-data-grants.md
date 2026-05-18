@@ -66,7 +66,15 @@ sqlplus <dba_user>/<password>@freepdb1
 
 ## Task 0 (Optional): Create a Deep Data Security Administrator
 
-To enforce a least-privilege model, you can create a dedicated `DEEPSEC_ADMIN` user with only the privileges required to complete this lab. Run the following as a DBA user in SQL*Plus.
+To enforce a least-privilege model, you can create a dedicated `DEEPSEC_ADMIN` user with only the privileges required to complete this lab. From your OS command prompt, connect to `freepdb1` as `SYS`.
+
+```
+<copy>
+sqlplus sys/Oracle123@freepdb1 as sysdba
+</copy>
+```
+
+Run the following commands in SQL*Plus.
 
 ```sql
 <copy>
@@ -102,7 +110,7 @@ Connect as `deepsec_admin` to run Tasks 1 through 4.
 
 ```
 <copy>
-sqlplus deepsec_admin/Oracle123@freepdb1
+connect deepsec_admin/Oracle123@freepdb1
 </copy>
 ```
 
@@ -794,17 +802,27 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       </copy>
       ```
 
-5. Choose one HR cleanup option.
-
-   **Option A: Drop the lab-created HR schema.** Use this option only if `HR` was created for this lab and you do not need to preserve any existing HR schema or tables. Reconnect as `SYS` to `freepdb1` from your OS command prompt and drop the schema.
-
-      > **Important:** Skip this step if you renamed an existing `HR.EMPLOYEES` table before running the lab. `DROP USER hr CASCADE` removes the entire `HR` schema, including any tables you moved out of the way.
+5. Reconnect as `SYS` to `freepdb1` from your OS command prompt.
 
       ```sql
       <copy>
       sqlplus sys/<password>@freepdb1 as sysdba
       </copy>
       ```
+
+6. Drop the `deepsec_admin` user created in Task 0.
+
+      ```sql
+      <copy>
+      DROP USER deepsec_admin CASCADE;
+      </copy>
+      ```
+
+7. Choose one HR cleanup option.
+
+   **Option A: Drop the lab-created HR schema.** Use this option only if `HR` was created for this lab and you do not need to preserve any existing HR schema or tables. Drop the schema from the current `SYS` session.
+
+      > **Important:** Skip this step if you renamed an existing `HR.EMPLOYEES` table before running the lab. `DROP USER hr CASCADE` removes the entire `HR` schema, including any tables you moved out of the way.
 
       ```sql
       <copy>
@@ -812,13 +830,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       </copy>
       ```
 
-   **Option B: Restore an existing HR schema.** Use this option if you renamed existing HR tables before running the lab. Do not run `DROP USER hr CASCADE`. Reconnect as `SYS` to `freepdb1` from your OS command prompt, drop the lab-created HR tables, and put the original table names back.
-
-      ```sql
-      <copy>
-      sqlplus sys/<password>@freepdb1 as sysdba
-      </copy>
-      ```
+   **Option B: Restore an existing HR schema.** Use this option if you renamed existing HR tables before running the lab. Do not run `DROP USER hr CASCADE`. From the current `SYS` session, drop the lab-created HR tables and put the original table names back.
 
       ```sql
       <copy>
@@ -839,7 +851,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       </copy>
       ```
 
-6. Verify the Deep Data Security objects are removed. You can run these queries as `SYS` or reconnect as `deepsec_admin`.
+8. Verify the Deep Data Security objects are removed from the current `SYS` session.
 
       ```sql
       <copy>
@@ -847,12 +859,13 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       SELECT data_role FROM dba_data_roles WHERE data_role IN ('HRAPP_EMPLOYEES','HRAPP_MANAGERS');
       SELECT grant_name FROM dba_data_grants WHERE object_owner = 'HR';
       SELECT role FROM dba_roles WHERE role = 'DIRECT_LOGON_ROLE';
+      SELECT username FROM dba_users WHERE username = 'DEEPSEC_ADMIN';
       </copy>
       ```
 
    The first query should return `0`. The remaining queries should return no rows.
 
-   If you dropped the `HR` schema in step 5, verify that `HR` was removed.
+   If you dropped the `HR` schema with Option A, verify that `HR` was removed.
 
       ```sql
       <copy>
@@ -860,7 +873,7 @@ If you want to remove everything created in this lab and start fresh, reconnect 
       </copy>
       ```
 
-   This query should return no rows. If you restored an existing `HR` schema in step 6, this query should return `HR`.
+   This query should return no rows. If you restored an existing `HR` schema with Option B, this query should return `HR`.
 
 ## What You Built
 

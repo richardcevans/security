@@ -52,6 +52,10 @@ export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}}"
 export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
 export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
 export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
+export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
+export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
+export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
+export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
 export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-${DB_NAME} ADB OCI IAM DB Resource}"
@@ -203,6 +207,22 @@ find_domain_app_id() {
   local name="$1"
   first_query \
     "domain_cmd apps list --all --attribute-sets all --filter 'displayName eq \"${name}\"'" \
+    'data.Resources[0].id' \
+    'data.resources[0].id'
+}
+
+find_domain_group_id() {
+  local name="$1"
+  first_query \
+    "domain_cmd groups list --all --filter 'displayName eq \"${name}\"'" \
+    'data.Resources[0].id' \
+    'data.resources[0].id'
+}
+
+find_domain_user_id() {
+  local name="$1"
+  first_query \
+    "domain_cmd users list --all --filter 'userName eq \"${name}\"'" \
     'data.Resources[0].id' \
     'data.resources[0].id'
 }
@@ -412,6 +432,91 @@ create_or_reuse_public_client_app() {
   printf '%s' "$app_id"
 }
 
+create_or_reuse_domain_group() {
+  local name="$1"
+  local group_id
+
+  group_id=$(find_domain_group_id "$name")
+  if [ -n "$group_id" ]; then
+    echo -e "${CYAN}  Reusing domain group ${name}: ${group_id}${NC}" >&2
+  else
+    echo -e "${CYAN}  Creating domain group ${name}:${NC}" >&2
+    group_id=$(domain_cmd group create \
+      --schemas '["urn:ietf:params:scim:schemas:core:2.0:Group"]' \
+      --display-name "$name" \
+      --query 'data.id' \
+      --raw-output)
+    echo -e "${CYAN}  Created domain group ${name}: ${group_id}${NC}" >&2
+  fi
+
+  printf '%s' "$group_id"
+}
+
+create_or_reuse_domain_user() {
+  local username="$1"
+  local given="$2"
+  local family="$3"
+  local email="$username"
+  local user_id
+
+  if [[ "$email" != *@* ]]; then
+    if [ -n "$OCI_USERNAME_DOMAIN" ]; then
+      email="${username}@${OCI_USERNAME_DOMAIN}"
+    else
+      email="${username}@example.com"
+    fi
+  fi
+
+  user_id=$(find_domain_user_id "$username")
+  if [ -n "$user_id" ]; then
+    echo -e "${CYAN}  Reusing domain user ${username}: ${user_id}${NC}" >&2
+  else
+    echo -e "${CYAN}  Creating domain user ${username}:${NC}" >&2
+    if ! user_id=$(domain_cmd user create \
+      --schemas '["urn:ietf:params:scim:schemas:core:2.0:User"]' \
+      --user-name "$username" \
+      --name "{\"givenName\":\"${given}\",\"familyName\":\"${family}\"}" \
+      --emails "[{\"value\":\"${email}\",\"primary\":true,\"type\":\"work\"}]" \
+      --active true \
+      --query 'data.id' \
+      --raw-output 2>/dev/null); then
+      echo -e "${RED}ERROR: Could not create OCI IAM domain user ${username}.${NC}" >&2
+      echo -e "${YELLOW}  Check that the username and generated email are valid: ${email}${NC}" >&2
+      exit 1
+    fi
+
+    if [ -z "$user_id" ] || [ "$user_id" = "null" ] || [ "$user_id" = "None" ]; then
+      echo -e "${RED}ERROR: OCI IAM did not return an id for created user ${username}.${NC}" >&2
+      exit 1
+    fi
+
+    echo -e "${CYAN}  Created domain user ${username}: ${user_id}${NC}" >&2
+    echo -e "${YELLOW}  Set or reset this user's password/federated login before verification.${NC}" >&2
+  fi
+
+  printf '%s' "$user_id"
+}
+
+add_domain_user_to_group() {
+  local user_id="$1"
+  local group_id="$2"
+  local username="$3"
+  local group="$4"
+
+  if domain_cmd group patch \
+    --group-id "$group_id" \
+    --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+    --operations "[{\"op\":\"add\",\"path\":\"members\",\"value\":[{\"value\":\"${user_id}\",\"type\":\"User\"}]}]" \
+    >/dev/null 2>&1; then
+    echo -e "${CYAN}  Ensured ${username} is in ${group}${NC}"
+  else
+    echo -e "${RED}ERROR: Could not add ${username} to ${group}.${NC}"
+    echo -e "${YELLOW}  User id: ${user_id}${NC}"
+    echo -e "${YELLOW}  Group id: ${group_id}${NC}"
+    exit 1
+  fi
+}
+
 create_group_claim() {
   local body="${WORK_DIR}/custom-claim-group.json"
   cat > "$body" <<'JSON'
@@ -459,8 +564,16 @@ setup_oauth_apps() {
     OCI_DB_CLIENT_SECRET=$(get_domain_app_field "$OCI_DB_APP_ID" client_secret)
   fi
   if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
-    echo -e "${CYAN}  Setting DB resource app secret for database-side OAuth validation...${NC}"
+    echo -e "${CYAN}  Resetting DB resource app secret for database-side OAuth validation...${NC}"
+    OCI_DB_CLIENT_SECRET=$(regenerate_app_client_secret "$OCI_DB_APP_ID")
+  fi
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+    echo -e "${YELLOW}  Could not read regenerated secret; setting a new secret directly...${NC}"
     OCI_DB_CLIENT_SECRET=$(generate_secret)
+    if [ -z "$OCI_DB_CLIENT_SECRET" ]; then
+      echo -e "${RED}ERROR: Could not generate a DB resource app client secret.${NC}"
+      exit 1
+    fi
     configure_db_resource_app "$OCI_DB_APP_ID" "$OCI_DB_CLIENT_SECRET"
   fi
   OCI_CLIENT_APP_ID=$(create_or_reuse_public_client_app)
@@ -647,103 +760,22 @@ if [ -f "${WALLET_DIR}/sqlnet.ora" ]; then
 fi
 
 echo
-echo -e "${YELLOW}Step 5: Creating or reusing IAM groups for the lab...${NC}"
+echo -e "${YELLOW}Step 5: Creating or reusing OCI IAM domain groups and demo users...${NC}"
+EMPLOYEES_OCID=$(create_or_reuse_domain_group "$OCI_IAM_EMPLOYEE_GROUP")
+MANAGERS_OCID=$(create_or_reuse_domain_group "$OCI_IAM_MANAGER_GROUP")
 
-ensure_group() {
-  local group_name="$1"
-  local group_id
-
-  echo -e "${CYAN}  Checking IAM group ${group_name}:${NC}" >&2
-  show_cmd oci iam group list \
-    --all \
-    --raw-output \
-    --query "data[?name=='${group_name}'].id | [0]" >&2
-  group_id=$(oci iam group list \
-    --all \
-    --raw-output \
-    --query "data[?name=='${group_name}'].id | [0]" 2>/dev/null || true)
-
-  if [ -z "$group_id" ] || [ "$group_id" = "null" ]; then
-    if [ -z "$TENANCY_OCID" ]; then
-      echo -e "${RED}ERROR: TENANCY_OCID is not set and group ${group_name} does not exist.${NC}" >&2
-      echo "Set TENANCY_OCID to the tenancy OCID, then rerun this script." >&2
-      exit 1
-    fi
-    echo -e "${CYAN}  Creating IAM group ${group_name}:${NC}" >&2
-    show_cmd oci iam group create \
-      --compartment-id "$TENANCY_OCID" \
-      --name "$group_name" \
-      --description "Deep Data Security ADB lab group ${group_name}" \
-      --raw-output \
-      --query 'data.id' >&2
-    group_id=$(oci iam group create \
-      --compartment-id "$TENANCY_OCID" \
-      --name "$group_name" \
-      --description "Deep Data Security ADB lab group ${group_name}" \
-      --raw-output \
-      --query 'data.id')
-    echo -e "${CYAN}  Created group ${group_name}: ${group_id}${NC}" >&2
-  else
-    echo -e "${CYAN}  Reusing group ${group_name}: ${group_id}${NC}" >&2
-  fi
-
-  printf '%s' "$group_id"
-}
-
-EMPLOYEES_OCID=$(ensure_group "$OCI_IAM_EMPLOYEE_GROUP")
-MANAGERS_OCID=$(ensure_group "$OCI_IAM_MANAGER_GROUP")
-
-ADB_LAB_USER_OCID="${ADB_LAB_USER_OCID:-${OCI_CS_USER_OCID:-}}"
-ADB_LAB_USERNAME="${ADB_LAB_USERNAME:-}"
-
-if [ -n "$ADB_LAB_USER_OCID" ]; then
-  echo -e "${CYAN}  Resolving lab user name:${NC}"
-  show_cmd oci iam user get \
-    --user-id "$ADB_LAB_USER_OCID" \
-    --raw-output \
-    --query 'data.name'
-  ADB_LAB_USERNAME=$(oci iam user get \
-    --user-id "$ADB_LAB_USER_OCID" \
-    --raw-output \
-    --query 'data.name')
-
-  add_user_to_group() {
-    local group_id="$1"
-    local group_name="$2"
-    local already_member
-
-    echo -e "${CYAN}  Checking ${ADB_LAB_USERNAME} membership in ${group_name}:${NC}"
-    show_cmd oci iam group list-users \
-      --group-id "$group_id" \
-      --all \
-      --raw-output \
-      --query "data[?id=='${ADB_LAB_USER_OCID}'].id | [0]"
-    already_member=$(oci iam group list-users \
-      --group-id "$group_id" \
-      --all \
-      --raw-output \
-      --query "data[?id=='${ADB_LAB_USER_OCID}'].id | [0]" 2>/dev/null || true)
-
-    if [ -z "$already_member" ] || [ "$already_member" = "null" ]; then
-      echo -e "${CYAN}  Adding ${ADB_LAB_USERNAME} to ${group_name}:${NC}"
-      show_cmd oci iam group add-user \
-        --group-id "$group_id" \
-        --user-id "$ADB_LAB_USER_OCID"
-      oci iam group add-user \
-        --group-id "$group_id" \
-        --user-id "$ADB_LAB_USER_OCID" \
-        >/dev/null
-      echo -e "${CYAN}  Added ${ADB_LAB_USERNAME} to ${group_name}${NC}"
-    else
-      echo -e "${CYAN}  ${ADB_LAB_USERNAME} is already in ${group_name}${NC}"
-    fi
-  }
-
-  add_user_to_group "$EMPLOYEES_OCID" "$OCI_IAM_EMPLOYEE_GROUP"
-  add_user_to_group "$MANAGERS_OCID" "$OCI_IAM_MANAGER_GROUP"
+MARVIN_ID=""
+EMMA_ID=""
+if [ "$CREATE_DEMO_USERS" = "1" ]; then
+  MARVIN_ID=$(create_or_reuse_domain_user "$MARVIN_USERNAME" "Marvin" "Morgan")
+  EMMA_ID=$(create_or_reuse_domain_user "$EMMA_USERNAME" "Emma" "Baker")
+  add_domain_user_to_group "$MARVIN_ID" "$EMPLOYEES_OCID" "$MARVIN_USERNAME" "$OCI_IAM_EMPLOYEE_GROUP"
+  add_domain_user_to_group "$MARVIN_ID" "$MANAGERS_OCID" "$MARVIN_USERNAME" "$OCI_IAM_MANAGER_GROUP"
+  add_domain_user_to_group "$EMMA_ID" "$EMPLOYEES_OCID" "$EMMA_USERNAME" "$OCI_IAM_EMPLOYEE_GROUP"
 else
-  echo -e "${YELLOW}  OCI_CS_USER_OCID was not set, so current-user group membership was skipped.${NC}"
-  echo -e "${YELLOW}  Set ADB_LAB_USER_OCID and rerun this script if you want it to add a user to the lab groups.${NC}"
+  echo -e "${YELLOW}  CREATE_DEMO_USERS=0, so Marvin and Emma users were not created.${NC}"
+  echo -e "${YELLOW}  Ensure ${MARVIN_USERNAME} has ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}.${NC}"
+  echo -e "${YELLOW}  Ensure ${EMMA_USERNAME} has ${OCI_IAM_EMPLOYEE_GROUP}.${NC}"
 fi
 
 cat > "$ENV_FILE" <<EOF
@@ -776,8 +808,12 @@ export OCI_IAM_EMPLOYEE_GROUP='${OCI_IAM_EMPLOYEE_GROUP}'
 export OCI_IAM_MANAGER_GROUP='${OCI_IAM_MANAGER_GROUP}'
 export EMPLOYEES_OCID='${EMPLOYEES_OCID}'
 export MANAGERS_OCID='${MANAGERS_OCID}'
-export ADB_LAB_USER_OCID='${ADB_LAB_USER_OCID}'
-export ADB_LAB_USERNAME='${ADB_LAB_USERNAME}'
+export OCI_USERNAME_DOMAIN='${OCI_USERNAME_DOMAIN}'
+export MARVIN_USERNAME='${MARVIN_USERNAME}'
+export EMMA_USERNAME='${EMMA_USERNAME}'
+export MARVIN_ID='${MARVIN_ID}'
+export EMMA_ID='${EMMA_ID}'
+export CREATE_DEMO_USERS='${CREATE_DEMO_USERS}'
 EOF
 chmod 600 "$ENV_FILE"
 

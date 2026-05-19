@@ -11,8 +11,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/lib_adb.sh"
 require_adb_env
 
-export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-example.com}"
-export ADB_LAB_USERNAME="${ADB_LAB_USERNAME:-marvin@${OCI_USERNAME_DOMAIN}}"
+export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
+export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
+export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -20,8 +21,9 @@ echo -e "${GREEN}      Task 2: Create HR Schema and Employee Data               
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}OCI_USERNAME_DOMAIN = ${OCI_USERNAME_DOMAIN}${NC}"
-echo -e "${CYAN}ADB_LAB_USERNAME    = ${ADB_LAB_USERNAME}${NC}"
-echo -e "${CYAN}Marvin's HR row will use this IAM database user name.${NC}"
+echo -e "${CYAN}MARVIN_USERNAME     = ${MARVIN_USERNAME}${NC}"
+echo -e "${CYAN}EMMA_USERNAME       = ${EMMA_USERNAME}${NC}"
+echo -e "${CYAN}HR user_name values will match the OCI IAM domain users.${NC}"
 echo -e "${CYAN}SQL*Plus command:${NC}"
 show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
@@ -60,16 +62,31 @@ CREATE TABLE hr.employees (
   manager_id    NUMBER
 );
 
-INSERT INTO hr.employees VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', NULL, '555-100-0001', 235000, 'grace@${OCI_USERNAME_DOMAIN}', NULL);
-INSERT INTO hr.employees VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', NULL, '555-100-0002', 175000, '${ADB_LAB_USERNAME}', 1);
-INSERT INTO hr.employees VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', NULL, '555-100-0003', 120000, 'emma@${OCI_USERNAME_DOMAIN}', 2);
-INSERT INTO hr.employees VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', NULL, '555-100-0004', 95000, 'charlie@${OCI_USERNAME_DOMAIN}', 2);
-INSERT INTO hr.employees VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', NULL, '555-100-0005', 130000, 'dana@${OCI_USERNAME_DOMAIN}', 2);
-INSERT INTO hr.employees VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', NULL, '555-100-0006', 145000, 'bob@${OCI_USERNAME_DOMAIN}', 1);
-INSERT INTO hr.employees VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', NULL, '555-100-0007', 92000, 'fiona@${OCI_USERNAME_DOMAIN}', 1);
+INSERT INTO hr.employees VALUES (1, 'Grace', 'Young', 'CEO', NULL, '111-11-1111', NULL, '555-100-0001', 235000, 'grace', NULL);
+INSERT INTO hr.employees VALUES (2, 'Marvin', 'Morgan', 'SWE_MGR', 1, '222-22-2222', NULL, '555-100-0002', 175000, '${MARVIN_USERNAME}', 1);
+INSERT INTO hr.employees VALUES (3, 'Emma', 'Baker', 'SWE2', 1, '333-33-3333', NULL, '555-100-0003', 120000, '${EMMA_USERNAME}', 2);
+INSERT INTO hr.employees VALUES (4, 'Charlie', 'Davis', 'SWE1', 1, '444-44-4444', NULL, '555-100-0004', 95000, 'charlie', 2);
+INSERT INTO hr.employees VALUES (5, 'Dana', 'Lee', 'SWE3', 1, '555-55-5555', NULL, '555-100-0005', 130000, 'dana', 2);
+INSERT INTO hr.employees VALUES (6, 'Bob', 'Smith', 'SALES_REP', 2, '666-66-6666', NULL, '555-100-0006', 145000, 'bob', 1);
+INSERT INTO hr.employees VALUES (7, 'Fiona', 'Chen', 'HR_REP', 3, '777-77-7777', NULL, '555-100-0007', 92000, 'fiona', 1);
+
+UPDATE hr.employees
+   SET user_name =
+       CASE
+         WHEN '${OCI_USERNAME_DOMAIN}' IS NOT NULL
+          AND LENGTH('${OCI_USERNAME_DOMAIN}') > 0
+          AND user_name NOT LIKE '%@%'
+         THEN user_name || '@${OCI_USERNAME_DOMAIN}'
+         ELSE user_name
+       END;
 COMMIT;
 
-SELECT COUNT(*) AS hr_employee_rows FROM hr.employees;
+col first_name format a12
+col last_name format a12
+col user_name format a45
+SELECT employee_id, first_name, last_name, user_name, manager_id
+FROM hr.employees
+ORDER BY employee_id;
 
 exit;
 SQL

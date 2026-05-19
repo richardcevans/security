@@ -68,65 +68,6 @@ run_cleanup_cmd() {
   fi
 }
 
-remove_lab_user_from_group() {
-  local group_id="${1:-}"
-  local group_name="$2"
-
-  if [ -z "$group_id" ] || [ "$group_id" = "null" ]; then
-    echo -e "${YELLOW}Skipping ${group_name}; group OCID is not set.${NC}"
-    return 0
-  fi
-
-  if [ -z "${ADB_LAB_USER_OCID:-}" ]; then
-    echo -e "${YELLOW}Skipping ${group_name} membership removal; ADB_LAB_USER_OCID is not set.${NC}"
-    return 0
-  fi
-
-  local already_member
-  already_member=$(oci iam group list-users \
-    --group-id "$group_id" \
-    --all \
-    --raw-output \
-    --query "data[?id=='${ADB_LAB_USER_OCID}'].id | [0]" 2>/dev/null || true)
-
-  if [ -z "$already_member" ] || [ "$already_member" = "null" ]; then
-    echo -e "${CYAN}${ADB_LAB_USER_OCID} is not a member of ${group_name}; skipping.${NC}"
-    return 0
-  fi
-
-  run_cleanup_cmd "Removing lab user from ${group_name}" \
-    oci iam group remove-user \
-      --group-id "$group_id" \
-      --user-id "$ADB_LAB_USER_OCID"
-}
-
-delete_group_if_empty() {
-  local group_id="${1:-}"
-  local group_name="$2"
-
-  if [ -z "$group_id" ] || [ "$group_id" = "null" ]; then
-    echo -e "${YELLOW}Skipping ${group_name}; group OCID is not set.${NC}"
-    return 0
-  fi
-
-  local member_count
-  member_count=$(oci iam group list-users \
-    --group-id "$group_id" \
-    --all \
-    --raw-output \
-    --query 'length(data)' 2>/dev/null || true)
-
-  if [ "$member_count" != "0" ]; then
-    echo -e "${YELLOW}Skipping deletion of ${group_name}; group is not empty or member count could not be confirmed (${member_count:-unknown}).${NC}"
-    return 0
-  fi
-
-  run_cleanup_cmd "Deleting empty IAM group ${group_name}" \
-    oci iam group delete \
-      --group-id "$group_id" \
-      --force
-}
-
 delete_domain_app() {
   local app_id="${1:-}"
   local app_name="$2"
@@ -243,17 +184,7 @@ if [ "$DELETE_ADB" = true ]; then
 fi
 
 if [ "$REMOVE_ALL" = true ]; then
-  if confirm "This removes lab IAM memberships, deletes empty lab IAM groups, and removes local wallet/env/token files."; then
-    echo
-    echo -e "${YELLOW}Removing lab user from IAM groups...${NC}"
-    remove_lab_user_from_group "${EMPLOYEES_OCID:-}" "${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
-    remove_lab_user_from_group "${MANAGERS_OCID:-}" "${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
-
-    echo
-    echo -e "${YELLOW}Deleting empty lab IAM groups...${NC}"
-    delete_group_if_empty "${EMPLOYEES_OCID:-}" "${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
-    delete_group_if_empty "${MANAGERS_OCID:-}" "${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
-
+  if confirm "This deletes lab OAuth apps and removes local wallet/env/token files."; then
     echo
     echo -e "${YELLOW}Deleting lab OCI IAM OAuth applications...${NC}"
     delete_domain_app "${OCI_CLIENT_APP_ID:-}" "${OCI_CLIENT_APP_NAME:-${DB_NAME} ADB OCI IAM Public Client}"
@@ -265,8 +196,12 @@ if [ "$REMOVE_ALL" = true ]; then
     run_cleanup_cmd "Removing environment file ${SCRIPT_DIR}/.adb-oci-iam.env" rm -f "${SCRIPT_DIR}/.adb-oci-iam.env"
     run_cleanup_cmd "Removing local OCI IAM setup work directory" rm -rf "${SCRIPT_DIR}/.oci-iam-setup"
     run_cleanup_cmd "Removing local OCI IAM OAuth2 token cache" rm -rf "${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}"
+
+    echo
+    echo -e "${YELLOW}OCI IAM domain users and groups were not deleted.${NC}"
+    echo -e "${YELLOW}Review ${MARVIN_USERNAME:-marvin}, ${EMMA_USERNAME:-emma}, ${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}, and ${OCI_IAM_MANAGER_GROUP:-MANAGERS} manually before deleting shared identity objects.${NC}"
   else
-    echo -e "${YELLOW}Skipped --remove-all IAM and local-file cleanup.${NC}"
+    echo -e "${YELLOW}Skipped --remove-all OCI IAM app and local-file cleanup.${NC}"
   fi
 fi
 

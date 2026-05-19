@@ -1,34 +1,35 @@
 #!/bin/bash
-# Verify the ADB OCI IAM data grants with the current OCI IAM OAuth2 token.
+# Verify ADB OCI IAM data grants with an Emma OAuth2 token.
 
 set -euo pipefail
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-RED='\033[0;31m'
+PURPLE='\033[0;35m'
 NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/lib_adb.sh"
+source "${SCRIPT_DIR}/lib_token_check.sh"
 require_adb_env
+
+export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
+export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 5: Verify as the Current OCI IAM User                            ${NC}"
+echo -e "${GREEN}      Task 6: Connect and Verify as Emma via OCI IAM                        ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}"
-echo -e "${CYAN}Connecting with slash login and OCI IAM OAuth2 token:${NC}"
-echo -e "${CYAN}TOKEN_LOCATION = ${OCI_TOKEN_DIR}${NC}"
+echo -e "${PURPLE}First run ./04_get_iam_oauth_token.sh and sign in as ${EMMA_USERNAME}.${NC}"
+echo -e "${PURPLE}Emma must be in ${OCI_IAM_EMPLOYEE_GROUP} only for this lab.${NC}"
+echo -e "${CYAN}TOKEN_LOCATION = ${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}${NC}"
 show_cmd sqlplus -L -s "/@${ADB_SERVICE}"
 echo
 
-if [ ! -f "${OCI_TOKEN_DIR}/token" ]; then
-  echo -e "${RED}ERROR: OCI IAM OAuth2 token was not found at ${OCI_TOKEN_DIR}/token.${NC}"
-  echo -e "${YELLOW}Run ./04_get_iam_oauth_token.sh first.${NC}"
-  exit 1
-fi
+check_oauth_token "$EMMA_USERNAME" "$OCI_IAM_EMPLOYEE_GROUP"
+echo
 
 sqlplus -L -s "/@${ADB_SERVICE}" <<'SQL'
 set pagesize 100
@@ -39,7 +40,7 @@ whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
-prompt OCI IAM Session Identity
+prompt Emma's OCI IAM Session Identity
 prompt ========================================================================
 
 col current_user format a30
@@ -54,20 +55,28 @@ FROM dual;
 
 prompt
 prompt ========================================================================
-prompt Active Roles from OCI IAM Group Mappings
+prompt Emma's Active Data Roles
+prompt ========================================================================
+
+col role_name format a30
+SELECT role_name
+FROM v$end_user_data_role
+WHERE role_name IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+ORDER BY role_name;
+
+prompt
+prompt Direct Logon Session Role
 prompt ========================================================================
 
 col role format a30
 SELECT role
 FROM session_roles
-WHERE role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS', 'DIRECT_LOGON_ROLE')
-ORDER BY role;
+WHERE role = 'DIRECT_LOGON_ROLE';
 
 prompt
 prompt ========================================================================
-prompt Same SQL: SELECT visible HR rows
-prompt - Employee grant: own row with SSN visible
-prompt - Manager grant: direct reports with SSN hidden
+prompt Emma's Query: same SQL, employee result set
+prompt - Emma sees only her own row.
 prompt ========================================================================
 
 col first_name format a12
@@ -75,13 +84,13 @@ col last_name format a12
 col user_name format a32
 col ssn format a15
 col phone_number format a15
-SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number
+SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
 FROM hr.employees
 ORDER BY employee_id;
 
 prompt
 prompt ========================================================================
-prompt Column Authorization
+prompt Emma's Column Authorization
 prompt ========================================================================
 
 col ssn_authorized format a16
@@ -95,5 +104,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 5 completed.${NC}"
+echo -e "${GREEN}Task 6 completed.${NC}"
 echo

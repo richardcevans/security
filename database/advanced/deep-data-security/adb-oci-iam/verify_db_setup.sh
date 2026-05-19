@@ -38,6 +38,12 @@ WHERE name IN ('identity_provider_type', 'identity_provider_oauth_config');
 SELECT COUNT(*) AS hr_employee_rows
 FROM hr.employees;
 
+col credential_name format a35
+col username format a50
+SELECT credential_name, username
+FROM dba_credentials
+WHERE credential_name = 'OCI_IAM_DOMAIN_DB_CRED$';
+
 col data_role format a24
 col mapped_to format a45
 SELECT data_role, mapped_to

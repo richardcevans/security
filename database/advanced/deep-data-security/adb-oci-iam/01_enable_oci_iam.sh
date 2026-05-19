@@ -36,21 +36,19 @@ echo -e "${CYAN}SQL block:${NC}"
 cat <<SQL
 BEGIN
   DBMS_CLOUD_ADMIN.ENABLE_EXTERNAL_AUTHENTICATION(
-    type  => 'OCI_IAM',
-    force => TRUE
+    type   => 'OCI_IAM',
+    params => JSON_OBJECT(
+      'app_id'     VALUE '${OCI_DB_APP_ID}',
+      'domain_url' VALUE '${OCI_DOMAIN_URL}'
+    ),
+    force  => TRUE
   );
 END;
 /
 
-ALTER SYSTEM SET identity_provider_oauth_config =
-'{
-  "app_id": "${OCI_DB_APP_ID}",
-  "domain_url": "${OCI_DOMAIN_URL}"
-}' SCOPE = BOTH;
-
 BEGIN
   BEGIN
-    DBMS_CREDENTIAL.DROP_CREDENTIAL(credential_name => 'OCI_IAM_DOMAIN_DB_CRED$');
+    DBMS_CLOUD.DROP_CREDENTIAL(credential_name => 'OCI_IAM_DOMAIN_DB_CRED$');
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE NOT IN (-27476, -20000) THEN
@@ -58,7 +56,7 @@ BEGIN
       END IF;
   END;
 
-  DBMS_CREDENTIAL.CREATE_CREDENTIAL(
+  DBMS_CLOUD.CREATE_CREDENTIAL(
     credential_name => 'OCI_IAM_DOMAIN_DB_CRED$',
     username        => '${OCI_DB_CLIENT_ID}',
     password        => '<hidden>'
@@ -76,21 +74,19 @@ whenever sqlerror exit sql.sqlcode
 
 BEGIN
   DBMS_CLOUD_ADMIN.ENABLE_EXTERNAL_AUTHENTICATION(
-    type  => 'OCI_IAM',
-    force => TRUE
+    type   => 'OCI_IAM',
+    params => JSON_OBJECT(
+      'app_id'     VALUE '${OCI_DB_APP_ID}',
+      'domain_url' VALUE '${OCI_DOMAIN_URL}'
+    ),
+    force  => TRUE
   );
 END;
 /
 
-ALTER SYSTEM SET identity_provider_oauth_config =
-'{
-  "app_id": "${OCI_DB_APP_ID}",
-  "domain_url": "${OCI_DOMAIN_URL}"
-}' SCOPE = BOTH;
-
 BEGIN
   BEGIN
-    DBMS_CREDENTIAL.DROP_CREDENTIAL(credential_name => 'OCI_IAM_DOMAIN_DB_CRED$');
+    DBMS_CLOUD.DROP_CREDENTIAL(credential_name => 'OCI_IAM_DOMAIN_DB_CRED$');
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLCODE NOT IN (-27476, -20000) THEN
@@ -98,7 +94,7 @@ BEGIN
       END IF;
   END;
 
-  DBMS_CREDENTIAL.CREATE_CREDENTIAL(
+  DBMS_CLOUD.CREATE_CREDENTIAL(
     credential_name => 'OCI_IAM_DOMAIN_DB_CRED$',
     username        => '${OCI_DB_CLIENT_ID}',
     password        => '${OCI_DB_CLIENT_SECRET}'
@@ -109,7 +105,7 @@ END;
 col name format a40
 col value format a120
 SELECT name, value
-  FROM v$parameter
+  FROM v\$parameter
  WHERE name IN ('identity_provider_type', 'identity_provider_oauth_config');
 
 exit;

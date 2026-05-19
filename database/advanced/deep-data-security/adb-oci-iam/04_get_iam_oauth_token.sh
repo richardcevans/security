@@ -143,7 +143,7 @@ echo -e "${CYAN}  sqlnet.ora now uses TOKEN_AUTH=OAUTH and TOKEN_LOCATION=${OCI_
 
 echo
 echo -e "${YELLOW}Step 2: Starting OCI IAM OAuth2 authorization-code login...${NC}"
-echo -e "${PURPLE}This opens or prints an OCI IAM login URL for the current user, then writes${NC}"
+echo -e "${PURPLE}This opens or prints an OCI IAM login URL for the user you sign in as, then writes${NC}"
 echo -e "${PURPLE}the returned OAuth2 access token where SQL*Plus can read it.${NC}"
 echo
 
@@ -385,5 +385,5 @@ echo -e "${GREEN}===============================================================
 echo -e "${GREEN}      Task 4 Completed: OCI IAM OAuth2 Token Ready                          ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo "Ready: run ./05_verify_as_cloud_shell_user.sh"
+echo "Ready: run ./05_verify_as_marvin.sh or ./06_verify_as_emma.sh"
 echo

@@ -3,7 +3,8 @@
 This lab builds the Deep Data Security data grants demo on Autonomous Database
 Serverless using Microsoft Entra ID authentication.
 
-The first database is named `deepsec1` by default.
+The database is named `deepsec7` by default so it can run separately from the
+ADB OCI IAM lab database.
 
 ## What This Lab Does
 
@@ -47,7 +48,19 @@ URL and code. Complete that flow in your local browser.
 
 ## Variables
 
-Set the target OCI compartment:
+Set the target OCI compartment by name:
+
+```bash
+export OCI_COMPARTMENT=my-compartment
+```
+
+To use the root compartment:
+
+```bash
+export OCI_COMPARTMENT=root
+```
+
+You can also use a compartment OCID directly:
 
 ```bash
 export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
@@ -56,8 +69,8 @@ export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
 Optional overrides:
 
 ```bash
-export DB_NAME=deepsec1
-export DB_DISPLAY_NAME=deepsec1
+export DB_NAME=deepsec7
+export DB_DISPLAY_NAME=deepsec7
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export DOMAIN_NAME=example.onmicrosoft.com
@@ -69,6 +82,49 @@ By default, `MARVIN_UPN` is the current `az login` user. The script assigns that
 user to the `EMPLOYEES` and `MANAGERS` app roles and creates Marvin's HR row with
 that UPN. This makes the verification step runnable without pre-creating a
 separate Marvin account.
+
+## 0. Download and Unzip the Lab Files
+
+From the `database/advanced/deep-data-security` directory, download the lab archive:
+
+```bash
+<copy>
+curl -L \
+  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip" \
+  -o adb-entra-id.zip
+</copy>
+```
+
+Or, from a remote shell, use `wget -O` to save the archive with a clean file name:
+
+```bash
+<copy>
+wget -O adb-entra-id.zip \
+  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip"
+</copy>
+```
+
+Unzip the archive into the `adb-entra-id` directory. Use `-o`, not `-f`, so new
+files from an updated archive are added:
+
+```bash
+<copy>
+unzip -o adb-entra-id.zip
+cd adb-entra-id
+</copy>
+```
+
+If the archive creates a nested `adb-entra-id` directory, move its contents up
+into the current lab directory:
+
+```bash
+<copy>
+if [ -d adb-entra-id ]; then
+  cp -R adb-entra-id/. .
+  rm -rf adb-entra-id
+fi
+</copy>
+```
 
 ## 1. Create ADB-S, Wallet, and Entra ID Apps
 
@@ -82,10 +138,11 @@ Load the generated environment file:
 source ./.adb-entra-id.env
 ```
 
-The Entra enterprise app names include the ADB name:
+The Entra enterprise app names include the ADB name. With the default database
+name, these are:
 
-- `Oracle Database 26ai ADB - deepsec1`
-- `Oracle Client Interactive ADB - deepsec1`
+- `Oracle Database 26ai ADB - deepsec7`
+- `Oracle Client Interactive ADB - deepsec7`
 
 ## 2. Enable Entra ID on ADB
 
@@ -118,11 +175,14 @@ not log in as `HR`.
 
 The script creates:
 
-- `ENTRA_SHARED_SCHEMA`, mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_EMPLOYEES`, mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_MANAGERS`, mapped to `AZURE_ROLE=MANAGERS`
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
 - HR row and column data grants
+
+The manager grant uses an HR-owned helper function to resolve the current
+Entra ID user to an employee ID. This avoids a non-ADB `END_USER_CONTEXT`
+update privilege that Autonomous Database does not expose.
 
 ## 5. Verify the ADMIN-Side Setup
 
@@ -170,6 +230,23 @@ You should see:
 - Active data roles from Entra app role mappings.
 - Marvin's own HR row with SSN visible.
 - Marvin's direct reports with SSN hidden.
+
+## 8. Verify Data Grants as Emma
+
+```bash
+./06_verify_as_emma.sh
+```
+
+Sign in as `EMMA_UPN` when prompted. If you are reusing the same browser from
+the Marvin test, sign out first or use a private browser session so SQL*Plus
+receives Emma's token.
+
+You should see:
+
+- The authenticated Entra ID identity for Emma.
+- Active data roles from the `EMPLOYEES` app role.
+- Emma's own HR row only.
+- Emma can view her SSN and salary but cannot update salary.
 
 ## Clean Up
 

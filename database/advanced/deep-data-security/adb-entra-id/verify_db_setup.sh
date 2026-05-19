@@ -47,7 +47,7 @@ col username format a24
 col external_name format a45
 SELECT username, authentication_type, external_name
 FROM dba_users
-WHERE username IN ('HR', 'ENTRA_SHARED_SCHEMA')
+WHERE username = 'HR'
 ORDER BY username;
 
 exit;

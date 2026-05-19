@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify the ADB Entra ID data grants with the configured Marvin identity.
+# Verify the ADB Entra ID data grants with the configured Emma identity.
 
 set -euo pipefail
 
@@ -18,10 +18,10 @@ ALIAS_NAME="${ADB_ENTRA_ALIAS:-hrdb_entra}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 5: Connect and Verify as Marvin via Microsoft Entra ID           ${NC}"
+echo -e "${GREEN}      Task 6: Connect and Verify as Emma via Microsoft Entra ID             ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${PURPLE}Expected Entra identity:${NC} ${MARVIN_UPN}"
+echo -e "${PURPLE}Expected Entra identity:${NC} ${EMMA_UPN}"
 echo -e "${PURPLE}This should open browser-based Entra ID login when the client has GUI access.${NC}"
 echo -e "${PURPLE}In headless Cloud Shell, copy the displayed login URL or device flow if prompted.${NC}"
 echo
@@ -57,11 +57,11 @@ SELECT
 FROM dual;
 
 DECLARE
-  expected VARCHAR2(256) := lower('${MARVIN_UPN}');
+  expected VARCHAR2(256) := lower('${EMMA_UPN}');
   actual   VARCHAR2(512) := lower(SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY'));
 BEGIN
   IF expected IS NOT NULL AND actual NOT IN (expected) AND INSTR(actual, expected) = 0 THEN
-    RAISE_APPLICATION_ERROR(-20001, 'Expected Marvin identity containing "' || expected || '", got "' || actual || '". Sign out of cached browser sessions or retry with the right Entra account.');
+    RAISE_APPLICATION_ERROR(-20001, 'Expected Emma identity containing "' || expected || '", got "' || actual || '". Sign out of cached browser sessions or retry with the right Entra account.');
   END IF;
 END;
 /
@@ -110,5 +110,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 5 completed. Next: run ./06_verify_as_emma.sh${NC}"
+echo -e "${GREEN}Task 6 completed.${NC}"
 echo

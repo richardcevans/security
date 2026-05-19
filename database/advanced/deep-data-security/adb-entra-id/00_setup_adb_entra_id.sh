@@ -14,8 +14,9 @@ NC='\033[0m'
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.env"
 
-export DB_NAME="${DB_NAME:-deepsec1}"
+export DB_NAME="${DB_NAME:-deepsec7}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
+export DB_VERSION="${DB_VERSION:-26ai}"
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}-entra}"
@@ -24,6 +25,8 @@ export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai ADB - ${DB_N
 export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive ADB - ${DB_NAME}}"
 export ENTRA_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 export CREATE_APP_ROLE_ASSIGNMENTS="${CREATE_APP_ROLE_ASSIGNMENTS:-1}"
+export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
+export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -49,13 +52,6 @@ if ! az account show >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ -z "${ROOT_COMP_ID:-}" ]; then
-  echo -e "${RED}ERROR: ROOT_COMP_ID is not set.${NC}"
-  echo "Example:"
-  echo "  export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa..."
-  exit 1
-fi
-
 json_get() {
   local expr="$1"
   python3 -c "import json,sys; data=json.load(sys.stdin); print(${expr})"
@@ -69,6 +65,54 @@ json_get_or_empty() {
 new_uuid() {
   python3 -c 'import uuid; print(uuid.uuid4())'
 }
+
+read_oci_config_value() {
+  local key="$1"
+  local profile="${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}"
+  local config_file="${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-$HOME/.oci/config}}"
+
+  [ -f "$config_file" ] || return 0
+
+  awk -F= -v section="[$profile]" -v key="$key" '
+    $0 == section { in_section = 1; next }
+    /^\[/ { in_section = 0 }
+    in_section && $1 == key {
+      value = $2
+      sub(/^[ \t]+/, "", value)
+      sub(/[ \t]+$/, "", value)
+      print value
+      exit
+    }
+  ' "$config_file"
+}
+
+if [ -z "$TENANCY_OCID" ]; then
+  TENANCY_OCID=$(read_oci_config_value tenancy || true)
+fi
+
+if [ -z "${ROOT_COMP_ID:-}" ]; then
+  if [ "$OCI_COMPARTMENT" = "root" ]; then
+    ROOT_COMP_ID="$TENANCY_OCID"
+  elif [[ "$OCI_COMPARTMENT" == ocid1.compartment.* ]]; then
+    ROOT_COMP_ID="$OCI_COMPARTMENT"
+  else
+    ROOT_COMP_ID=$(oci iam compartment list \
+      --compartment-id "$TENANCY_OCID" \
+      --all \
+      --compartment-id-in-subtree true \
+      --query "data[?name=='${OCI_COMPARTMENT}' && lifecycle-state=='ACTIVE'].id | [0]" \
+      --raw-output)
+  fi
+fi
+
+if [ -z "${ROOT_COMP_ID:-}" ] || [ "$ROOT_COMP_ID" = "null" ] || [ "$ROOT_COMP_ID" = "None" ]; then
+  echo -e "${RED}ERROR: Could not resolve target compartment.${NC}"
+  echo "Set OCI_COMPARTMENT to a compartment name, root, or an OCID."
+  echo "Example:"
+  echo "  export OCI_COMPARTMENT=root"
+  exit 1
+fi
+export ROOT_COMP_ID
 
 graph_patch() {
   local uri="$1"
@@ -143,6 +187,7 @@ export EMMA_UPN="${EMMA_UPN:-emma@${DOMAIN_NAME}}"
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  ROOT_COMP_ID          = ${ROOT_COMP_ID}${NC}"
 echo -e "${CYAN}  DB_NAME               = ${DB_NAME}${NC}"
+echo -e "${CYAN}  DB_VERSION            = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE           = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR            = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  TENANT_ID             = ${TENANT_ID}${NC}"
@@ -159,17 +204,19 @@ ADB_OCID=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
   --all \
   --raw-output \
-  --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
+  --query "data[?\"db-name\"=='${DB_NAME}' && \"lifecycle-state\"!='TERMINATED'].id | [0]")
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
   oci db autonomous-database create \
     --compartment-id "$ROOT_COMP_ID" \
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
-    --is-free-tier true \
     --admin-password "$ADMIN_PWD" \
-    --cpu-core-count 1 \
+    --db-version "$DB_VERSION" \
+    --compute-model ECPU \
+    --compute-count 2 \
     --data-storage-size-in-tbs 1 \
+    --license-model LICENSE_INCLUDED \
     --wait-for-state AVAILABLE \
     >/dev/null
 
@@ -177,7 +224,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --compartment-id "$ROOT_COMP_ID" \
     --all \
     --raw-output \
-    --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
+    --query "data[?\"db-name\"=='${DB_NAME}' && \"lifecycle-state\"!='TERMINATED'].id | [0]")
   echo -e "${CYAN}  Created ADB: ${ADB_OCID}${NC}"
 else
   echo -e "${CYAN}  Reusing ADB: ${ADB_OCID}${NC}"
@@ -195,6 +242,10 @@ oci db autonomous-database generate-wallet \
   cd "$WALLET_DIR"
   unzip -oq "${DB_NAME}_wallet.zip"
 )
+
+if [ -f "${WALLET_DIR}/sqlnet.ora" ]; then
+  sed -i.bak-wallet-dir -E "s#DIRECTORY=\"\\?/network/admin\"#DIRECTORY=\"${WALLET_DIR}\"#g" "${WALLET_DIR}/sqlnet.ora"
+fi
 
 echo
 echo -e "${YELLOW}Step 3: Creating or reusing database/resource app...${NC}"
@@ -352,6 +403,7 @@ cat > "$ENV_FILE" <<EOF
 export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
+export DB_VERSION='${DB_VERSION}'
 export ADB_OCID='${ADB_OCID}'
 export ADB_SERVICE='${ADB_SERVICE}'
 export ADMIN_PWD='${ADMIN_PWD}'
@@ -367,6 +419,7 @@ export ENTRA_DB_APP_NAME='${ENTRA_DB_APP_NAME}'
 export ENTRA_CLIENT_APP_NAME='${ENTRA_CLIENT_APP_NAME}'
 export MARVIN_UPN='${MARVIN_UPN}'
 export EMMA_UPN='${EMMA_UPN}'
+export ADB_ENTRA_ALIAS='hrdb_entra'
 EOF
 chmod 600 "$ENV_FILE"
 

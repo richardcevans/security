@@ -47,25 +47,17 @@ echo -e "${GREEN}      Task 6: Clean Up ADB Microsoft Entra ID Data Grants Lab  
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
-if confirm "This removes HR, ENTRA_SHARED_SCHEMA, data roles, and local lab roles."; then
+if confirm "This removes HR, data roles, and local lab roles."; then
   admin_sqlplus <<'SQL'
 set echo on
 set serveroutput on
 whenever sqlerror exit sql.sqlcode
 
 DROP DATA GRANT IF EXISTS hr.HRAPP_MANAGER_ACCESS;
-DROP DATA GRANT IF EXISTS hr.EMPLOYEE_CONTEXT_GRANT;
 DROP DATA GRANT IF EXISTS hr.HRAPP_EMPLOYEES_ACCESS;
 DROP DATA ROLE IF EXISTS hrapp_managers;
 DROP DATA ROLE IF EXISTS hrapp_employees;
 DROP ROLE IF EXISTS direct_logon_role;
-DROP ROLE IF EXISTS employee_context_admin;
-
-BEGIN
-  EXECUTE IMMEDIATE 'DROP USER entra_shared_schema';
-EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1918 THEN RAISE; END IF;
-END;
-/
 
 BEGIN
   EXECUTE IMMEDIATE 'DROP USER hr CASCADE';
@@ -84,7 +76,7 @@ if [ "$DELETE_ADB" = true ]; then
     oci db autonomous-database delete \
       --autonomous-database-id "$ADB_OCID" \
       --force \
-      --wait-for-state TERMINATED \
+      --wait-for-state SUCCEEDED \
       >/dev/null
     echo -e "${CYAN}Deleted ADB ${DB_NAME}.${NC}"
   else

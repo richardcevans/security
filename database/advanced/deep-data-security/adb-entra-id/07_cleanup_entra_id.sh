@@ -29,7 +29,7 @@ if [ -f "$ENV_FILE" ]; then
   source "$ENV_FILE"
 fi
 
-export DB_NAME="${DB_NAME:-deepsec1}"
+export DB_NAME="${DB_NAME:-deepsec7}"
 export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai ADB - ${DB_NAME}}"
 export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive ADB - ${DB_NAME}}"
 

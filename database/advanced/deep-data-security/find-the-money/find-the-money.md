@@ -17,7 +17,7 @@ The app intentionally exposes a broad database-agent surface. The LLM can genera
 
 - A new `FIN` schema with customers, accounts, transactions, vendors, cases, alerts, beneficial owners, and case-note evidence.
 - Reuse of the existing Web HR Entra application, `WEB_HR_APP_USER`, and `WEB_HR_APP` application identity.
-- FIN data grants attached to the existing `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS` mapped data roles, plus a disabled `FINAPP_AI_INVESTIGATOR` app-mediated evidence role.
+- FIN data grants attached to Entra app roles for tellers, investigators, senior investigators, auditors, plus a disabled `FINAPP_AI_INVESTIGATOR` app-mediated evidence role.
 - A SQL property graph creation attempt for `FIN.MONEY_GRAPH`, with app fallback to protected relational money-flow queries if graph support is unavailable.
 - A vector evidence creation attempt for case-note embeddings, with app fallback to protected text-similarity search if vector support is unavailable.
 - A Unified Audit policy for FIN object access.
@@ -41,9 +41,7 @@ Complete the `entra-id-data-grants` lab first. This lab expects:
 - `../entra-id-data-grants/.entra-id-data-grants.env`
 - The existing `hrdb` TNS alias for the lab PDB
 - Entra database/resource app values: `APP_ID`, `APP_ID_URI`, and `TENANT_ID`
-- Existing Entra app-role mappings from the prior lab:
-  - `EMPLOYEES` maps to `HRAPP_EMPLOYEES`, used here for teller-style FIN access
-  - `MANAGERS` maps to `HRAPP_MANAGERS`, used here for investigator-style FIN access
+- The existing Entra database/resource app from the prior lab. This lab reuses that app registration and adds FIN-specific app roles to it.
 - Oracle Database 26ai home at `/opt/oracle/product/26ai/dbhome_1`
 
 On the DBSec-Lab VM, source the DB23 Free environment before running database-side tasks:
@@ -65,6 +63,23 @@ WEB_HR_APP_ENV=/home/oracle/DBSecLab/livelabs/deep-data-security/web-hr-app/.web
 ```
 
 This writes `.find-the-money.env` from the existing Web HR app client ID, client secret, redirect URI, TLS certificate, and python-oracledb wallet. It does not create a separate Entra application.
+
+Create the Find the Money demo users and assign FIN app roles on the reused database/resource app:
+
+```bash
+./05_setup_entra_demo_users.sh
+```
+
+The script creates these users when they do not already exist:
+
+| User | Role Assignments |
+| --- | --- |
+| `alex@<domain>` | `FINAPP_TELLERS` |
+| `priya@<domain>` | `FINAPP_TELLERS`, `FINAPP_INVESTIGATORS` |
+| `marcus@<domain>` | `FINAPP_TELLERS`, `FINAPP_INVESTIGATORS`, `FINAPP_SENIOR_INVESTIGATORS` |
+| `nora@<domain>` | `FINAPP_AUDITORS` |
+
+Set `FIND_MONEY_DEMO_PASSWORD` before running the script if you want a fixed password. Set `RESET_FIND_MONEY_PASSWORDS=1` to reset existing demo users to that password.
 
 To create a separate Entra app for an isolated test, omit `--reuse-web-hr-app`.
 
@@ -101,13 +116,17 @@ The reused pooled app user gets normal object privileges on `FIN` tables, but re
 The app can call the OCI Generative AI OpenAI-compatible chat API in the Oracle Chicago region:
 
 ```bash
+cat >> ./.find-the-money.env <<'EOF'
 export FIND_MONEY_OCI_GENAI_BASE_URL='https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1'
 export FIND_MONEY_OCI_GENAI_MODEL='cohere.command-r-plus-08-2024'
 export FIND_MONEY_OCI_COMPARTMENT_ID='<compartment_ocid>'
-export FIND_MONEY_OCI_GENAI_API_KEY='<api_key_or_token>'
+export FIND_MONEY_OCI_GENAI_API_KEY='<oci_genai_api_key>'
+EOF
 ```
 
-If these values are not set, the app still runs and uses local SQL templates plus mock summaries. Deep Data Security testing does not depend on the chat call being configured.
+Use an OCI Generative AI API key for the OpenAI-compatible endpoint. Keep it in `.find-the-money.env` on the VM only; do not commit it. The app sends only evidence already returned by Oracle under the current end-user Deep Data Security context to the chat model.
+
+If these values are not set, the app still runs and uses local SQL templates plus mock summaries. Deep Data Security testing does not depend on the chat call being configured. The Diagnostics page preflight check reports whether the API key, model, compartment, and Chicago endpoint are configured.
 
 ## Run
 

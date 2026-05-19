@@ -373,6 +373,8 @@ class FindMoneyDatabase(object):
         else:
             add("Required environment", "pass", "Required Entra and database token settings are present.")
 
+        add(*self._genai_config_check())
+
         if self.mode != "oracledb":
             add("Database mode", "warn", "FIND_MONEY_DB_MODE is {0}; database checks are skipped.".format(self.mode))
             return {"mode": self.mode, "checks": checks, "summary": _preflight_summary(checks)}
@@ -477,6 +479,41 @@ class FindMoneyDatabase(object):
             raise RuntimeError("OCI GenAI chat request failed: HTTP {0} {1}".format(exc.code, message))
         content = (((payload.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
         return {"model": model, "endpoint": base_url, "content": content, "raw": payload}
+
+    def _genai_config_check(self):
+        base_url = os.getenv(
+            "FIND_MONEY_OCI_GENAI_BASE_URL",
+            "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1",
+        ).rstrip("/")
+        model = os.getenv("FIND_MONEY_OCI_GENAI_MODEL", "cohere.command-r-plus-08-2024")
+        compartment_id = os.getenv("FIND_MONEY_OCI_COMPARTMENT_ID", "")
+        has_key = bool(os.getenv("FIND_MONEY_OCI_GENAI_API_KEY"))
+        evidence = {
+            "base_url": base_url,
+            "model": model,
+            "compartment_id_set": bool(compartment_id),
+            "api_key_set": has_key,
+        }
+        if not has_key:
+            return (
+                "OCI Generative AI",
+                "warn",
+                "Chat will use local mock summaries until FIND_MONEY_OCI_GENAI_API_KEY is set.",
+                evidence,
+            )
+        if not compartment_id:
+            return (
+                "OCI Generative AI",
+                "warn",
+                "API key is set, but FIND_MONEY_OCI_COMPARTMENT_ID is empty. Some OCI GenAI endpoints require the compartmentId extra body value.",
+                evidence,
+            )
+        return (
+            "OCI Generative AI",
+            "pass",
+            "Oracle Chicago OpenAI-compatible chat settings are present.",
+            evidence,
+        )
 
     def _validate_sql(self, sql):
         if ";" in sql.rstrip(";"):

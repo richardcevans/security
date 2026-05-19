@@ -303,8 +303,29 @@ prompt ========================================================================
 prompt Reuse DDS data roles mapped by entra-id-data-grants
 prompt ========================================================================
 
-prompt Reusing HRAPP_EMPLOYEES for teller access and HRAPP_MANAGERS for investigator access.
-CREATE DATA ROLE IF NOT EXISTS finapp_auditors;
+prompt Mapping FIN app roles from Entra tokens to FIN data roles.
+
+BEGIN
+  FOR r IN (
+    SELECT data_role
+      FROM dba_data_roles
+     WHERE data_role IN (
+       'FINAPP_TELLERS',
+       'FINAPP_INVESTIGATORS',
+       'FINAPP_SENIOR_INVESTIGATORS',
+       'FINAPP_AUDITORS'
+     )
+       AND mapped_to IS NULL
+  ) LOOP
+    EXECUTE IMMEDIATE 'DROP DATA ROLE ' || r.data_role;
+  END LOOP;
+END;
+/
+
+CREATE OR REPLACE DATA ROLE finapp_tellers MAPPED TO 'azure_role=FINAPP_TELLERS';
+CREATE OR REPLACE DATA ROLE finapp_investigators MAPPED TO 'azure_role=FINAPP_INVESTIGATORS';
+CREATE OR REPLACE DATA ROLE finapp_senior_investigators MAPPED TO 'azure_role=FINAPP_SENIOR_INVESTIGATORS';
+CREATE OR REPLACE DATA ROLE finapp_auditors MAPPED TO 'azure_role=FINAPP_AUDITORS';
 CREATE DATA ROLE IF NOT EXISTS finapp_ai_investigator DISABLED;
 
 GRANT DATA ROLE finapp_ai_investigator TO ${FIND_MONEY_APPLICATION_IDENTITY};
@@ -318,91 +339,109 @@ CREATE OR REPLACE DATA GRANT fin.FINAPP_TELLER_ALERTS
   AS SELECT (alert_id, case_id, transaction_id, severity, reason, status)
   ON fin.risk_alerts
   WHERE 1 = 1
-  TO HRAPP_EMPLOYEES;
+  TO FINAPP_TELLERS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_TELLER_CASES
   AS SELECT (case_id, title, status)
   ON fin.cases
   WHERE 1 = 1
-  TO HRAPP_EMPLOYEES;
+  TO FINAPP_TELLERS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_TELLER_CUSTOMERS
   AS SELECT (customer_id, full_name, home_branch, risk_rating)
   ON fin.customers
   WHERE home_branch = 'Chicago'
-  TO HRAPP_EMPLOYEES;
+  TO FINAPP_TELLERS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_INVESTIGATOR_ALERTS
   AS SELECT (alert_id, case_id, transaction_id, severity, reason, amount, risk_score, status)
   ON fin.risk_alerts
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_INVESTIGATOR_CASES
   AS SELECT (case_id, title, assigned_to, risk_score, status, summary)
   ON fin.cases
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_INVESTIGATOR_TRANSACTIONS
   AS SELECT (transaction_id, from_account_id, to_account_id, vendor_id, amount, currency_code, memo, risk_score, transaction_ts)
   ON fin.transactions
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_INVESTIGATOR_NOTES
   AS SELECT (note_id, case_id, title, source_text, risk_tags, note_embedding)
   ON fin.case_note_embeddings
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_ALERTS
   AS SELECT (alert_id, case_id, transaction_id, severity, reason, amount, risk_score, status)
   ON fin.risk_alerts
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_CASES
   AS SELECT (case_id, title, assigned_to, risk_score, status, summary)
   ON fin.cases
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_TRANSACTIONS
   AS SELECT (transaction_id, from_account_id, to_account_id, vendor_id, amount, currency_code, memo, risk_score, transaction_ts)
   ON fin.transactions
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_CUSTOMERS
   AS SELECT (customer_id, full_name, tax_id, home_branch, assigned_investigator, risk_rating)
   ON fin.customers
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_ACCOUNTS
   AS SELECT (account_id, customer_id, display_name, account_number, balance, branch)
   ON fin.accounts
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_VENDORS
   AS SELECT (vendor_id, vendor_name, tax_id, risk_rating)
   ON fin.vendors
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_OWNERS
   AS SELECT (owner_id, owner_name, tax_id, related_customer_id, vendor_id, risk_rating)
   ON fin.beneficial_owners
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_SENIOR_NOTES
   AS SELECT (note_id, case_id, title, source_text, risk_tags, note_embedding)
   ON fin.case_note_embeddings
   WHERE 1 = 1
-  TO HRAPP_MANAGERS;
+  TO FINAPP_SENIOR_INVESTIGATORS;
+
+CREATE OR REPLACE DATA GRANT fin.FINAPP_AUDITOR_ALERTS
+  AS SELECT (alert_id, case_id, transaction_id, severity, reason, status, risk_score)
+  ON fin.risk_alerts
+  WHERE 1 = 1
+  TO FINAPP_AUDITORS;
+
+CREATE OR REPLACE DATA GRANT fin.FINAPP_AUDITOR_CASES
+  AS SELECT (case_id, title, assigned_to, risk_score, status)
+  ON fin.cases
+  WHERE 1 = 1
+  TO FINAPP_AUDITORS;
+
+CREATE OR REPLACE DATA GRANT fin.FINAPP_AUDITOR_TRANSACTIONS
+  AS SELECT (transaction_id, from_account_id, to_account_id, vendor_id, currency_code, risk_score, transaction_ts)
+  ON fin.transactions
+  WHERE 1 = 1
+  TO FINAPP_AUDITORS;
 
 CREATE OR REPLACE DATA GRANT fin.FINAPP_AI_ALERTS
   AS SELECT (alert_id, case_id, transaction_id, severity, reason, status, risk_score)

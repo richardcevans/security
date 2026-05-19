@@ -43,6 +43,26 @@ FROM dba_data_roles
 WHERE data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
 ORDER BY data_role;
 
+col context_owner format a14
+col context_name format a20
+col handler_package format a24
+col handler_procedure format a24
+col handler_status format a16
+SELECT context_owner, context_name, handler_package, handler_procedure, handler_status
+FROM dba_end_user_context_definitions
+WHERE context_owner = 'HR'
+  AND context_name = 'EMP_CTX'
+ORDER BY context_owner, context_name;
+
+col grant_name format a35
+col object_owner format a12
+col object_name format a24
+col predicate format a70
+SELECT grant_name, object_owner, object_name, predicate
+FROM dba_data_grants
+WHERE grant_name IN ('HRAPP_EMPLOYEES_ACCESS', 'EMPLOYEE_CONTEXT_GRANT', 'HRAPP_MANAGER_ACCESS')
+ORDER BY grant_name, privilege;
+
 col username format a24
 col external_name format a45
 SELECT username, authentication_type, external_name

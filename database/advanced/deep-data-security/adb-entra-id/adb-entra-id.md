@@ -178,11 +178,13 @@ The script creates:
 - `HRAPP_EMPLOYEES`, mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_MANAGERS`, mapped to `AZURE_ROLE=MANAGERS`
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
+- `HR.EMP_CTX`, an end user context populated from the Entra ID user name
 - HR row and column data grants
 
-The manager grant uses an HR-owned helper function to resolve the current
-Entra ID user to an employee ID. This avoids a non-ADB `END_USER_CONTEXT`
-update privilege that Autonomous Database does not expose.
+The manager grant uses `ORA_END_USER_CONTEXT.HR.EMP_CTX.ID` to resolve the
+current Entra ID user to an employee ID. The setup grants
+`UPDATE ANY END USER CONTEXT` to `HR` so the context handler can populate
+`HR.EMP_CTX` on first read.
 
 ## 5. Verify the ADMIN-Side Setup
 

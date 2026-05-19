@@ -56,6 +56,18 @@ This lab is a walk-through of the technology. If you wish to follow along, you s
 - SQL*Plus installed and configured to connect to the pluggable database service `freepdb1`
 - Access to a DBA account to run the setup tasks
 
+On the DBSec-Lab VM, source the DB23 Free environment before running the SQL*Plus setup commands:
+
+````
+<copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+````
+
+This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for Oracle AI Database 26ai Free. If your terminal inherited wallet or TNS settings from another database home, clear them before continuing:
+
+````
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
+````
+
 Use SQL*Plus for the setup tasks. Connect to `freepdb1` as your DBA user before running Task 0.
 
 ```

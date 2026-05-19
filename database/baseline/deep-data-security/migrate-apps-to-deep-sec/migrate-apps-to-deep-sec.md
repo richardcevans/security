@@ -37,6 +37,15 @@ Same SQL. Zero application filtering. The security is on the grant, not the code
 - An **Oracle AI Database 26ai** instance with a pluggable database (e.g., PDB9)
 - `SYSTEM` or `SYS` access to run the setup scripts
 - Sample app scripts are already present in the working directory
+- On the DBSec-Lab VM, source the DB23 Free environment before running database-side scripts:
+
+    ```bash
+    <copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+    <copy>unset WALLET_DIR TNS_ADMIN</copy>
+    ```
+
+    This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for Oracle AI Database 26ai Free. Clearing `WALLET_DIR` and `TNS_ADMIN` prevents stale values from another database home from overriding the lab wallet and network settings.
+
 - **Java 17+** to run the Spring Boot sample app — install with:
 
     ```bash
@@ -54,6 +63,8 @@ Same SQL. Zero application filtering. The security is on the grant, not the code
 Script `01_create_hr_schema.sh` creates the traditional `HR` user (password auth), the `EMPLOYEES` table, and 7 sample rows. Script `02_show_traditional_app.sh` connects as the shared HR service account and queries the table.
 
 ```bash
+<copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
 <copy>./01_create_hr_schema.sh</copy>
 ```
 

@@ -46,6 +46,15 @@ Complete the `entra-id-data-grants` lab first. This lab expects:
   - `MANAGERS` maps to `HRAPP_MANAGERS`, used here for investigator-style FIN access
 - Oracle Database 26ai home at `/opt/oracle/product/26ai/dbhome_1`
 
+On the DBSec-Lab VM, source the DB23 Free environment before running database-side tasks:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
+```
+
+This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for Oracle AI Database 26ai Free. Clearing `WALLET_DIR` and `TNS_ADMIN` prevents stale values from another database home from overriding the lab wallet and network settings.
+
 ## Configure Entra ID
 
 Reuse the existing Web HR Entra web application:
@@ -76,11 +85,13 @@ For an explicit public redirect:
 Create the FIN schema, sample data, application identity, and Deep Data Security policy:
 
 ```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
 source ./.find-the-money.env
-DB_SID=FREE ORACLE_HOME=/opt/oracle/product/26ai/dbhome_1 ./01_configure_database_app_identity.sh
-DB_SID=FREE ORACLE_HOME=/opt/oracle/product/26ai/dbhome_1 ./02_verify_application_identity.sh
-DB_SID=FREE ORACLE_HOME=/opt/oracle/product/26ai/dbhome_1 ./03_configure_auditing.sh
-DB_SID=FREE ORACLE_HOME=/opt/oracle/product/26ai/dbhome_1 ./04_configure_policy_toggle_demo.sh
+./01_configure_database_app_identity.sh
+./02_verify_application_identity.sh
+./03_configure_auditing.sh
+./04_configure_policy_toggle_demo.sh
 ```
 
 The reused pooled app user gets normal object privileges on `FIN` tables, but returned data is governed by the end-user security context and active data roles.

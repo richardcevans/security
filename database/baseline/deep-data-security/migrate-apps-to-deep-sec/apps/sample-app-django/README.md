@@ -9,12 +9,21 @@ A simple Django web application that demonstrates **Oracle Deep Data Security** 
 - **HR schema** — created per the [end-user-data-grants FastLab](../../fastlab/end-user-data-grants/end-user-data-grants.md) with the `employees` table and sample data
 - **End users** — `marvin` and `emma` created as Oracle Database end users with data roles granted
 
+On the DBSec-Lab VM, source the DB23 Free environment before running database setup scripts:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
+```
+
 ### Database setup
 
 Run the setup scripts in `db/` in order, or run them manually as SYSTEM on PDB9. See the [Spring Boot README](../sample-app-springboot/README.md#database-setup) for the full SQL or use the scripts:
 
 ```bash
 cd db
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
 ./01_create_hr_schema.sh
 ./02_create_end_users_and_roles.sh
 ./03_create_data_grants.sh

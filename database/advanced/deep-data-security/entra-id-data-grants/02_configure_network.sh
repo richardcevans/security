@@ -104,11 +104,21 @@ else
         -dn "$CERT_DN" \
         -cert "$WALLET_DIR/server_cert.pem"
 
-    orapki wallet add \
+    trusted_cert_log=$(mktemp)
+    if ! orapki wallet add \
         -wallet "$WALLET_DIR" \
         -pwd "$SECRET_PWD" \
         -trusted_cert \
-        -cert "$WALLET_DIR/server_cert.pem" 2>/dev/null
+        -cert "$WALLET_DIR/server_cert.pem" >"$trusted_cert_log" 2>&1; then
+        if grep -q "PKI-04003" "$trusted_cert_log"; then
+            echo -e "${CYAN}  Trusted certificate already present in wallet.${NC}"
+        else
+            cat "$trusted_cert_log" >&2
+            rm -f "$trusted_cert_log"
+            exit 1
+        fi
+    fi
+    rm -f "$trusted_cert_log"
 
     echo -e "${CYAN}  Wallet created and self-signed certificate added.${NC}"
 fi

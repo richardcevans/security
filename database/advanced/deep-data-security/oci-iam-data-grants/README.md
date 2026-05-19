@@ -87,6 +87,18 @@ Before starting, confirm you have:
 - A browser for OCI IAM login. NoVNC on the lab host is simplest. A local browser also works with `./get_oci_oauth_token.sh --headless`.
 - OCI CLI configured with a user that can administer the target OCI IAM identity domain.
 
+On the DBSec-Lab VM, source the DB23 Free environment before running database-side tasks:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+```
+
+This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for Oracle AI Database 26ai Free. If your terminal inherited wallet or TNS settings from another database home, clear them before continuing:
+
+```bash
+unset WALLET_DIR TNS_ADMIN
+```
+
 Check `ORACLE_HOME`:
 
 ```bash

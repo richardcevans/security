@@ -68,6 +68,12 @@ This lab assumes:
 - An **Oracle AI Database 26ai April 2026 Release Update (RU)** instance
 - The `oracle` OS user, or another OS user that can run `sqlplus / as sysdba`
 - A local CDB and PDB. The default script values are `DB_SID=FREE` and `PDB_NAME=FREEPDB1`
+- On the DBSec-Lab VM, source the DB23 Free environment before database-side tasks:
+
+    ```bash
+    source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+    ```
+
 - An **Azure subscription** with permissions to register applications, create app roles, and create users in Microsoft Entra ID
 - Azure CLI installed and logged in with `az login`
 - A local browser-capable desktop session, such as NoVNC on the lab host, for `AZURE_INTERACTIVE` browser login
@@ -109,6 +115,19 @@ Load it before running database setup scripts:
 
 ```bash
 source ./.entra-id-data-grants.env
+```
+
+On the DBSec-Lab VM, always load the DB23 Free environment before loading the generated lab environment file for database-side scripts:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+source ./.entra-id-data-grants.env
+```
+
+If your shell inherited `WALLET_DIR` or `TNS_ADMIN` from another database home, clear them before running `02_configure_network.sh` or the verification scripts:
+
+```bash
+unset WALLET_DIR TNS_ADMIN
 ```
 
 ## Do Not Do This
@@ -695,6 +714,20 @@ Link the client app to the database app so tokens can flow.
 
 ## Part 2: Configure the Oracle Database
 
+### Set the DB23 Free environment
+
+Open a terminal as the `oracle` user and load the DB23 Free environment before running the database-side scripts in this section:
+
+````
+<copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+````
+
+This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for the Oracle AI Database 26ai Free database. If your terminal was previously using another database home, clear inherited wallet or TNS settings:
+
+````
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
+````
+
 ### Script 0: Run DBA preflight checks
 
 Before changing database or network files, verify the local database, listener, wallet tools, and browser-launch environment.
@@ -756,6 +789,12 @@ Before running, make sure the environment file is loaded:
 
 ````
 <copy>source ./.entra-id-data-grants.env</copy>
+````
+
+If needed, clear inherited wallet or TNS settings from another database home:
+
+````
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
 ````
 
 Then run:
@@ -1044,7 +1083,7 @@ Database cleanup does not remove browser sessions, Entra app registrations, Entr
 | `lib_network_check.sh` | Shared check that `hrdb` resolves before verification scripts connect |
 | `05_verify_as_marvin.sh` | Connect as Marvin via Entra ID — 4 rows |
 | `06_verify_as_emma.sh` | Connect as Emma via Entra ID — 1 row |
-| `07_verify_security_boundary.sh` | Test bypass attempts — all fail |
+| `07_verify_security_boundary.sh` | Optional/manual bypass checks that require multiple browser logins |
 | `08_cleanup.sh` | Drop everything, reset identity provider |
 | `09_cleanup_entra_id.sh` | Delete lab-created Entra app registrations and enterprise applications |
 
@@ -1074,7 +1113,7 @@ The data grants are the same in both approaches. The only difference is how the 
 | `verify_db_setup.sh` | Yes | Read-only verification. |
 | `05_verify_as_marvin.sh` | Yes | Requires Marvin Entra login. Browser session cache may reuse another user. |
 | `06_verify_as_emma.sh` | Yes | Requires Emma Entra login. Browser session cache may reuse another user. |
-| `07_verify_security_boundary.sh` | Yes | Requires multiple browser logins. |
+| `07_verify_security_boundary.sh` | Optional | Requires multiple browser logins and careful browser-session isolation. Marvin and Emma verification scripts are the primary acceptance checks. |
 | `08_cleanup.sh` | Yes | Removes database-side lab objects and resets identity-provider parameters. |
 
 ## Database Parameter Rollback

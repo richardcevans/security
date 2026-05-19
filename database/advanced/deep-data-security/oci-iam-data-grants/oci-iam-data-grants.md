@@ -45,6 +45,18 @@ This lab assumes:
 - OCI CLI configuration available for the interactive client user, unless you use the default OCI config/profile
 - A browser for OCI IAM login. NoVNC on the lab host is simplest; a local laptop browser works with `./get_oci_oauth_token.sh --headless`
 
+On the DBSec-Lab VM, source the DB23 Free environment before running database-side tasks:
+
+````bash
+<copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+````
+
+This sets `ORACLE_HOME`, `ORACLE_SID=FREE`, and `PDB_NAME=FREEPDB1` for Oracle AI Database 26ai Free. If your terminal inherited wallet or TNS settings from another database home, clear them before continuing:
+
+````bash
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
+````
+
 SQLPlus does not open the OCI IAM browser login directly in this lab. Run `./get_oci_oauth_token.sh` first so the helper can perform the OAuth2 authorization-code flow and write the access token where SQLPlus can read it.
 
 ## Task 0: Download Lab Scripts
@@ -113,6 +125,20 @@ export OCI_PROFILE=DEFAULT</copy>
 ````
 
 ## Part 2: Configure the Oracle Database
+
+### Set the DB23 Free environment
+
+Before running database-side scripts, load the DB23 Free environment:
+
+````bash
+<copy>source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1</copy>
+````
+
+If needed, clear inherited wallet or TNS settings from another database home:
+
+````bash
+<copy>unset WALLET_DIR TNS_ADMIN</copy>
+````
 
 ### Task 2: Set Database Identity Provider Parameters
 

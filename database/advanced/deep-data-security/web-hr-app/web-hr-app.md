@@ -68,6 +68,24 @@ Complete the `entra-id-data-grants` lab first. This lab expects:
 - The `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS` data roles
 - Entra database/resource app values: `APP_ID`, `APP_ID_URI`, and `TENANT_ID`
 
+On the DBSec-Lab VM, source the DB23 Free environment before configuring the database application identity, auditing, or DBA policy toggle:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+```
+
+Then load the Entra lab environment file from the completed `entra-id-data-grants` lab:
+
+```bash
+source ../entra-id-data-grants/.entra-id-data-grants.env
+```
+
+If your shell inherited wallet or TNS settings from another database home, clear them before running the database-side scripts:
+
+```bash
+unset WALLET_DIR TNS_ADMIN
+```
+
 ## Configure Entra ID
 
 Create or reuse the Web HR App Entra application:
@@ -121,6 +139,8 @@ The public HTTPS mode uses a self-signed demo certificate. The first time you op
 Create the application identity and elevation data role:
 
 ```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
 source ./.web-hr-app.env
 ./01_configure_database_app_identity.sh
 ```
@@ -152,6 +172,8 @@ The disabled role is not automatically active for all requests. The application 
 Create a Unified Audit policy for `SELECT` and `UPDATE` on `HR.EMPLOYEES`:
 
 ```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
 ./03_configure_auditing.sh
 ```
 
@@ -162,6 +184,8 @@ The policy audits app activity on `HR.EMPLOYEES` and grants `AUDIT_VIEWER` to `W
 Create two demo-only DBA procedures that can recreate the manager data grant with or without `UPDATE(salary)`:
 
 ```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
 ./04_configure_policy_toggle_demo.sh
 ```
 

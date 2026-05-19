@@ -28,7 +28,7 @@ The app intentionally exposes a broad database-agent surface. The LLM can genera
 
 ```bash
 cd livelabs
-wget -O find-the-money.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/dLlludt-RWxihBXO2OkaHYO2b-2usW3KjpL-wW85lCTQtWAz3weTzy-cFottOV0u/n/oradbclouducm/b/dbsec_public/o/find-the-money.zip
+wget -O find-the-money.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/xTq6v3hC4YVpHJ6Sygc-uzvGWpxX_8F5HMX_CUcM_WJ4hZ36xRQuApU4WZA0a5Mj/n/oradbclouducm/b/dbsec_public/o/find-the-money.zip
 unzip -o find-the-money.zip
 cd find-the-money
 ls

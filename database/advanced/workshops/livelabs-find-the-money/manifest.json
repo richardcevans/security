@@ -1,0 +1,29 @@
+{
+  "workshoptitle": "DB Security - Find the Money with Oracle Deep Data Security",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture of this workshop and what it can do",
+      "publisheddate": "05/19/2026",
+      "filename": "../../intro/intro-entra-id-data-grants.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Verify Setup of compute instance",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/verify-compute/verify-compute-ssh-and-novnc.md"
+    },
+    {
+      "title": "Lab 1: Find the Money with Oracle Deep Data Security",
+      "description": "Run an AI-assisted financial investigation app that uses Oracle Database as the enforcement point for end-user security context, evidence access, and audit records",
+      "publisheddate": "05/19/2026",
+      "filename": "../../deep-data-security/find-the-money/find-the-money.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}
+

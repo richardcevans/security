@@ -1,0 +1,11 @@
+.env
+.find-the-money.env
+.find-the-money.pid
+*.log
+*.lst
+*.zip
+__pycache__/
+app/__pycache__/
+logs/
+python-wallet/
+tls/

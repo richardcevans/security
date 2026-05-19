@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Find the Money</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security + AI</p>
+          <h1>Find the Money</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section class="actions">
+        <a class="button" href="/login" id="entraLogin">Sign In With Entra ID</a>
+        <a class="button secondary" href="/switch-account">Switch Entra User</a>
+        <a class="button secondary" href="/demo/alex">Alex Teller</a>
+        <a class="button secondary" href="/demo/priya">Priya Investigator</a>
+        <a class="button secondary" href="/demo/marcus">Marcus Senior</a>
+        <a class="button secondary" href="/demo/nora">Nora Auditor</a>
+        <a class="button ghost" href="/debug">Diagnostics</a>
+        <a class="button ghost" href="/logout">Sign Out</a>
+      </section>
+
+      <section id="modeBanner" class="mode-banner"></section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Investigation Queue</h2>
+          <p class="small">Same app and same AI surface. Oracle decides what each signed-in user can see.</p>
+          <div class="button-row">
+            <button id="alertsButton">Load Alerts</button>
+            <button id="casesButton" class="button secondary" type="button">Load Cases</button>
+            <button id="disableAiButton" class="button secondary" type="button">Disable AI Evidence</button>
+            <button id="enableAiButton" class="button secondary" type="button">Enable AI Evidence</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Case</th>
+                  <th>Severity</th>
+                  <th>Reason / Summary</th>
+                  <th>Amount / Risk</th>
+                </tr>
+              </thead>
+              <tbody id="queueRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>AI Database Agent</h2>
+          <p class="small">The model may ask broad questions. The database enforces rows, columns, graph paths, vector matches, and masks.</p>
+          <textarea id="promptInput" rows="6">Find the money behind suspicious transaction TXN-90017. Include owners, accounts, transfers, similar case notes, and final beneficiaries.</textarea>
+          <div class="button-row">
+            <button id="askSqlButton">Ask as SQL</button>
+            <button id="graphButton" class="button secondary" type="button">Follow Graph</button>
+            <button id="vectorButton" class="button secondary" type="button">Vector Search</button>
+            <button id="chatButton" class="button secondary" type="button">Summarize Evidence</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Generated SQL</h2>
+        <textarea id="sqlInput" rows="5">SELECT * FROM fin.customers FETCH FIRST 25 ROWS ONLY</textarea>
+        <div class="button-row">
+          <button id="runSqlButton">Run SQL Under Current User</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Evidence Result</h2>
+        <pre id="raw"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Unified Audit Trail</h2>
+        <p class="small">Shows recent FIN object access by end user while the app uses pooled database connections.</p>
+        <button id="auditButton" type="button">Refresh Audit Events</button>
+        <div class="table-wrap">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>End User</th>
+                <th>Database User</th>
+                <th>Object</th>
+                <th>SQL Text</th>
+                <th>Return</th>
+              </tr>
+            </thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

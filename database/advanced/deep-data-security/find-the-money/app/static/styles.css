@@ -14,6 +14,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   min-height: 100vh;
   background: var(--page);
   color: var(--ink);
@@ -21,9 +22,10 @@ body {
 }
 
 .shell {
-  width: min(1180px, calc(100vw - 32px));
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 28px 0;
+  padding: 28px 16px;
   display: grid;
   gap: 16px;
 }
@@ -60,11 +62,13 @@ h2 {
 }
 
 .user-box {
-  min-width: 260px;
+  min-width: 0;
+  width: min(320px, 100%);
   border-left: 4px solid var(--accent);
   background: #eef7f9;
   padding: 10px 12px;
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -158,6 +162,7 @@ button:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
   gap: 16px;
+  min-width: 0;
 }
 
 .panel {
@@ -165,6 +170,8 @@ button:hover {
   border-radius: 8px;
   background: var(--panel);
   padding: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .section-head {
@@ -193,8 +200,7 @@ button:hover {
     linear-gradient(0deg, rgba(216, 222, 231, 0.35) 1px, transparent 1px),
     #fbfcfd;
   background-size: 32px 32px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
 }
 
 .empty-graph {
@@ -206,8 +212,10 @@ button:hover {
 }
 
 .money-graph {
-  min-width: 100%;
-  height: 360px;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  min-height: 320px;
   display: block;
 }
 
@@ -278,6 +286,7 @@ button:hover {
 
 .table-wrap {
   margin-top: 12px;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -509,11 +518,14 @@ dd {
 
 pre {
   min-height: 190px;
+  max-width: 100%;
   overflow: auto;
   border-radius: 6px;
   background: #111827;
   color: #e5e7eb;
   padding: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 860px) {
@@ -521,6 +533,19 @@ pre {
   .grid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    gap: 12px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  table,
+  .audit-table {
+    min-width: 720px;
   }
 
   .token-flow {

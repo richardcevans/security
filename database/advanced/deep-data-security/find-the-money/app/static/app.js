@@ -222,8 +222,8 @@ function renderGraph(payload) {
   }
 
   const { nodes, edges } = graphModel(rows);
-  const width = Math.max(920, nodes.length * 210);
-  const height = 360;
+  const width = Math.max(720, nodes.length * 190);
+  const height = 340;
   const positions = graphPositions(nodes, width, height);
   const edgeMarkup = edges.map((edge, index) => renderGraphEdge(edge, positions, index)).join("");
   const nodeMarkup = nodes.map((node) => renderGraphNode(node, positions[node.id])).join("");

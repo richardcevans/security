@@ -1,5 +1,6 @@
 .env
 .find-the-money.env
+.find-the-money-genai-api-key.json
 .find-the-money.pid
 *.log
 *.lst

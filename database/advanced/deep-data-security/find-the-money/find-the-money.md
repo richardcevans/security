@@ -115,10 +115,33 @@ The reused pooled app user gets normal object privileges on `FIN` tables, but re
 
 The app can call the OCI Generative AI OpenAI-compatible chat API in the Oracle Chicago region:
 
+To create a Generative AI API key from OCI CLI for the `DBSec_Rich` compartment:
+
+```bash
+./06_setup_oci_genai_api_key.sh
+```
+
+The script defaults to:
+
+- Region: `us-chicago-1`
+- Compartment name: `DBSec_Rich`
+- OpenAI-compatible endpoint: `https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1`
+- Model: `openai.gpt-oss-120b`
+
+Override the model if your tenancy uses a different enabled Chicago model:
+
+```bash
+FIND_MONEY_OCI_GENAI_MODEL='<model_id>' ./06_setup_oci_genai_api_key.sh
+```
+
+The script writes the create response to `.find-the-money-genai-api-key.json` and appends the app environment variables to `.find-the-money.env`. OCI returns API key secret material only at create time, so keep the JSON file secure and do not commit it.
+
+Manual configuration is also supported:
+
 ```bash
 cat >> ./.find-the-money.env <<'EOF'
 export FIND_MONEY_OCI_GENAI_BASE_URL='https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1'
-export FIND_MONEY_OCI_GENAI_MODEL='cohere.command-r-plus-08-2024'
+export FIND_MONEY_OCI_GENAI_MODEL='openai.gpt-oss-120b'
 export FIND_MONEY_OCI_COMPARTMENT_ID='<compartment_ocid>'
 export FIND_MONEY_OCI_GENAI_API_KEY='<oci_genai_api_key>'
 EOF

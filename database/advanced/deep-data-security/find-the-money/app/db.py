@@ -451,7 +451,7 @@ class FindMoneyDatabase(object):
             "FIND_MONEY_OCI_GENAI_BASE_URL",
             "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1",
         ).rstrip("/")
-        model = os.getenv("FIND_MONEY_OCI_GENAI_MODEL", "cohere.command-r-plus-08-2024")
+        model = os.getenv("FIND_MONEY_OCI_GENAI_MODEL", "openai.gpt-oss-120b")
         compartment_id = os.getenv("FIND_MONEY_OCI_COMPARTMENT_ID", "")
         body = {
             "model": model,
@@ -485,7 +485,7 @@ class FindMoneyDatabase(object):
             "FIND_MONEY_OCI_GENAI_BASE_URL",
             "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1",
         ).rstrip("/")
-        model = os.getenv("FIND_MONEY_OCI_GENAI_MODEL", "cohere.command-r-plus-08-2024")
+        model = os.getenv("FIND_MONEY_OCI_GENAI_MODEL", "openai.gpt-oss-120b")
         compartment_id = os.getenv("FIND_MONEY_OCI_COMPARTMENT_ID", "")
         has_key = bool(os.getenv("FIND_MONEY_OCI_GENAI_API_KEY"))
         evidence = {

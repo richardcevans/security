@@ -2,8 +2,23 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env}"
 FIND_MONEY_ENV="${FIND_MONEY_ENV:-${SCRIPT_DIR}/.find-the-money.env}"
+
+find_first_file() {
+  local candidate
+  for candidate in "$@"; do
+    if [ -f "$candidate" ]; then
+      printf '%s' "$candidate"
+      return
+    fi
+  done
+}
+
+ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-$(find_first_file \
+  "${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env" \
+  "/home/oracle/DBSecLab/livelabs/deep-data-security/entra-id-data-grants/.entra-id-data-grants.env" \
+  "/home/oracle/livelabs/entra-id-data-grants/.entra-id-data-grants.env" \
+)}"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

@@ -2,14 +2,32 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env}"
 ENV_FILE="${SCRIPT_DIR}/.find-the-money.env"
 PUBLIC_IP_REDIRECT=1
 LOCALHOST_REDIRECT=0
 REDIRECT_URI_ARG=""
 REDIRECT_MODE_EXPLICIT=0
 REUSE_WEB_HR_APP=0
-WEB_HR_APP_ENV="${WEB_HR_APP_ENV:-${SCRIPT_DIR}/../web-hr-app/.web-hr-app.env}"
+find_first_file() {
+  local candidate
+  for candidate in "$@"; do
+    if [ -f "$candidate" ]; then
+      printf '%s' "$candidate"
+      return
+    fi
+  done
+}
+
+ENTRA_LAB_ENV="${ENTRA_LAB_ENV:-$(find_first_file \
+  "${SCRIPT_DIR}/../entra-id-data-grants/.entra-id-data-grants.env" \
+  "/home/oracle/DBSecLab/livelabs/deep-data-security/entra-id-data-grants/.entra-id-data-grants.env" \
+  "/home/oracle/livelabs/entra-id-data-grants/.entra-id-data-grants.env" \
+)}"
+WEB_HR_APP_ENV="${WEB_HR_APP_ENV:-$(find_first_file \
+  "${SCRIPT_DIR}/../web-hr-app/.web-hr-app.env" \
+  "/home/oracle/DBSecLab/livelabs/deep-data-security/web-hr-app/.web-hr-app.env" \
+  "/home/oracle/livelabs/web-hr-app/.web-hr-app.env" \
+)}"
 
 usage() {
   cat <<'EOF'
@@ -86,7 +104,8 @@ if [ -f "$ENTRA_LAB_ENV" ]; then
   # shellcheck disable=SC1090
   source "$ENTRA_LAB_ENV"
 else
-  echo "ERROR: Cannot find ${ENTRA_LAB_ENV}. Run entra-id-data-grants first."
+  echo "ERROR: Cannot find entra-id-data-grants environment file."
+  echo "Set ENTRA_LAB_ENV=/path/to/.entra-id-data-grants.env and rerun this script."
   exit 1
 fi
 

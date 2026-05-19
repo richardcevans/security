@@ -118,7 +118,7 @@ The app can call the OCI Generative AI OpenAI-compatible chat API in the Oracle 
 To create a Generative AI API key from OCI CLI for the `DBSec_Rich` compartment:
 
 ```bash
-./06_setup_oci_genai_api_key.sh
+./06_setup_oci_genai_key.sh
 ```
 
 The script defaults to:
@@ -131,10 +131,10 @@ The script defaults to:
 Override the model if your tenancy uses a different enabled Chicago model:
 
 ```bash
-FIND_MONEY_OCI_GENAI_MODEL='<model_id>' ./06_setup_oci_genai_api_key.sh
+OCI_GENAI_MODEL='<model_id>' ./06_setup_oci_genai_key.sh
 ```
 
-The script writes the create response to `.find-the-money-genai-api-key.json` and appends the app environment variables to `.find-the-money.env`. OCI returns API key secret material only at create time, so keep the JSON file secure and do not commit it.
+The script writes the create response to `logs/oci-genai-api-key-create.json` and appends the app environment variables to `.find-the-money.env`. OCI returns API key secret material only at create time, so keep the JSON file secure and do not commit it.
 
 Manual configuration is also supported:
 

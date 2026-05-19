@@ -255,19 +255,19 @@ You should see:
 To remove the database objects:
 
 ```bash
-./06_cleanup_adb_lab.sh
+./07_cleanup_adb_lab.sh
 ```
 
 To skip the prompt:
 
 ```bash
-./06_cleanup_adb_lab.sh --DELETE
+./07_cleanup_adb_lab.sh --DELETE
 ```
 
 To delete the ADB instance too:
 
 ```bash
-./06_cleanup_adb_lab.sh --delete-adb
+./07_cleanup_adb_lab.sh --delete-adb
 ```
 
 This cleanup script does not delete the Entra app registrations. Reusing them is
@@ -277,13 +277,13 @@ done with the environment.
 To delete the Entra app registrations from the command line:
 
 ```bash
-./07_cleanup_entra_id.sh
+./08_cleanup_entra_id.sh
 ```
 
 To skip the prompt:
 
 ```bash
-./07_cleanup_entra_id.sh --DELETE
+./08_cleanup_entra_id.sh --DELETE
 ```
 
 ## References

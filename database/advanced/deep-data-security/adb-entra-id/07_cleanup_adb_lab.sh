@@ -43,7 +43,7 @@ confirm() {
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 6: Clean Up ADB Microsoft Entra ID Data Grants Lab               ${NC}"
+echo -e "${GREEN}      Task 7: Clean Up ADB Microsoft Entra ID Data Grants Lab               ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
@@ -93,5 +93,5 @@ if [ "$DELETE_ADB" = true ]; then
 fi
 
 echo
-echo -e "${GREEN}Task 6 completed.${NC}"
+echo -e "${GREEN}Task 7 completed.${NC}"
 echo

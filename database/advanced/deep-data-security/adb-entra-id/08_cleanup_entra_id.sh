@@ -73,7 +73,7 @@ delete_app_by_name() {
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 7: Clean Up Microsoft Entra ID Objects                           ${NC}"
+echo -e "${GREEN}      Task 8: Clean Up Microsoft Entra ID Objects                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}ENTRA_DB_APP_NAME     = ${ENTRA_DB_APP_NAME}${NC}"
@@ -88,5 +88,5 @@ else
 fi
 
 echo
-echo -e "${GREEN}Task 7 completed.${NC}"
+echo -e "${GREEN}Task 8 completed.${NC}"
 echo

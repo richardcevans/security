@@ -5,6 +5,7 @@
 *.log
 *.lst
 *.zip
+*genai-api-key*.json
 __pycache__/
 app/__pycache__/
 logs/

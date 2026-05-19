@@ -176,7 +176,8 @@ if [ "$UPDATE_ENV" = "1" ]; then
     if [ -n "$secret" ]; then
       echo "export FIND_MONEY_OCI_GENAI_API_KEY='${secret}'"
     else
-      echo "export FIND_MONEY_OCI_GENAI_API_KEY='<paste_key_secret_from_${OUTPUT_JSON}>'"
+      echo "# OCI CLI returned only masked key values. Paste the full sk-... secret from OCI Console."
+      echo "# export FIND_MONEY_OCI_GENAI_API_KEY='<paste_full_genai_api_key_secret>'"
     fi
   } >> "$ENV_FILE"
   chmod 600 "$ENV_FILE"

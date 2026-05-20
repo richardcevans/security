@@ -33,6 +33,7 @@ def app_config():
         "token_uri": token_uri,
         "auth_uri": auth_uri,
         "db_mode": os.getenv("FIND_MONEY_DB_MODE", "mock"),
+        "scenario": os.getenv("FIND_MONEY_SCENARIO", "abc"),
     }
 
 
@@ -108,6 +109,46 @@ def finish_login(state, code):
 
 def demo_session(user_name):
     demo_users = {
+        "alice": {
+            "subject": os.getenv("ALICE_CHEN_UPN", "alice.chen@abcbank.lab"),
+            "roles": ["ABC_CUSTOMER"],
+            "name": "Alice Chen",
+        },
+        "bob": {
+            "subject": os.getenv("BOB_MARTINEZ_UPN", "bob.martinez@abcbank.lab"),
+            "roles": ["ABC_CUSTOMER"],
+            "name": "Bob Martinez",
+        },
+        "diana": {
+            "subject": os.getenv("DIANA_OKAFOR_UPN", "diana.okafor@abcbank.lab"),
+            "roles": ["ABC_CUSTOMER"],
+            "name": "Diana Okafor",
+        },
+        "frank": {
+            "subject": os.getenv("FRANK_RUSSO_UPN", "frank.russo@abcbank.lab"),
+            "roles": ["ABC_CUSTOMER"],
+            "name": "Frank Russo",
+        },
+        "sarah": {
+            "subject": os.getenv("SARAH_TORRES_UPN", "sarah.torres@abcbank.lab"),
+            "roles": ["ABC_SERVICE_REP"],
+            "name": "Rep Sarah Torres",
+        },
+        "james": {
+            "subject": os.getenv("JAMES_WHITFIELD_UPN", "james.whitfield@abcbank.lab"),
+            "roles": ["ABC_SERVICE_REP"],
+            "name": "Rep James Whitfield",
+        },
+        "linda": {
+            "subject": os.getenv("LINDA_CHEN_UPN", "linda.chen@abcbank.lab"),
+            "roles": ["ABC_BRANCH_MGR"],
+            "name": "Mgr Linda Chen",
+        },
+        "audit": {
+            "subject": os.getenv("AUDIT_USER_UPN", "audit.user@abcbank.lab"),
+            "roles": ["ABC_AUDITOR"],
+            "name": "Audit User",
+        },
         "alex": {
             "subject": os.getenv("ALEX_UPN", "alex@example.com"),
             "roles": ["FINAPP_TELLERS"],
@@ -129,7 +170,7 @@ def demo_session(user_name):
             "name": "Nora Auditor",
         },
     }
-    selected = demo_users.get(user_name, demo_users["alex"])
+    selected = demo_users.get(user_name, demo_users["alice"])
 
     session_id = uuid.uuid4().hex
     SESSIONS[session_id] = {
@@ -139,6 +180,7 @@ def demo_session(user_name):
             "preferred_username": selected["subject"],
             "name": selected["name"],
             "roles": selected["roles"],
+            "upn": selected["subject"],
         },
         "created": time.time(),
     }

@@ -25,10 +25,11 @@ async function refreshConfig() {
   const response = await fetch("/config");
   const config = await response.json();
   const mode = config.db_mode || "mock";
+  const scenario = config.scenario || "abc";
   modeBanner.className = `mode-banner ${mode === "oracledb" ? "real" : "mock"}`;
   modeBanner.innerHTML = mode === "oracledb"
-    ? "<strong>Oracle mode:</strong> AI-generated database work runs through the pooled app identity with the signed-in end-user security context."
-    : "<strong>Mock mode:</strong> policy outcomes are simulated. Run with <code>FIND_MONEY_DB_MODE=oracledb ./run.sh</code> to prove Deep Data Security.";
+    ? `<strong>Oracle mode:</strong> ${escapeHtml(scenario.toUpperCase())} database work runs through the pooled app identity with the signed-in end-user security context.`
+    : `<strong>Mock mode:</strong> ${escapeHtml(scenario.toUpperCase())} policy outcomes are simulated. Run with <code>FIND_MONEY_DB_MODE=oracledb ./run.sh</code> to prove Deep Data Security.`;
 }
 
 async function refreshUser() {
@@ -42,11 +43,11 @@ async function refreshUser() {
   }
   userBox.innerHTML = `<strong>${escapeHtml(user.name)}</strong><br />${escapeHtml(user.username)}<br />${escapeHtml((user.roles || []).join(", "))}`;
   raw.textContent = JSON.stringify({
-    demo: "AI agent under database policy",
+    demo: "ABC customer-service agent under database policy",
     user,
     enforcement: [
-      "The app can ask the LLM to generate broad SQL.",
-      "Generated SQL, graph traversal, and vector search execute under Oracle end-user security context.",
+      "The app can ask the LLM to generate broad customer-service SQL.",
+      "Generated SQL and relationship evidence execute under Oracle end-user security context.",
       "Deep Data Security, not prompt text, controls returned rows and columns."
     ]
   }, null, 2);

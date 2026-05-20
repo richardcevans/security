@@ -48,14 +48,121 @@ MOCK_CASES = [
     },
 ]
 
+ABC_ALERTS = [
+    {
+        "alert_id": "ABC-BSA-BOB",
+        "case_id": "ABC-CASE-BOB",
+        "transaction_id": "Bob Martinez",
+        "severity": "High",
+        "reason": "Structured ATM withdrawals and international wires flagged as BSA suspicious.",
+        "amount": 8400,
+        "status": "Open",
+        "customer_email": "bob.martinez@abcbank.lab",
+        "assigned_rep": "sarah.torres@abcbank.lab",
+        "branch_id": 1,
+    },
+    {
+        "alert_id": "ABC-CARD-DIANA",
+        "case_id": "ABC-CASE-DIANA",
+        "transaction_id": "Diana Okafor",
+        "severity": "Medium",
+        "reason": "Premium card is over limit by $1,847.32.",
+        "amount": 1847.32,
+        "status": "Review",
+        "customer_email": "diana.okafor@abcbank.lab",
+        "assigned_rep": "james.whitfield@abcbank.lab",
+        "branch_id": 1,
+    },
+    {
+        "alert_id": "ABC-COLL-FRANK",
+        "case_id": "ABC-CASE-FRANK",
+        "transaction_id": "Frank Russo",
+        "severity": "High",
+        "reason": "Auto loan is 90 days past due and in collections.",
+        "amount": 18450,
+        "status": "Open",
+        "customer_email": "frank.russo@abcbank.lab",
+        "assigned_rep": "james.whitfield@abcbank.lab",
+        "branch_id": 1,
+    },
+]
+
+ABC_CASES = [
+    {
+        "case_id": "ABC-CASE-BOB",
+        "title": "Bob Martinez suspicious transaction pattern",
+        "assigned_to": "sarah.torres@abcbank.lab",
+        "risk_score": 91,
+        "status": "Open",
+        "summary": "BSA flags on cash withdrawals and international wires.",
+        "customer_email": "bob.martinez@abcbank.lab",
+        "assigned_rep": "sarah.torres@abcbank.lab",
+        "branch_id": 1,
+    },
+    {
+        "case_id": "ABC-CASE-DIANA",
+        "title": "Diana Okafor premium over-limit review",
+        "assigned_to": "james.whitfield@abcbank.lab",
+        "risk_score": 72,
+        "status": "Review",
+        "summary": "High-balance premium customer with an over-limit card.",
+        "customer_email": "diana.okafor@abcbank.lab",
+        "assigned_rep": "james.whitfield@abcbank.lab",
+        "branch_id": 1,
+    },
+    {
+        "case_id": "ABC-CASE-FRANK",
+        "title": "Frank Russo collections account",
+        "assigned_to": "james.whitfield@abcbank.lab",
+        "risk_score": 86,
+        "status": "Open",
+        "summary": "Delinquent auto loan and collections flag.",
+        "customer_email": "frank.russo@abcbank.lab",
+        "assigned_rep": "james.whitfield@abcbank.lab",
+        "branch_id": 1,
+    },
+]
+
 
 class FindMoneyDatabase(object):
     def __init__(self):
         self.mode = os.getenv("FIND_MONEY_DB_MODE", "mock").lower()
+        self.scenario = os.getenv("FIND_MONEY_SCENARIO", "abc").lower()
         self.tns_alias = os.getenv("FIND_MONEY_TNS_ALIAS", "hrdb")
         self._pool = None
 
     def alerts_for_user(self, user):
+        if self.scenario == "abc":
+            if self.mode == "oracledb":
+                sql = """
+                    SELECT first_name || ' ' || last_name AS transaction_id,
+                           CASE
+                             WHEN bsa_suspicious = 'Y' THEN 'ABC-BSA-' || UPPER(last_name)
+                             WHEN overlimit_flag = 'Y' THEN 'ABC-CARD-' || UPPER(last_name)
+                             WHEN collections_flag = 'Y' THEN 'ABC-COLL-' || UPPER(last_name)
+                             ELSE 'ABC-INFO-' || UPPER(last_name)
+                           END AS alert_id,
+                           'ABC-CASE-' || UPPER(last_name) AS case_id,
+                           CASE
+                             WHEN bsa_suspicious = 'Y' OR collections_flag = 'Y' THEN 'High'
+                             WHEN overlimit_flag = 'Y' THEN 'Medium'
+                             ELSE 'Low'
+                           END AS severity,
+                           COALESCE(bsa_reason, fraud_reason, account_status_detail) AS reason,
+                           COALESCE(overlimit_amount, amount, balance) AS amount,
+                           account_status_detail AS status
+                      FROM abc.v_customer_portal
+                     WHERE bsa_suspicious = 'Y'
+                        OR overlimit_flag = 'Y'
+                        OR collections_flag = 'Y'
+                     ORDER BY severity DESC, last_name
+                     FETCH FIRST 25 ROWS ONLY
+                """
+                result = self._run_with_context(user, None, sql, fetch="rows", include_context=True)
+                return self._payload(user, "abc-alerts", result["data"], result["request_context"])
+            rows = _mock_abc_visible_rows(user, ABC_ALERTS)
+            return self._payload(user, "abc-alerts", rows, _mock_context(user))
+
         if self.mode == "oracledb":
             sql = """
                 SELECT alert_id, case_id, transaction_id, severity, reason, amount, status
@@ -69,6 +176,35 @@ class FindMoneyDatabase(object):
         return self._payload(user, "alerts", rows, _mock_context(user))
 
     def cases_for_user(self, user):
+        if self.scenario == "abc":
+            if self.mode == "oracledb":
+                sql = """
+                    SELECT 'ABC-CASE-' || UPPER(last_name) AS case_id,
+                           first_name || ' ' || last_name || ' account review' AS title,
+                           CASE
+                             WHEN assigned_rep_id IS NOT NULL THEN TO_CHAR(assigned_rep_id)
+                             ELSE 'branch'
+                           END AS assigned_to,
+                           CASE
+                             WHEN bsa_suspicious = 'Y' THEN 91
+                             WHEN collections_flag = 'Y' THEN 86
+                             WHEN overlimit_flag = 'Y' THEN 72
+                             ELSE 25
+                           END AS risk_score,
+                           account_status AS status,
+                           COALESCE(bsa_reason, fraud_reason, account_status_detail) AS summary
+                      FROM abc.v_customer_portal
+                     WHERE bsa_suspicious = 'Y'
+                        OR overlimit_flag = 'Y'
+                        OR collections_flag = 'Y'
+                     ORDER BY risk_score DESC, last_name
+                     FETCH FIRST 25 ROWS ONLY
+                """
+                result = self._run_with_context(user, None, sql, fetch="rows", include_context=True)
+                return self._payload(user, "abc-cases", result["data"], result["request_context"])
+            rows = _mock_abc_visible_rows(user, ABC_CASES)
+            return self._payload(user, "abc-cases", rows, _mock_context(user))
+
         if self.mode == "oracledb":
             sql = """
                 SELECT case_id, title, assigned_to, risk_score, status, summary
@@ -122,6 +258,9 @@ class FindMoneyDatabase(object):
         }
 
     def follow_money_graph(self, user, subject):
+        if self.scenario == "abc":
+            return self._abc_customer_relationships(user, subject)
+
         subject = subject or "TXN-90017"
         sql = """
             SELECT *
@@ -195,6 +334,53 @@ class FindMoneyDatabase(object):
         }
 
     def vector_search(self, user, text):
+        if self.scenario == "abc":
+            sql = """
+                SELECT first_name,
+                       last_name,
+                       transaction_date,
+                       amount,
+                       merchant_name,
+                       transaction_type,
+                       fraud_flag,
+                       fraud_reason,
+                       bsa_suspicious,
+                       bsa_reason
+                  FROM abc.v_customer_portal
+                 WHERE LOWER(first_name || ' ' || last_name || ' ' ||
+                             NVL(merchant_name, '') || ' ' ||
+                             NVL(fraud_reason, '') || ' ' ||
+                             NVL(bsa_reason, '')) LIKE '%' || LOWER(:query_text) || '%'
+                 ORDER BY transaction_date DESC
+                 FETCH FIRST 10 ROWS ONLY
+            """
+            if self.mode == "oracledb":
+                result = self._run_with_context(
+                    user,
+                    None,
+                    sql,
+                    fetch="rows",
+                    params={"query_text": text or ""},
+                    include_context=True,
+                )
+                return {
+                    "mode": "oracledb",
+                    "user": user["username"],
+                    "query_text": text,
+                    "sql": sql,
+                    "rows": result["data"],
+                    "request_context": result["request_context"],
+                    "note": "ABC evidence search returned only customer-portal rows visible to the current end user.",
+                }
+            return {
+                "mode": "mock",
+                "user": user["username"],
+                "query_text": text,
+                "sql": sql,
+                "rows": _mock_abc_visible_rows(user, ABC_ALERTS),
+                "request_context": _mock_context(user),
+            }
+
         text = text or "invoice splitting through shell vendors"
         sql = """
             SELECT note_id,
@@ -292,6 +478,7 @@ class FindMoneyDatabase(object):
 
     def audit_events(self, user):
         if self.mode == "oracledb":
+            object_schema = "ABC" if self.scenario == "abc" else "FIN"
             sql = """
                 SELECT event_timestamp,
                        dbusername,
@@ -307,7 +494,7 @@ class FindMoneyDatabase(object):
                        return_code,
                        DBMS_LOB.SUBSTR(sql_text, 220, 1) AS sql_text_preview
                   FROM unified_audit_trail
-                 WHERE object_schema = 'FIN'
+                 WHERE object_schema = :object_schema
                    AND action_name IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
                    AND event_timestamp >= SYSTIMESTAMP - INTERVAL '10' MINUTE
                  ORDER BY event_timestamp DESC
@@ -316,7 +503,7 @@ class FindMoneyDatabase(object):
             return {
                 "mode": "oracledb",
                 "window": "last 10 minutes",
-                "events": self._run_app_query(sql, fetch="rows"),
+                "events": self._run_app_query(sql, fetch="rows", params={"object_schema": object_schema}),
                 "note": "END_USER_NAME identifies the DDS end user even though the app uses pooled database connections.",
             }
         return {"mode": "mock", "events": [], "note": "Audit events are available in oracledb mode."}
@@ -377,7 +564,7 @@ class FindMoneyDatabase(object):
 
         if self.mode != "oracledb":
             add("Database mode", "warn", "FIND_MONEY_DB_MODE is {0}; database checks are skipped.".format(self.mode))
-            return {"mode": self.mode, "checks": checks, "summary": _preflight_summary(checks)}
+            return {"mode": self.mode, "scenario": self.scenario, "checks": checks, "summary": _preflight_summary(checks)}
 
         run("Python driver", self._driver_check)
         run("Application token", self._app_token_check)
@@ -385,11 +572,55 @@ class FindMoneyDatabase(object):
         run("Pooled app connection", self._app_connection_check)
         run("End-user security context", lambda: self._context_check(user))
         run("Token role mapping", lambda: self._role_check(user))
-        run("FIN schema visibility", lambda: self._fin_schema_check(user))
+        run("Scenario schema visibility", lambda: self._scenario_schema_check(user))
         run("Graph query", lambda: self._graph_check(user))
         run("Vector query", lambda: self._vector_check(user))
         run("Audit visibility", self._audit_check)
-        return {"mode": "oracledb", "checks": checks, "summary": _preflight_summary(checks)}
+        return {"mode": "oracledb", "scenario": self.scenario, "checks": checks, "summary": _preflight_summary(checks)}
+
+    def _abc_customer_relationships(self, user, subject):
+        subject = (subject or "Bob Martinez").strip()
+        sql = """
+            SELECT first_name || ' ' || last_name AS source_name,
+                   account_number AS source_id,
+                   transaction_id AS edge_id,
+                   amount,
+                   COALESCE(merchant_name, transaction_type) AS target_name,
+                   transaction_type || ':' || TO_CHAR(transaction_id) AS target_id
+              FROM abc.v_customer_portal
+             WHERE LOWER(first_name || ' ' || last_name || ' ' ||
+                         NVL(account_number, '') || ' ' ||
+                         NVL(merchant_name, '')) LIKE '%' || LOWER(:subject) || '%'
+                OR LOWER(:subject) LIKE '%' || LOWER(last_name) || '%'
+             ORDER BY transaction_date DESC
+             FETCH FIRST 25 ROWS ONLY
+        """
+        if self.mode == "oracledb":
+            result = self._run_with_context(
+                user,
+                None,
+                sql,
+                fetch="rows",
+                params={"subject": subject},
+                include_context=True,
+            )
+            return {
+                "mode": "oracledb",
+                "user": user["username"],
+                "subject": subject,
+                "sql": sql,
+                "rows": result["data"],
+                "request_context": result["request_context"],
+                "note": "ABC relationship view shows only customer/account/transaction rows visible to the current end user.",
+            }
+        return {
+            "mode": "mock",
+            "user": user["username"],
+            "subject": subject,
+            "sql": sql,
+            "rows": _mock_abc_graph_rows(user),
+            "request_context": _mock_context(user),
+        }
 
     def _payload(self, user, kind, rows, request_context):
         return {
@@ -405,6 +636,20 @@ class FindMoneyDatabase(object):
         generated = self._llm_sql(prompt)
         if generated:
             return generated, {"source": "oci_genai", "model": os.getenv("FIND_MONEY_OCI_GENAI_MODEL")}
+        if self.scenario == "abc":
+            lower = (prompt or "").lower()
+            if "ssn" in lower or "account number" in lower or "all customer" in lower:
+                sql = "SELECT first_name, last_name, ssn, account_number, balance, card_number FROM abc.v_customer_portal ORDER BY last_name FETCH FIRST 25 ROWS ONLY"
+            elif "diana" in lower or "over limit" in lower or "over-limit" in lower:
+                sql = "SELECT first_name, last_name, account_type, balance, card_type, current_balance, overlimit_flag, overlimit_amount FROM abc.v_customer_portal WHERE LOWER(first_name || ' ' || last_name) LIKE '%diana%' FETCH FIRST 25 ROWS ONLY"
+            elif "frank" in lower or "collections" in lower or "loan" in lower:
+                sql = "SELECT first_name, last_name, account_status, collections_flag, account_type, balance, account_status_detail FROM abc.v_customer_portal WHERE LOWER(first_name || ' ' || last_name) LIKE '%frank%' FETCH FIRST 25 ROWS ONLY"
+            elif "bob" in lower or "bsa" in lower or "suspicious" in lower or "fraud" in lower:
+                sql = "SELECT first_name, last_name, transaction_date, amount, merchant_name, bsa_suspicious, bsa_reason, fraud_flag, fraud_reason FROM abc.v_customer_portal WHERE LOWER(first_name || ' ' || last_name) LIKE '%bob%' OR bsa_suspicious = 'Y' OR fraud_flag = 'Y' ORDER BY transaction_date DESC FETCH FIRST 25 ROWS ONLY"
+            else:
+                sql = "SELECT * FROM abc.v_customer_portal ORDER BY last_name, transaction_date DESC FETCH FIRST 25 ROWS ONLY"
+            return sql, {"source": "local_template", "reason": "ABC customer-service SQL template selected."}
+
         lower = (prompt or "").lower()
         if "tax" in lower or "account number" in lower or "pii" in lower:
             sql = "SELECT customer_id, full_name, tax_id, home_branch, risk_rating FROM fin.customers FETCH FIRST 25 ROWS ONLY"
@@ -421,12 +666,19 @@ class FindMoneyDatabase(object):
     def _llm_sql(self, prompt):
         if not os.getenv("FIND_MONEY_OCI_GENAI_API_KEY"):
             return None
-        instruction = (
-            "Generate one Oracle SQL statement for the FIN schema. Return only SQL. "
-            "The database will enforce Deep Data Security; do not add app-side filters. "
-            "Available tables include FIN.CUSTOMERS, FIN.ACCOUNTS, FIN.TRANSACTIONS, "
-            "FIN.RISK_ALERTS, FIN.CASES, FIN.BENEFICIAL_OWNERS, FIN.CASE_NOTE_EMBEDDINGS."
-        )
+        if self.scenario == "abc":
+            instruction = (
+                "Generate one Oracle SQL statement for the ABC schema. Return only SQL. "
+                "The database will enforce Deep Data Security; do not add app-side filters. "
+                "Prefer ABC.V_CUSTOMER_PORTAL for customer, account, transaction, card, BSA, fraud, and collections questions."
+            )
+        else:
+            instruction = (
+                "Generate one Oracle SQL statement for the FIN schema. Return only SQL. "
+                "The database will enforce Deep Data Security; do not add app-side filters. "
+                "Available tables include FIN.CUSTOMERS, FIN.ACCOUNTS, FIN.TRANSACTIONS, "
+                "FIN.RISK_ALERTS, FIN.CASES, FIN.BENEFICIAL_OWNERS, FIN.CASE_NOTE_EMBEDDINGS."
+            )
         payload = self._openai_chat_payload(instruction, prompt)
         content = payload.get("content", "").strip()
         content = re.sub(r"^```(?:sql)?|```$", "", content, flags=re.IGNORECASE).strip()
@@ -558,15 +810,24 @@ class FindMoneyDatabase(object):
         roles = self._run_with_context(user, None, "SELECT role_name FROM v$end_user_data_role ORDER BY role_name", fetch="rows")
         return "Database mapped token roles to active DDS data roles.", {"active_data_roles": [row.get("ROLE_NAME") for row in roles]}
 
-    def _fin_schema_check(self, user):
+    def _scenario_schema_check(self, user):
+        if self.scenario == "abc":
+            row = self._run_with_context(user, None, "SELECT COUNT(*) AS visible_portal_rows FROM abc.v_customer_portal", fetch="one")
+            return "ABC customer portal data is visible through DDS policy.", row
         row = self._run_with_context(user, None, "SELECT COUNT(*) AS visible_alerts FROM fin.risk_alerts", fetch="one")
         return "FIN schema data is visible through DDS policy.", row
 
     def _graph_check(self, user):
+        if self.scenario == "abc":
+            row = self._run_with_context(user, None, "SELECT COUNT(*) AS visible_transactions FROM abc.v_customer_portal WHERE transaction_id IS NOT NULL", fetch="one")
+            return "ABC transaction relationship data can be queried under the current end-user context.", row
         row = self._run_with_context(user, ["FINAPP_AI_INVESTIGATOR"], "SELECT COUNT(*) AS visible_transactions FROM fin.transactions", fetch="one")
         return "Graph source data can be queried under app elevation.", row
 
     def _vector_check(self, user):
+        if self.scenario == "abc":
+            row = self._run_with_context(user, None, "SELECT COUNT(*) AS visible_bsa_rows FROM abc.v_customer_portal WHERE bsa_suspicious = 'Y' OR fraud_flag = 'Y'", fetch="one")
+            return "ABC fraud/BSA evidence can be queried under the current end-user context.", row
         row = self._run_with_context(user, ["FINAPP_AI_INVESTIGATOR"], "SELECT COUNT(*) AS visible_notes FROM fin.case_note_embeddings", fetch="one")
         return "Vector evidence table is protected by DDS policy.", row
 
@@ -736,8 +997,33 @@ def _mock_visible_rows(user, rows):
     return [{key: ("MASKED" if key in ("amount", "summary", "assigned_to") else value) for key, value in rows[0].items()}]
 
 
+def _mock_abc_visible_rows(user, rows):
+    roles = set(user.get("roles") or [])
+    username = user.get("username", "").lower()
+    if "ABC_AUDITOR" in roles or "audit.user" in username:
+        return [
+            {
+                key: ("MASKED" if key in ("amount", "summary", "reason", "assigned_to") else value)
+                for key, value in row.items()
+                if key not in ("customer_email", "assigned_rep", "branch_id")
+            }
+            for row in rows
+        ]
+    if "ABC_BRANCH_MGR" in roles or "linda.chen" in username:
+        return [_strip_abc_policy_columns(row) for row in rows if row.get("branch_id") == 1]
+    if "ABC_SERVICE_REP" in roles:
+        return [_strip_abc_policy_columns(row) for row in rows if row.get("assigned_rep") == username]
+    return [_strip_abc_policy_columns(row) for row in rows if row.get("customer_email") == username]
+
+
+def _strip_abc_policy_columns(row):
+    return {key: value for key, value in row.items() if key not in ("customer_email", "assigned_rep", "branch_id")}
+
+
 def _mock_sql_result(user, sql):
     lower = sql.lower()
+    if "abc." in lower:
+        return _mock_abc_sql_result(user, sql)
     if "beneficial" in lower:
         rows = [{"OWNER_ID": "OWN-77", "OWNER_NAME": "MASKED", "TAX_ID": "MASKED", "RISK_RATING": "High"}]
     elif "customer" in lower:
@@ -751,6 +1037,73 @@ def _mock_sql_result(user, sql):
     return rows
 
 
+def _mock_abc_sql_result(user, sql):
+    lower = sql.lower()
+    base_rows = [
+        {
+            "FIRST_NAME": "Alice",
+            "LAST_NAME": "Chen",
+            "SSN": "***-**-3821",
+            "ACCOUNT_NUMBER": "****4821",
+            "BALANCE": 3847.52,
+            "CARD_NUMBER": "****-****-****-8821",
+            "ACCOUNT_STATUS": "ACTIVE",
+        },
+        {
+            "FIRST_NAME": "Bob",
+            "LAST_NAME": "Martinez",
+            "SSN": "***-**-9147",
+            "ACCOUNT_NUMBER": "****7731",
+            "BALANCE": -142.37,
+            "BSA_SUSPICIOUS": "Y",
+            "BSA_REASON": "MASKED",
+            "FRAUD_FLAG": "Y",
+            "FRAUD_REASON": "MASKED",
+        },
+        {
+            "FIRST_NAME": "Diana",
+            "LAST_NAME": "Okafor",
+            "SSN": "***-**-6205",
+            "ACCOUNT_NUMBER": "****2291",
+            "BALANCE": 87432.19,
+            "CARD_NUMBER": "****-****-****-0005",
+            "OVERLIMIT_FLAG": "Y",
+            "OVERLIMIT_AMOUNT": 1847.32,
+        },
+        {
+            "FIRST_NAME": "Frank",
+            "LAST_NAME": "Russo",
+            "SSN": "***-**-4471",
+            "ACCOUNT_NUMBER": "****9902",
+            "BALANCE": 18450,
+            "ACCOUNT_STATUS": "COLLECTIONS",
+            "COLLECTIONS_FLAG": "Y",
+        },
+    ]
+    visible_names = {row.get("transaction_id") for row in _mock_abc_visible_rows(user, ABC_ALERTS)}
+    username = user.get("username", "").lower()
+    if "alice.chen" in username:
+        visible_names.add("Alice Chen")
+    if "diana.okafor" in username:
+        visible_names.add("Diana Okafor")
+    if "frank.russo" in username:
+        visible_names.add("Frank Russo")
+    filtered = [row for row in base_rows if "{0} {1}".format(row["FIRST_NAME"], row["LAST_NAME"]) in visible_names]
+    if "diana" in lower:
+        filtered = [row for row in filtered if row["LAST_NAME"] == "Okafor"]
+    elif "frank" in lower:
+        filtered = [row for row in filtered if row["LAST_NAME"] == "Russo"]
+    elif "bob" in lower or "bsa" in lower or "fraud" in lower:
+        filtered = [row for row in filtered if row["LAST_NAME"] == "Martinez"]
+    if "ABC_AUDITOR" in set(user.get("roles") or []):
+        for row in filtered:
+            row["BALANCE"] = None
+            row["SSN"] = "***-**-" + str(row.get("SSN", ""))[-4:]
+            if "CARD_NUMBER" in row:
+                row["CARD_NUMBER"] = "****-****-****-" + str(row["CARD_NUMBER"])[-4:]
+    return filtered
+
+
 def _mock_graph_rows(user):
     rows = [
         {"SOURCE_ID": "A-8821", "SOURCE_NAME": "Sophia operating account", "EDGE_ID": "TXN-90017", "AMOUNT": "MASKED", "TARGET_ID": "V-440", "TARGET_NAME": "Northstar Supply"},
@@ -759,6 +1112,22 @@ def _mock_graph_rows(user):
     if "FINAPP_SENIOR_INVESTIGATORS" in set(user.get("roles") or []) or "marcus" in user.get("username", "").lower():
         rows[0]["AMOUNT"] = 248500
         rows[1]["TARGET_NAME"] = "Keystone Holdings"
+    return rows
+
+
+def _mock_abc_graph_rows(user):
+    rows = [
+        {"SOURCE_ID": "CHK-0020-7731", "SOURCE_NAME": "Bob Martinez checking", "EDGE_ID": "ABC-BSA-1", "AMOUNT": "MASKED", "TARGET_ID": "ATM-001", "TARGET_NAME": "ABC ATM - Branch 001"},
+        {"SOURCE_ID": "CHK-0020-7731", "SOURCE_NAME": "Bob Martinez checking", "EDGE_ID": "WIRE-2026-00441", "AMOUNT": "MASKED", "TARGET_ID": "WIRE-RECIPIENT", "TARGET_NAME": "International wire recipient"},
+    ]
+    roles = set(user.get("roles") or [])
+    username = user.get("username", "").lower()
+    if "ABC_BRANCH_MGR" in roles or "ABC_SERVICE_REP" in roles or "linda.chen" in username or "sarah.torres" in username:
+        rows[0]["AMOUNT"] = 4800
+        rows[1]["AMOUNT"] = 1500
+    if "bob.martinez" in username or "ABC_AUDITOR" in roles:
+        for row in rows:
+            row["AMOUNT"] = "MASKED"
     return rows
 
 

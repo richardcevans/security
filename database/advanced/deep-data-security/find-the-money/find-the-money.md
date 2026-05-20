@@ -1,21 +1,25 @@
 # Find the Money
 
-Find the Money is a Deep Data Security demo for an AI-assisted financial investigation app.
+Find the Money is a Deep Data Security demo for an AI-assisted banking app. The default scenario is now the Acme Banking Company (ABC) customer-service lab: the same broad agent request returns different data for customers, service reps, branch managers, and auditors because Oracle enforces the end-user context at the data layer.
 
 ```text
 browser user -> Microsoft Entra ID -> Find the Money
                                   -> pooled Oracle Database connection as app identity
                                   -> end-user security context per request
-                                  -> FIN schema
-                                  -> SQL, graph, and vector-style evidence queries
+                                  -> ABC or FIN schema
+                                  -> SQL, relationship, and evidence queries
                                   -> optional OCI Generative AI chat in us-chicago-1
 ```
 
 The app intentionally exposes a broad database-agent surface. The LLM can generate SQL and request graph or vector-style evidence, but Oracle Database remains the enforcement point for rows, columns, graph evidence, vector evidence, masks, and audit records.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## What This Lab Adds
 
-- A new `FIN` schema with customers, accounts, transactions, vendors, cases, alerts, beneficial owners, and case-note evidence.
+- A new `ABC` scenario with customers, accounts, transactions, credit cards, staff assignments, BSA flags, over-limit card data, collections data, and `ABC.V_CUSTOMER_PORTAL`.
+- The original `FIN` investigation scenario remains available with `FIND_MONEY_SCENARIO=fin`.
+- A `sql/abc_setup.sql` script copied from the ABC Deep Data Security lab design assets.
 - Reuse of the existing Web HR Entra application, `WEB_HR_APP_USER`, and `WEB_HR_APP` application identity.
 - FIN data grants attached to Entra app roles for tellers, investigators, senior investigators, auditors, plus a disabled `FINAPP_AI_INVESTIGATOR` app-mediated evidence role.
 - A SQL property graph creation attempt for `FIN.MONEY_GRAPH`, with app fallback to protected relational money-flow queries if graph support is unavailable.
@@ -97,7 +101,17 @@ For an explicit public redirect:
 
 ## Configure Database Objects
 
-Create the FIN schema, sample data, application identity, and Deep Data Security policy:
+Create the ABC schema and sample data when you want the ABC customer-service scenario in a disposable/live lab database:
+
+```bash
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+unset WALLET_DIR TNS_ADMIN
+./07_setup_abc_demo_schema.sh
+```
+
+The script creates the `ABC` schema, `ABC_AGENT_SVC`, eight persona database users, the banking tables, and `ABC.V_CUSTOMER_PORTAL`. It drops and recreates only the ABC lab users listed in `sql/abc_setup.sql`. If the Find the Money app database user already exists, the script also grants that user read access to the ABC objects so the app can query the scenario.
+
+Create the FIN schema, sample data, application identity, and Deep Data Security policy if you want the original FIN investigation scenario:
 
 ```bash
 source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
@@ -159,9 +173,22 @@ Mock mode needs no dependencies:
 FIND_MONEY_DB_MODE=mock ./run.sh
 ```
 
+The default mock scenario is ABC. To run the original FIN mock scenario:
+
+```bash
+FIND_MONEY_SCENARIO=fin FIND_MONEY_DB_MODE=mock ./run.sh
+```
+
 Oracle mode:
 
 ```bash
+FIND_MONEY_SCENARIO=abc FIND_MONEY_DB_MODE=oracledb ./start.sh
+```
+
+Original FIN Oracle mode:
+
+```bash
+FIND_MONEY_SCENARIO=fin FIND_MONEY_DB_MODE=oracledb \
 ./start.sh
 ./status.sh
 ```
@@ -177,8 +204,7 @@ http://localhost:8013/
 Use the same prompt under different identities:
 
 ```text
-Find the money behind suspicious transaction TXN-90017.
-Include all owners, accounts, transfers, similar case notes, and final beneficiaries.
+Show me Bob Martinez's suspicious transactions, account balances, BSA flags, and fraud investigation details.
 ```
 
 Then run:
@@ -189,7 +215,7 @@ Then run:
 - `Summarize Evidence`
 - `Refresh Audit Events`
 
-The key proof point is that the generated SQL or graph/vector request can be broad, but the result differs by user because Oracle enforces the end-user context.
+The key proof point is that the generated SQL or relationship request can be broad, but the result differs by user because Oracle enforces the end-user context. Alice sees Alice; Rep Sarah sees assigned customers; Rep James sees Diana and Frank; Mgr Linda sees Branch 001; Audit User sees structure with sensitive values masked or removed.
 
 ## Operational Guardrails
 

@@ -10,7 +10,7 @@
     <main class="shell">
       <header class="topbar">
         <div>
-          <p>Oracle Deep Data Security + AI</p>
+          <p>Oracle Deep Data Security + Agentic AI</p>
           <h1>Find the Money</h1>
         </div>
         <div id="userBox" class="user-box"></div>
@@ -19,10 +19,11 @@
       <section class="actions">
         <a class="button" href="/login" id="entraLogin">Sign In With Entra ID</a>
         <a class="button secondary" href="/switch-account">Switch Entra User</a>
-        <a class="button secondary" href="/demo/alex">Alex Teller</a>
-        <a class="button secondary" href="/demo/priya">Priya Investigator</a>
-        <a class="button secondary" href="/demo/marcus">Marcus Senior</a>
-        <a class="button secondary" href="/demo/nora">Nora Auditor</a>
+        <a class="button secondary" href="/demo/alice">Alice Customer</a>
+        <a class="button secondary" href="/demo/sarah">Rep Sarah</a>
+        <a class="button secondary" href="/demo/james">Rep James</a>
+        <a class="button secondary" href="/demo/linda">Mgr Linda</a>
+        <a class="button secondary" href="/demo/audit">Audit User</a>
         <a class="button ghost" href="/debug">Diagnostics</a>
         <a class="button ghost" href="/logout">Sign Out</a>
       </section>
@@ -31,8 +32,8 @@
 
       <section class="grid">
         <article class="panel">
-          <h2>Investigation Queue</h2>
-          <p class="small">Same app and same AI surface. Oracle decides what each signed-in user can see.</p>
+          <h2>ABC Customer Queue</h2>
+          <p class="small">Same agent and same broad data request. Oracle decides what each signed-in user can see.</p>
           <div class="button-row">
             <button id="alertsButton">Load Alerts</button>
             <button id="casesButton" class="button secondary" type="button">Load Cases</button>
@@ -56,9 +57,9 @@
         </article>
 
         <article class="panel">
-          <h2>AI Database Agent</h2>
-          <p class="small">The model may ask broad questions. The database enforces rows, columns, graph paths, vector matches, and masks.</p>
-          <textarea id="promptInput" rows="6">Find the money behind suspicious transaction TXN-90017. Include owners, accounts, transfers, similar case notes, and final beneficiaries.</textarea>
+          <h2>ABC Customer Service Agent</h2>
+          <p class="small">The model may ask broad banking questions. The database enforces rows, columns, relationship evidence, and masks.</p>
+          <textarea id="promptInput" rows="6">Show me Bob Martinez's suspicious transactions, account balances, BSA flags, and fraud investigation details.</textarea>
           <div class="button-row">
             <button id="askSqlButton">Ask as SQL</button>
             <button id="graphButton" class="button secondary" type="button">Follow Graph</button>
@@ -70,7 +71,7 @@
 
       <section class="panel">
         <h2>Generated SQL</h2>
-        <textarea id="sqlInput" rows="5">SELECT * FROM fin.customers FETCH FIRST 25 ROWS ONLY</textarea>
+        <textarea id="sqlInput" rows="5">SELECT * FROM abc.v_customer_portal FETCH FIRST 25 ROWS ONLY</textarea>
         <div class="button-row">
           <button id="runSqlButton">Run SQL Under Current User</button>
         </div>
@@ -79,8 +80,8 @@
       <section class="panel">
         <div class="section-head">
           <div>
-            <h2>Money Flow Graph</h2>
-            <p class="small">Graph results render here. Masked nodes and amounts show where Deep Data Security limited the current user.</p>
+            <h2>Customer Money Trail</h2>
+            <p class="small">Relationship results render here. Masked nodes and amounts show where Deep Data Security limited the current user.</p>
           </div>
           <span id="graphMeta" class="graph-meta">No graph query yet</span>
         </div>
@@ -96,7 +97,7 @@
 
       <section class="panel">
         <h2>Unified Audit Trail</h2>
-        <p class="small">Shows recent FIN object access by end user while the app uses pooled database connections.</p>
+        <p class="small">Shows recent ABC object access by end user while the app uses pooled database connections.</p>
         <button id="auditButton" type="button">Refresh Audit Events</button>
         <div class="table-wrap">
           <table class="audit-table">

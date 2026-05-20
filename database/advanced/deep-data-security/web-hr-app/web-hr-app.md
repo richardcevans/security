@@ -14,6 +14,8 @@ browser user -> Microsoft Entra ID -> Web HR App
 
 The app uses the existing HR schema, Entra database resource app, app roles, and data grants created by `entra-id-data-grants`.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## What This Lab Adds
 
 - A Microsoft Entra ID web application registration for `Web HR App - ${PDB_NAME}`.
@@ -31,7 +33,7 @@ The app uses the existing HR schema, Entra database resource app, app roles, and
 1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd $DBSEC_LABS/deep-data-security</copy>
+    <copy>cd $DBSEC_HOME/livelabs/deep-data-security</copy>
     ````
 
 2. Use the Linux command `wget` to download a bundled (zipped) file of the commands for the lab.

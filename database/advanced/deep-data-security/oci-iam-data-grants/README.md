@@ -4,6 +4,8 @@ This lab shows identity-aware database access with OCI IAM OAuth2 and Oracle Dee
 
 End users authenticate with OCI IAM. Oracle Database reads the OAuth2 access token, activates mapped data roles from OCI IAM groups, and enforces row and column access with data grants.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## Table Of Contents
 
 - [Architecture Flow](#architecture-flow)

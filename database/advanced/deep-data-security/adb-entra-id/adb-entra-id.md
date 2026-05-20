@@ -6,6 +6,8 @@ Serverless using Microsoft Entra ID authentication.
 The database is named `deepsec7` by default so it can run separately from the
 ADB OCI IAM lab database.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## What This Lab Does
 
 - Creates or reuses an ADB-S instance.
@@ -89,7 +91,8 @@ Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-cd $DBSEC_LABS/deep-data-security
+mkdir -vp ~/livelabs/deep-data-security
+cd ~/livelabs/deep-data-security
 wget -O adb-entra-id.zip \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip"
 </copy>

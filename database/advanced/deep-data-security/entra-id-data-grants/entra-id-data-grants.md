@@ -10,6 +10,8 @@ Marvin and Emma run the same SQL against the same HR table. Marvin is a manager
 and sees himself plus direct reports. Emma is an employee and sees only herself.
 The database enforces the difference from Entra ID app-role claims.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 The detailed security notes, manual portal fallback, rollback commands, and
 extended troubleshooting have been moved to
 [`entra-id-data-grants-reference.md`](./entra-id-data-grants-reference.md).
@@ -84,7 +86,7 @@ download the ZIP, and unzip it.
 
 ```bash
 <copy>
-cd $DBSEC_LABS/deep-data-security
+cd $DBSEC_HOME/livelabs/deep-data-security
 wget -O entra-id-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/aSXtPT18-67-gR7BdvSd5VtxmxemrI5KpRkoMYoN6S22aUhRnrB5O12ZaoXbjgLE/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip
 unzip -o entra-id-data-grants.zip
 cd entra-id-data-grants

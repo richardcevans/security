@@ -8,6 +8,8 @@ browser user -> web app -> MCP-style tools -> Oracle Database -> data grants
 
 The app builds on the `entra-id-data-grants` lab in this workshop. It can run in mock mode for a quick UI demo, or use the existing Entra-enabled `hrdb` Oracle Net alias from the lab so Oracle Database enforces the data grants.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## What This App Shows
 
 - A browser user asks a data question.
@@ -39,7 +41,7 @@ mcp-grant-view/
 1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd $DBSEC_LABS/deep-data-security</copy>
+    <copy>cd $DBSEC_HOME/livelabs/deep-data-security</copy>
     ````
 
     **Note**: If you are using a remote desktop session, double-click on the *Terminal* icon on the desktop to launch a session.

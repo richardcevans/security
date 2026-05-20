@@ -5,6 +5,8 @@ Serverless 26ai using OCI IAM authentication.
 
 The first database is named `deepsec1` by default.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 ## What This Lab Does
 
 - Creates or reuses an ADB-S 26ai instance.
@@ -150,7 +152,8 @@ Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-cd $DBSEC_LABS/deep-data-security
+mkdir -vp ~/livelabs/deep-data-security
+cd ~/livelabs/deep-data-security
 wget -O adb-oci-iam.zip \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip"
 </copy>

@@ -4,6 +4,8 @@ Welcome to this **Oracle Deep Data Security LiveLabs** workshop.
 
 This lab walks you through configuring Microsoft Entra ID authentication for Oracle AI Database 26ai and then layering Oracle Deep Data Security — end users, data roles, and data grants — so the database enforces per-user access based on Entra ID app role assignments. By the end, Marvin (a manager) and Emma (an employee) will authenticate with Entra ID and see completely different data from the same SQL query, enforced by the database kernel.
 
+> **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
 Estimated Time: 60 minutes
 
 ### Objectives
@@ -398,7 +400,7 @@ lsnrctl start
 1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd $DBSEC_LABS/deep-data-security</copy>
+    <copy>cd $DBSEC_HOME/livelabs/deep-data-security</copy>
     ````
 
     **Note**: If you are using a remote desktop session, double-click on the *Terminal* icon on the desktop to launch a session

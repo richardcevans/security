@@ -400,7 +400,8 @@ lsnrctl start
 1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd $DBSEC_HOME/livelabs/deep-data-security</copy>
+    <copy>mkdir -vp $DBSEC_LABS/deep-data-security
+cd $DBSEC_LABS/deep-data-security</copy>
     ````
 
     **Note**: If you are using a remote desktop session, double-click on the *Terminal* icon on the desktop to launch a session

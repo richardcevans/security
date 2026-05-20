@@ -85,20 +85,11 @@ separate Marvin account.
 
 ## 0. Download and Unzip the Lab Files
 
-From the `database/advanced/deep-data-security` directory, download the lab archive:
+Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-curl -L \
-  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip" \
-  -o adb-entra-id.zip
-</copy>
-```
-
-Or, from a remote shell, use `wget -O` to save the archive with a clean file name:
-
-```bash
-<copy>
+cd $DBSEC_LABS/deep-data-security
 wget -O adb-entra-id.zip \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip"
 </copy>

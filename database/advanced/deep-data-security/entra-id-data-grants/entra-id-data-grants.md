@@ -79,12 +79,12 @@ users to app roles manually.
 
 ## Task 0: Download The Lab Files
 
-Open a terminal as OS user `oracle`, move to your LiveLabs working directory,
+Open a terminal as OS user `oracle`, move to your Deep Data Security labs directory,
 download the ZIP, and unzip it.
 
 ```bash
 <copy>
-cd ~/livelabs
+cd $DBSEC_LABS/deep-data-security
 wget -O entra-id-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/aSXtPT18-67-gR7BdvSd5VtxmxemrI5KpRkoMYoN6S22aUhRnrB5O12ZaoXbjgLE/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip
 unzip -o entra-id-data-grants.zip
 cd entra-id-data-grants

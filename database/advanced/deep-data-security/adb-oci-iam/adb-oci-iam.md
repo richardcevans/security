@@ -146,20 +146,11 @@ Sign in as Marvin for the first token and Emma for the second token.
 
 ## 0. Download and Unzip the Lab Files
 
-From the `database/advanced/deep-data-security` directory, download the lab archive:
+Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-curl -L \
-  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip" \
-  -o adb-oci-iam.zip
-</copy>
-```
-
-Or, from a remote shell, use `wget -O` to save the archive with a clean file name:
-
-```bash
-<copy>
+cd $DBSEC_LABS/deep-data-security
 wget -O adb-oci-iam.zip \
   "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip"
 </copy>

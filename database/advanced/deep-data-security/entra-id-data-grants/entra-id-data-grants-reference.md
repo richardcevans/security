@@ -395,10 +395,10 @@ lsnrctl start
 
 ### Task 0: Download entra-id-data-grants.zip file to local directory
 
-1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to livelabs directory.
+1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd livelabs</copy>
+    <copy>cd $DBSEC_LABS/deep-data-security</copy>
     ````
 
     **Note**: If you are using a remote desktop session, double-click on the *Terminal* icon on the desktop to launch a session

@@ -30,6 +30,33 @@ DATABASE = WebHrDatabase()
 
 class WebHrServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
+    request_queue_size = 50
+    handshake_timeout = 10
+
+    def __init__(self, server_address, RequestHandlerClass, tls_context=None):
+        self.tls_context = tls_context
+        super().__init__(server_address, RequestHandlerClass)
+
+    def get_request(self):
+        sock, addr = self.socket.accept()
+        sock.settimeout(self.handshake_timeout)
+        if self.tls_context:
+            sock = self.tls_context.wrap_socket(
+                sock,
+                server_side=True,
+                do_handshake_on_connect=False,
+            )
+        return sock, addr
+
+    def process_request_thread(self, request, client_address):
+        try:
+            if self.tls_context:
+                request.do_handshake()
+            request.settimeout(60)
+        except Exception:
+            self.shutdown_request(request)
+            return
+        super().process_request_thread(request, client_address)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -306,8 +333,14 @@ def main():
     port = int(os.getenv("WEB_HR_PORT", "8012"))
     tls_cert = os.getenv("WEB_HR_TLS_CERT", "")
     tls_key = os.getenv("WEB_HR_TLS_KEY", "")
+    tls_context = None
+    scheme = "http"
+    if tls_cert and tls_key:
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
+        scheme = "https"
     try:
-        server = WebHrServer((host, port), Handler)
+        server = WebHrServer((host, port), Handler, tls_context=tls_context)
     except OSError as exc:
         if exc.errno == 98:
             print(
@@ -317,12 +350,7 @@ def main():
             )
             raise SystemExit(1)
         raise
-    scheme = "http"
-    if tls_cert and tls_key:
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
-        server.socket = context.wrap_socket(server.socket, server_side=True)
-        scheme = "https"
+    if tls_context:
         print("TLS enabled with certificate: {0}".format(tls_cert))
     print("Web HR App running at {0}://{1}:{2}".format(scheme, host, port))
     if os.getenv("WEB_HR_REDIRECT_URI"):

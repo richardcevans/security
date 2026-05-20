@@ -4,9 +4,14 @@
 set -euo pipefail
 
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
 
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export DB_SID="${DB_SID:-FREE}"

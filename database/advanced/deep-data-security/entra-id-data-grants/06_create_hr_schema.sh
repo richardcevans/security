@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 03_create_hr_schema.sh
+# Script Name : 06_create_hr_schema.sh
 #
 # Parameter   : None
 #
@@ -21,9 +21,13 @@ CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 3: Create the HR Schema and Employee Data                        ${NC}"
+echo -e "${GREEN}      Task 6: Create the HR Schema and Employee Data                        ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}HR is created with NO AUTHENTICATION — it is a schema-only account.${NC}"
@@ -151,6 +155,6 @@ echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 3 Completed: HR Schema Created!                                  ${NC}"
 echo -e "${GREEN}      7 employees with full Entra ID email addresses as user_name.           ${NC}"
-echo -e "${GREEN}      Next: run 04_create_data_roles_and_grants.sh                           ${NC}"
+echo -e "${GREEN}      Next: run 07_create_data_roles_and_grants.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

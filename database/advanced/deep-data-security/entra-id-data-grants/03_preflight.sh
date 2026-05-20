@@ -9,9 +9,14 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 export DB_SID="${DB_SID:-FREE}"
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export ORACLE_SID="$DB_SID"
+export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 status=0
 
@@ -139,7 +144,7 @@ echo
 echo -e "${GREEN}Listener${NC}"
 if lsnrctl status >/tmp/entra_lab_preflight_listener.out 2>&1; then
   ok "listener status command completed"
-  grep -E "PORT=1521|PORT=2484|Service \"${PDB_NAME,,}\"|Service \"${PDB_NAME}\"" /tmp/entra_lab_preflight_listener.out | sed 's/^/    /' || warn "expected ports/services not currently visible"
+  grep -E "PORT=[0-9]+|Service \"${PDB_NAME,,}\"|Service \"${PDB_NAME}\"" /tmp/entra_lab_preflight_listener.out | sed 's/^/    /' || warn "expected ports/services not currently visible"
 else
   warn "listener status failed"
   sed 's/^/    /' /tmp/entra_lab_preflight_listener.out || true

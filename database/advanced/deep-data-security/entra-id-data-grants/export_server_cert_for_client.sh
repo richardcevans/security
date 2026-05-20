@@ -4,7 +4,7 @@
 # Description : Export the database TCPS server certificate for a client
 #               SQLcl / VS Code / Oracle client trust store.
 # Author      : Oracle Database Security Product Management
-# Notes       : Run on the DBSec-Lab VM after 02_configure_network.sh.
+# Notes       : Run on the DBSec-Lab VM after 05_configure_network.sh.
 # ---------------------------------------------------------------------------
 
 set -euo pipefail
@@ -146,7 +146,7 @@ echo
 
 if [ ! -d "$WALLET_DIR" ]; then
   echo -e "${RED}ERROR: Wallet directory does not exist: ${WALLET_DIR}${NC}"
-  echo -e "${YELLOW}Run ./02_configure_network.sh first, then rerun this script.${NC}"
+  echo -e "${YELLOW}Run ./05_configure_network.sh first, then rerun this script.${NC}"
   exit 1
 fi
 

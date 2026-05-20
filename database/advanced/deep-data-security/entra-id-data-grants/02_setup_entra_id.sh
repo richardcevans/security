@@ -14,15 +14,23 @@ NC='\033[0m'
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.entra-id-data-grants.env"
 
+if [ "${ENTRA_USE_CURRENT_DB_ENV:-0}" != "1" ] && [ -n "${DBSEC_ADMIN:-}" ] && [ -f "${DBSEC_ADMIN}/setEnv-db23free.sh" ]; then
+  # Keep the lab on the expected 26ai Free PDB even if the shell previously used cdb1/pdb1.
+  # Set ENTRA_USE_CURRENT_DB_ENV=1 before running this script to intentionally use a custom PDB.
+  # shellcheck source=/dev/null
+  source "${DBSEC_ADMIN}/setEnv-db23free.sh" FREE FREEPDB1
+fi
+
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai - ${PDB_NAME}}"
 export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive - ${PDB_NAME}}"
 export ENTRA_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 export CREATE_APP_ROLE_ASSIGNMENTS="${CREATE_APP_ROLE_ASSIGNMENTS:-1}"
+export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 0: Create Microsoft Entra ID Objects for the Lab                 ${NC}"
+echo -e "${GREEN}      Task 2: Create Microsoft Entra ID Objects for the Lab                 ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
@@ -118,7 +126,7 @@ if [ -z "$domain_name" ]; then
   echo -e "${RED}ERROR: Could not discover default Entra domain.${NC}"
   echo -e "${YELLOW}Set it explicitly, for example:${NC}"
   echo -e "${YELLOW}  export DOMAIN_NAME=example.onmicrosoft.com${NC}"
-  echo -e "${YELLOW}Then rerun ./00_setup_entra_id.sh${NC}"
+  echo -e "${YELLOW}Then rerun ./02_setup_entra_id.sh${NC}"
   exit 1
 fi
 export DOMAIN_NAME="$domain_name"
@@ -320,6 +328,7 @@ else
 fi
 
 cat > "$ENV_FILE" <<EOF
+export ENTRA_ID_DATA_GRANTS_ENV='1'
 export TENANT_ID='${TENANT_ID}'
 export DOMAIN_NAME='${DOMAIN_NAME}'
 export APP_ID='${db_app_id}'

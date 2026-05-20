@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 01_configure_db_identity_provider.sh
+# Script Name : 04_configure_db_identity_provider.sh
 #
 # Parameter   : None (uses environment variables)
 #
@@ -28,9 +28,13 @@ PURPLE='\033[0;35m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 1: Configure Database Identity Provider for Entra ID             ${NC}"
+echo -e "${GREEN}      Task 4: Configure Database Identity Provider for Entra ID             ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
@@ -123,6 +127,6 @@ EOF
 echo
 echo -e "${GREEN}============================================================================${NC}"
 echo -e "${GREEN}      Task 1 Completed: Identity Provider Configured!                       ${NC}"
-echo -e "${GREEN}      Next: run 02_configure_network.sh                                     ${NC}"
+echo -e "${GREEN}      Next: run 05_configure_network.sh                                     ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

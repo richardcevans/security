@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 04_create_data_roles_and_grants.sh
+# Script Name : 07_create_data_roles_and_grants.sh
 #
 # Parameter   : None
 #
@@ -21,9 +21,13 @@ CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 4: Create Data Roles, Data Grants, and End User Context          ${NC}"
+echo -e "${GREEN}      Task 7: Create Data Roles, Data Grants, and End User Context          ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Data roles use MAPPED TO 'azure_role=...' for automatic activation${NC}"
@@ -273,6 +277,6 @@ echo -e "${GREEN}  Data roles use MAPPED TO 'azure_role=...' — no end users ne
 echo -e "${GREEN}  When Marvin logs in via Entra ID with the MANAGERS app role,              ${NC}"
 echo -e "${GREEN}  Oracle automatically activates hrapp_managers for his session.             ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
-echo -e "${GREEN}      Next: run 05_verify_as_marvin.sh                                      ${NC}"
+echo -e "${GREEN}      Next: run 09_verify_as_marvin.sh                                      ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

@@ -102,50 +102,68 @@ Important files:
 
 | File | Purpose |
 | --- | --- |
-| `00_preflight.sh` | Checks local database, listener tools, and browser readiness |
-| `00_setup_entra_id.sh` | Creates or reuses Entra apps, roles, permissions, and assignments |
-| `verify_entra_id_setup.sh` | Verifies Entra app objects and role setup |
-| `01_configure_db_identity_provider.sh` | Configures database Entra ID parameters |
-| `02_configure_network.sh` | Configures TCPS listener, wallet, `sqlnet.ora`, and `tnsnames.ora` |
-| `03_create_hr_schema.sh` | Creates the HR schema and employee rows |
-| `04_create_data_roles_and_grants.sh` | Creates data roles, data grants, and end user context |
-| `verify_db_setup.sh` | Verifies database-side setup |
-| `05_verify_as_marvin.sh` | Verifies Marvin manager access |
-| `06_verify_as_emma.sh` | Verifies Emma employee access |
-| `07_verify_security_boundary.sh` | Optional boundary checks |
-| `08_cleanup.sh` | Cleans up database objects and network changes |
-| `09_cleanup_entra_id.sh` | Deletes lab-created Entra app registrations and enterprise apps |
+| `02_setup_entra_id.sh` | Creates or reuses Entra apps, roles, permissions, and assignments |
+| `02_verify_entra_id_setup.sh` | Verifies Entra app objects and role setup |
+| `03_preflight.sh` | Checks local database, listener tools, and browser readiness |
+| `04_configure_db_identity_provider.sh` | Configures database Entra ID parameters |
+| `05_configure_network.sh` | Configures TCPS listener, wallet, `sqlnet.ora`, and `tnsnames.ora` |
+| `06_create_hr_schema.sh` | Creates the HR schema and employee rows |
+| `07_create_data_roles_and_grants.sh` | Creates data roles, data grants, and end user context |
+| `08_verify_db_setup.sh` | Verifies database-side setup |
+| `09_verify_as_marvin.sh` | Verifies Marvin manager access |
+| `10_verify_as_emma.sh` | Verifies Emma employee access |
+| `11_cleanup.sh` | Cleans up database objects and network changes |
+| `11_cleanup_entra_id.sh` | Deletes lab-created Entra app registrations and enterprise apps |
 
 ## Task 1: Install Azure CLI And Sign In
 
-Azure CLI is required for `00_setup_entra_id.sh`.
+Azure CLI is required for `02_setup_entra_id.sh`.
 
-For Oracle Linux 9:
-
-```bash
-<copy>
-sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
-sudo dnf install -y azure-cli
-</copy>
-```
-
-For Oracle Linux 8:
+Install Azure CLI without updating any other configured repositories:
 
 ```bash
 <copy>
-sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-sudo dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm
-sudo dnf install -y azure-cli
-</copy>
-```
-
-Verify Azure CLI and sign in:
-
-```bash
-<copy>
+OS_MAJOR=$(rpm -E %{rhel})
+case "$OS_MAJOR" in
+  8)
+    MS_REPO_RHEL_VERSION="8"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+    ;;
+  9)
+    MS_REPO_RHEL_VERSION="9.0"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+    ;;
+  10)
+    MS_REPO_RHEL_VERSION="10"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
+    ;;
+  *)
+    echo "Unsupported Oracle Linux/RHEL-compatible major version: $OS_MAJOR"
+    exit 1
+    ;;
+esac
+sudo rpm --import "$MS_KEY_URL"
+curl -fL -o /tmp/packages-microsoft-prod.rpm "https://packages.microsoft.com/config/rhel/${MS_REPO_RHEL_VERSION}/packages-microsoft-prod.rpm"
+sudo rpm -Uvh --replacepkgs /tmp/packages-microsoft-prod.rpm
+sudo dnf clean metadata
+sudo dnf makecache --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
+sudo dnf install -y azure-cli --nobest --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
 az version
+</copy>
+```
+
+Sign in:
+
+```bash
+<copy>
 az login
+</copy>
+```
+
+Verify the selected tenant:
+
+```bash
+<copy>
 az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output table
 </copy>
 ```
@@ -155,9 +173,33 @@ az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output 
 Create or reuse the Entra DB resource application, browser client application,
 enterprise apps, app roles, scopes, and role assignments.
 
+Load the Oracle AI Database 26ai Free environment so the generated Entra app
+names use `FREEPDB1`.
+
 ```bash
 <copy>
-./00_setup_entra_id.sh
+source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+</copy>
+```
+
+```bash
+<copy>
+./02_setup_entra_id.sh
+</copy>
+```
+
+Review the generated environment file:
+
+```bash
+<copy>
+cat ./.entra-id-data-grants.env
+</copy>
+```
+
+Load the generated environment file:
+
+```bash
+<copy>
 source ./.entra-id-data-grants.env
 </copy>
 ```
@@ -169,7 +211,7 @@ Verify the Entra setup:
 
 ```bash
 <copy>
-./verify_entra_id_setup.sh
+./02_verify_entra_id_setup.sh
 </copy>
 ```
 
@@ -186,12 +228,11 @@ manual portal fallback in
 
 ## Task 3: Run Database Preflight
 
-Load the database environment and run the preflight checks.
+Run the preflight checks.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./00_preflight.sh
+./03_preflight.sh
 </copy>
 ```
 
@@ -204,8 +245,7 @@ Configure the PDB to validate Entra ID tokens.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./01_configure_db_identity_provider.sh
+./04_configure_db_identity_provider.sh
 </copy>
 ```
 
@@ -219,8 +259,7 @@ by browser-based Entra ID authentication.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./02_configure_network.sh
+./05_configure_network.sh
 </copy>
 ```
 
@@ -238,8 +277,7 @@ Create the schema-only HR owner and sample employee data.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./03_create_hr_schema.sh
+./06_create_hr_schema.sh
 </copy>
 ```
 
@@ -253,8 +291,7 @@ Create the Deep Data Security data roles, data grants, and end user context.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./04_create_data_roles_and_grants.sh
+./07_create_data_roles_and_grants.sh
 </copy>
 ```
 
@@ -273,8 +310,7 @@ grants are in place.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./verify_db_setup.sh
+./08_verify_db_setup.sh
 </copy>
 ```
 
@@ -287,14 +323,13 @@ HRAPP_EMPLOYEES           azure_role=EMPLOYEES
 HRAPP_MANAGERS            azure_role=MANAGERS
 ```
 
-## Task 9: Verify Marvin And Emma
+## Task 9: Verify Marvin
 
-Run Marvin first. When the browser opens, sign in as Marvin.
+When the browser opens, sign in as Marvin.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./05_verify_as_marvin.sh
+./09_verify_as_marvin.sh
 </copy>
 ```
 
@@ -306,13 +341,14 @@ Expected Marvin result:
 - Marvin can see his own SSN.
 - SSN is hidden for direct reports.
 
-Run Emma next. If the browser reuses Marvin's session, close browser windows,
-sign out, or use a private/incognito browser session.
+## Task 10: Verify Emma
+
+If the browser reuses Marvin's session, close browser windows, sign out, or use
+a private/incognito browser session. When the browser opens, sign in as Emma.
 
 ```bash
 <copy>
-source ./.entra-id-data-grants.env
-./06_verify_as_emma.sh
+./10_verify_as_emma.sh
 </copy>
 ```
 
@@ -324,29 +360,13 @@ Expected Emma result:
 - Emma can view her own SSN and salary.
 - Emma can update only her phone number.
 
-## Task 10: Verify The Security Boundary And Clean Up
-
-Optionally run boundary checks. These tests require separate browser logins and
-careful browser-session isolation.
-
-```bash
-<copy>
-source ./.entra-id-data-grants.env
-./07_verify_security_boundary.sh
-</copy>
-```
-
-The boundary checks confirm:
-
-- Marvin cannot see Bob's SSN because Bob is outside Marvin's scope.
-- Emma cannot update her salary.
-- Emma cannot update Marvin's phone number.
+## Task 11: Clean Up
 
 Clean up database objects and restore local network files:
 
 ```bash
 <copy>
-./08_cleanup.sh
+./11_cleanup.sh
 </copy>
 ```
 
@@ -354,7 +374,7 @@ If the Entra applications were created only for this lab, remove them too:
 
 ```bash
 <copy>
-./09_cleanup_entra_id.sh
+./11_cleanup_entra_id.sh
 </copy>
 ```
 
@@ -367,8 +387,8 @@ Start with these checks:
 ```bash
 <copy>
 source ./.entra-id-data-grants.env
-./verify_entra_id_setup.sh
-./verify_db_setup.sh
+./02_verify_entra_id_setup.sh
+./08_verify_db_setup.sh
 tnsping hrdb
 </copy>
 ```
@@ -380,7 +400,7 @@ Common issues:
 | Browser logs in as the wrong user | Close browser windows, sign out, or use private/incognito mode |
 | Marvin sees only his own row | Confirm Marvin has `MANAGERS`; rerun browser login |
 | Emma has manager access | Remove `MANAGERS` from Emma and use a fresh browser session |
-| `sqlplus /@hrdb` cannot resolve | Rerun `./02_configure_network.sh` and check `tnsping hrdb` |
+| `sqlplus /@hrdb` cannot resolve | Rerun `./05_configure_network.sh` and check `tnsping hrdb` |
 | No data roles activate | Verify Entra app role assignments and database role mappings |
 
 ## Reference Material

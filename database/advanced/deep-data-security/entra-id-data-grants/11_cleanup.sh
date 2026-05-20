@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 08_cleanup.sh
+# Script Name : 11_cleanup.sh
 #
 # Parameter   : None
 #
@@ -22,9 +22,13 @@ CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Script 8 (Optional): Clean Up Database Lab Objects                    ${NC}"
+echo -e "${GREEN}      Task 11 (Optional): Clean Up Database Lab Objects                    ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 

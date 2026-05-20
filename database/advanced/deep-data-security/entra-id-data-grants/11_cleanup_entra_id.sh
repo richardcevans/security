@@ -9,6 +9,10 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 FORCE=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -17,7 +21,7 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -h|--help)
-      echo "Usage: ./09_cleanup_entra_id.sh [-f|--DELETE]"
+      echo "Usage: ./11_cleanup_entra_id.sh [-f|--DELETE]"
       exit 0
       ;;
     *)
@@ -30,6 +34,7 @@ done
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai - ${PDB_NAME}}"
 export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive - ${PDB_NAME}}"
+export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"

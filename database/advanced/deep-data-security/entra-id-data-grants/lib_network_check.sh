@@ -16,7 +16,7 @@ check_hrdb_alias() {
   echo -e "${YELLOW}Run the network configuration step before connecting:${NC}"
   echo
   echo "  source ./.entra-id-data-grants.env"
-  echo "  ./02_configure_network.sh"
+  echo "  ./05_configure_network.sh"
   echo
   echo -e "${YELLOW}If TNS_ADMIN is set, SQLPlus may be reading tnsnames.ora from another directory.${NC}"
   echo "  TNS_ADMIN=${TNS_ADMIN:-not set}"

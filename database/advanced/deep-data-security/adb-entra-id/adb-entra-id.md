@@ -6,7 +6,18 @@ Serverless using Microsoft Entra ID authentication.
 The database is named `deepsec7` by default so it can run separately from the
 ADB OCI IAM lab database.
 
+### Objectives
+
+In this lab, you will:
+
+- Create an Autonomous Database Serverless instance for the demo.
+- Configure Microsoft Entra ID authentication for the database.
+- Create Deep Data Security data roles and data grants.
+- Verify end-user access through Entra-authenticated database sessions.
+
 > **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
+Estimated Time: 60 minutes
 
 ## What This Lab Does
 
@@ -34,9 +45,32 @@ OCI Cloud Shell may not include Azure CLI. On Oracle Linux, use Microsoft's RPM
 repository instructions:
 
 ```bash
-sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
-sudo dnf install -y azure-cli
+OS_MAJOR=$(rpm -E %{rhel})
+case "$OS_MAJOR" in
+  8)
+    MS_REPO_RHEL_VERSION="8"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+    ;;
+  9)
+    MS_REPO_RHEL_VERSION="9.0"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+    ;;
+  10)
+    MS_REPO_RHEL_VERSION="10"
+    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
+    ;;
+  *)
+    echo "Unsupported Oracle Linux/RHEL-compatible major version: $OS_MAJOR"
+    exit 1
+    ;;
+esac
+sudo rpm --import "$MS_KEY_URL"
+curl -fL -o /tmp/packages-microsoft-prod.rpm "https://packages.microsoft.com/config/rhel/${MS_REPO_RHEL_VERSION}/packages-microsoft-prod.rpm"
+sudo rpm -Uvh --replacepkgs /tmp/packages-microsoft-prod.rpm
+sudo dnf clean metadata
+sudo dnf makecache --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
+sudo dnf install -y azure-cli --nobest --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
+az version
 ```
 
 Then sign in:
@@ -91,10 +125,9 @@ Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-mkdir -vp ~/livelabs/deep-data-security
-cd ~/livelabs/deep-data-security
-wget -O adb-entra-id.zip \
-  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip"
+mkdir -vp $DBSEC_LABS/deep-data-security
+cd $DBSEC_LABS/deep-data-security
+wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
 </copy>
 ```
 
@@ -287,3 +320,7 @@ To skip the prompt:
 - [DBMS_CLOUD_ADMIN package](https://docs.oracle.com/en/cloud/paas/autonomous-database/dedicated/adbaa/dbmscloudadmin-package.html)
 - [Oracle Net `TOKEN_AUTH` parameter](https://docs.oracle.com/en/database/oracle/oracle-database/26/netrf/local-naming-parameters-in-tns-ora-file.html)
 - [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/oracle-deep-data-security-guide.pdf)
+
+## Acknowledgements
+
+- **Author** - Richard Evans, Oracle

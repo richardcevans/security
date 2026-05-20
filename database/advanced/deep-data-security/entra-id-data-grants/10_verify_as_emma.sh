@@ -1,12 +1,12 @@
 #!/bin/bash
 # =========================================================================================
-# Script Name : 05_verify_as_marvin.sh
+# Script Name : 10_verify_as_emma.sh
 #
 # Parameter   : None
 #
-# Notes       : Task 5 - Connect as Marvin via Entra ID and verify data grants.
+# Notes       : Task 6 - Connect as Emma via Entra ID and verify data grants.
 #               Uses sqlplus /@hrdb which triggers AZURE_INTERACTIVE browser login.
-#               Marvin authenticates as his Entra ID identity and sees 4 rows.
+#               Emma has only the EMPLOYEES app role — sees 1 row (self only).
 #
 # Modified by         Date         Change
 # Oracle DB Security  04/02/2026   Creation
@@ -24,26 +24,29 @@ CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
 NC='\033[0m'
 
+source "${SCRIPT_DIR}/lib_env_check.sh"
+require_entra_lab_env
+
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 5: Connect and Verify as Marvin (via Entra ID)                   ${NC}"
+echo -e "${GREEN}      Task 10: Connect and Verify as Emma (via Entra ID)                     ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
-echo -e "${PURPLE}Marvin has EMPLOYEES and MANAGERS app roles in Entra ID.${NC}"
-echo -e "${PURPLE}Oracle maps these to HRAPP_EMPLOYEES and HRAPP_MANAGERS data roles.${NC}"
-echo -e "${PURPLE}Same SQL: SELECT * FROM hr.employees — Marvin sees 4 rows.${NC}"
+echo -e "${PURPLE}Emma has only the EMPLOYEES app role in Entra ID.${NC}"
+echo -e "${PURPLE}Oracle maps this to HRAPP_EMPLOYEES only — no manager role.${NC}"
+echo -e "${PURPLE}Same SQL: SELECT * FROM hr.employees — Emma sees 1 row.${NC}"
 echo
-echo -e "${YELLOW}Connecting as Marvin via Entra ID...${NC}"
+echo -e "${YELLOW}Connecting as Emma via Entra ID...${NC}"
 echo -e "${CYAN}Executing: sqlplus /@hrdb${NC}"
 echo -e "${PURPLE}NOTE: This should open your browser automatically for Entra ID login${NC}"
 echo -e "${PURPLE}      when SQLPlus is running in a local desktop or NoVNC session.${NC}"
-echo -e "${PURPLE}      Log in as Marvin's Entra ID account.${NC}"
+echo -e "${PURPLE}      Log in as Emma's Entra ID account.${NC}"
 echo -e "${PURPLE}      If your browser reuses the wrong Entra session, close browser windows${NC}"
 echo -e "${PURPLE}      or use a private/incognito window before retrying.${NC}"
 echo -e "${PURPLE}      Manual/headless token workflows are a last resort for non-GUI clients.${NC}"
 echo
 
-export MARVIN_EXPECTED_IDENTITY="${MARVIN_EXPECTED_IDENTITY:-marvin}"
+export EMMA_EXPECTED_IDENTITY="${EMMA_EXPECTED_IDENTITY:-emma}"
 
 check_hrdb_alias
 
@@ -61,10 +64,7 @@ whenever sqlerror exit sql.sqlcode
 
 prompt
 prompt ========================================================================
-prompt Marvin's Identity (via Entra ID)
-prompt  - CURRENT_USER = XS\$NULL (end user, not a schema user)
-prompt  - AUTHENTICATED_IDENTITY = marvin's Entra ID identity
-prompt  - AUTH_METHOD = TOKEN (not PASSWORD)
+prompt Emma's Identity (via Entra ID)
 prompt ========================================================================
 
 col current_user           format a15
@@ -78,20 +78,19 @@ SELECT
 FROM DUAL;
 
 DECLARE
-  expected VARCHAR2(256) := lower('${MARVIN_EXPECTED_IDENTITY}');
+  expected VARCHAR2(256) := lower('${EMMA_EXPECTED_IDENTITY}');
   actual   VARCHAR2(512) := lower(SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY'));
 BEGIN
   IF expected IS NOT NULL AND INSTR(actual, expected) = 0 THEN
-    RAISE_APPLICATION_ERROR(-20001, 'Expected Marvin identity containing "' || expected || '", got "' || actual || '". Close cached browser sessions or sign in again.');
+    RAISE_APPLICATION_ERROR(-20001, 'Expected Emma identity containing "' || expected || '", got "' || actual || '". Close cached browser sessions or sign in again.');
   END IF;
 END;
 /
 
 prompt
 prompt ========================================================================
-prompt Marvin's Active Data Roles
-prompt  - HRAPP_EMPLOYEES and HRAPP_MANAGERS should be active
-prompt  - Activated automatically from the Entra ID token app roles
+prompt Emma's Active Data Roles
+prompt  - Only HRAPP_EMPLOYEES — no manager role.
 prompt ========================================================================
 
 col role_name format a30
@@ -99,10 +98,9 @@ SELECT ROLE_NAME FROM V\$END_USER_DATA_ROLE;
 
 prompt
 prompt ========================================================================
-prompt Marvin's Query: SELECT * FROM hr.employees
-prompt  - Same SQL as Emma. Same SQL as a traditional app.
-prompt  - Marvin sees 4 rows: himself + 3 direct reports.
-prompt  - SSN is hidden for direct reports (manager grant excludes it).
+prompt Emma's Query: SELECT * FROM hr.employees
+prompt  - SAME SQL as Marvin. SAME SQL as the traditional app.
+prompt  - Emma sees 1 row (self only).
 prompt ========================================================================
 
 col first_name  format a12
@@ -116,8 +114,8 @@ SELECT employee_id, first_name, last_name, ssn, salary, department_id, manager_i
 
 prompt
 prompt ========================================================================
-prompt Marvin's Per-Column Authorization
-prompt  - Shows what Marvin can SELECT and UPDATE for each visible row.
+prompt Emma's Per-Column Authorization
+prompt  - Emma can view her SSN and salary but only update phone_number.
 prompt ========================================================================
 
 col first_name    format a10
@@ -142,8 +140,9 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Marvin sees 4 rows — not 7. SSN hidden for direct reports.            ${NC}"
-echo -e "${GREEN}      Authenticated via Entra ID. Data grants enforced by the database.     ${NC}"
-echo -e "${GREEN}      Next: run 06_verify_as_emma.sh                                        ${NC}"
+echo -e "${GREEN}      Emma sees 1 row — not 7.                                              ${NC}"
+echo -e "${GREEN}      Same query as Marvin. Same app code. Different data.                  ${NC}"
+echo -e "${GREEN}      Authenticated via Entra ID. Database enforces the policy.             ${NC}"
+echo -e "${GREEN}      Next: run 11_cleanup.sh when you are ready to clean up                 ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

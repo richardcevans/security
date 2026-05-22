@@ -337,6 +337,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     host = os.getenv("WEB_HR_HOST", "127.0.0.1")
     port = int(os.getenv("WEB_HR_HTTPS_PORT", os.getenv("WEB_HR_PORT", "8012")))
+    public_host = os.getenv("WEB_HR_PUBLIC_HOST", "")
     tls_cert = os.getenv("WEB_HR_TLS_CERT", "")
     tls_key = os.getenv("WEB_HR_TLS_KEY", "")
     tls_context = None
@@ -379,7 +380,13 @@ def main():
         thread = threading.Thread(target=redirect_server.serve_forever, daemon=True)
         thread.start()
         print("HTTP redirects enabled at http://{0}:{1} -> https://{0}:{2}".format(host, redirect_server.server_port, port))
-    print("End User Web HR App running at {0}://{1}:{2}".format(scheme, host, port))
+    if public_host in ("0.0.0.0", "::"):
+        print("WARNING: WEB_HR_PUBLIC_HOST={0} is a bind address, not a browser host.".format(public_host))
+        print("Set WEB_HR_PUBLIC_HOST to the public IP or DNS name clients should use.")
+        public_host = ""
+    browser_host = public_host or ("localhost" if host in ("0.0.0.0", "::") else host)
+    print("End User Web HR App listening on {0}:{1}".format(host, port))
+    print("Open {0}://{1}:{2}".format(scheme, browser_host, port))
     print("Database mode: {0}".format(os.getenv("WEB_HR_DB_MODE", "mock")))
     server.serve_forever()
 

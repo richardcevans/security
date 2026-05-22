@@ -85,10 +85,10 @@ function showAuthenticationContextDemo(user) {
     signed_in_user: {
       name: user.name,
       username: user.username,
-      expected_data_roles: user.roles || []
+      data_roles: user.roles || []
     },
     python: {
-      connection: "oracledb.connect(user=user['username'], password=..., dsn=WEB_HR_TNS_ALIAS)",
+      connection: "oracledb.connect(user=user['username'], password=..., dsn=WEB_HR_TNS_ALIAS or PDB_NAME or FREEPDB1)",
       request_execution: "Every query runs in that end user's database session."
     },
     deepsec_attributes_visible_in_database: [

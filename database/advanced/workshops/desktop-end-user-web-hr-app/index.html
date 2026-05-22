@@ -40,6 +40,34 @@
         </div>
     </div>
 
+    <script>
+        (function () {
+            function resolveBaselineLinks() {
+                var match = window.location.pathname.match(/\/(desktop|freetier|livelabs)-end-user-web-hr-app\/index\.html$/);
+                var variant = match ? match[1] : "desktop";
+                var href = "../../../baseline/workshops/" + variant + "-end-user-data-grants/index.html";
+                var links = document.querySelectorAll('a[href="#baseline-end-user-data-grants"]');
+
+                for (var i = 0; i < links.length; i += 1) {
+                    links[i].href = href;
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                var content = document.getElementById("module-content");
+
+                resolveBaselineLinks();
+
+                if (content && window.MutationObserver) {
+                    new MutationObserver(resolveBaselineLinks).observe(content, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+            });
+        }());
+    </script>
+
       <footer class="hol-Footer">
         <a class="hol-Footer-topLink" href="#top">Return to Top</a>
         <div id="footer-banner"><div class="footer-row">

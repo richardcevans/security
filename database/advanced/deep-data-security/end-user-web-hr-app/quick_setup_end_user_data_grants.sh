@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-TNS_ALIAS="${WEB_HR_TNS_ALIAS:-freepdb1}"
+TNS_ALIAS="${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}}"
 DBA_CONNECT="${WEB_HR_DBA_CONNECT:-sys/Oracle123@${TNS_ALIAS} as sysdba}"
 FORCE_RESET=0
 
@@ -15,7 +15,7 @@ Usage:
 
 Options:
   --tns-alias <alias>
-      Target database service alias. Default: WEB_HR_TNS_ALIAS or freepdb1.
+      Target database service alias. Default: WEB_HR_TNS_ALIAS, PDB_NAME, or FREEPDB1.
 
   --dba-connect <connect-string>
       SQL*Plus DBA connection string. Default: sys/Oracle123@<alias> as sysdba.

@@ -1,8 +1,8 @@
 # End User Web HR App
 
 This is a local web companion for the password-based `end-user-data-grants` lab.
-It does not use Microsoft Entra ID, OAuth tokens, OBO exchange, application
-identity, or an application-requested data role.
+It does not use Microsoft Entra ID, OAuth tokens, OBO exchange, or application
+identity.
 
 The browser selects Emma or Marvin. The Python app then connects directly to
 Oracle Database as that end user:
@@ -31,7 +31,7 @@ The required baseline lab creates:
 - `HR.EMPLOYEES` and `HR.MANAGERS`
 - `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`
 - the employee and manager data grants from the lab
-- a resolvable TNS alias, defaulting to `freepdb1`
+- a resolvable TNS alias, defaulting to `PDB_NAME` or `FREEPDB1`
 
 If you want to use `freepdb2`, complete `end-user-data-grants.md` in `freepdb2`
 and set `WEB_HR_TNS_ALIAS=freepdb2` before starting this app.
@@ -104,13 +104,8 @@ and set `WEB_HR_TNS_ALIAS=freepdb2` before starting this app.
     - `HR.HRAPP_EMPLOYEE_ACCESS`
     - `HR.HRAPP_MANAGER_ACCESS`
 
-    If you have not completed them yet, stop here and run the baseline lab:
-
-    ```text
-    <copy>
-    ../../baseline/deep-data-security/end-user-data-grants/end-user-data-grants.md
-    </copy>
-    ```
+    If you have not completed them yet, stop here and run the
+    [baseline end-user data grants lab](#baseline-end-user-data-grants).
 
 3. Verify Emma can connect to the target PDB.
 
@@ -165,12 +160,12 @@ this web app, run the shortcut script instead of manually repeating the setup.
 The shortcut also creates `deepsec_admin/Oracle123`, grants audit visibility,
 and enables the Unified Audit policy used by the app's audit panel.
 
-1. Run the shortcut against `freepdb1`.
+1. Run the shortcut against the default PDB.
 
     ```bash
     <copy>
     cd $DBSEC_LABS/deep-data-security/end-user-web-hr-app
-    ./quick_setup_end_user_data_grants.sh --tns-alias freepdb1
+    PDB_NAME=FREEPDB1 ./quick_setup_end_user_data_grants.sh
     </copy>
     ```
 
@@ -201,7 +196,7 @@ and enables the Unified Audit policy used by the app's audit panel.
 <copy>
 cd $DBSEC_LABS/deep-data-security/end-user-web-hr-app
 ./setup_python_oracledb.sh
-WEB_HR_DB_MODE=oracledb ./start.sh --verbose
+PDB_NAME=FREEPDB1 WEB_HR_DB_MODE=oracledb ./start.sh --verbose
 </copy>
 ```
 
@@ -244,9 +239,32 @@ export WEB_HR_DB_MODE=oracledb
 <copy>
 export WEB_HR_TNS_ALIAS=freepdb1
 export WEB_HR_CONFIG_DIR=/path/to/network/admin
+export WEB_HR_HOST=127.0.0.1
 export WEB_HR_PORT=8012
 export WEB_HR_DB_MODE=oracledb
 </copy>
+```
+
+`WEB_HR_HOST` controls the network address that the app listens on. The default
+is `127.0.0.1`, which accepts browser traffic only from the local VM.
+
+To open the app on the VM network interface, bind to all interfaces and set
+`WEB_HR_PUBLIC_HOST` to the public IP address or DNS name that learners should
+open in the browser:
+
+```bash
+<copy>
+export WEB_HR_HOST=0.0.0.0
+export WEB_HR_PUBLIC_HOST=<public-ip-or-dns-name>
+export WEB_HR_DB_MODE=oracledb
+./start.sh --verbose
+</copy>
+```
+
+Open:
+
+```text
+http://<public-ip-or-dns-name>:8012/
 ```
 
 To redirect HTTP traffic to HTTPS, run the HTTPS listener on one port and the
@@ -254,6 +272,7 @@ HTTP redirect listener on another port. For example:
 
 ```bash
 <copy>
+export WEB_HR_HOST=0.0.0.0
 export WEB_HR_PORT=8012
 export WEB_HR_HTTPS_PORT=8443
 export WEB_HR_PUBLIC_HOST=<public-ip-or-dns-name>

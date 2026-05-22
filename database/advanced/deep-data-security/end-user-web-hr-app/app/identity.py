@@ -25,8 +25,13 @@ def app_config():
     return {
         "db_mode": os.getenv("WEB_HR_DB_MODE", "mock"),
         "auth_mode": "local-end-user",
-        "tns_alias": os.getenv("WEB_HR_TNS_ALIAS", "freepdb1"),
+        "tns_alias": default_tns_alias(),
+        "pdb_name": os.getenv("PDB_NAME", "FREEPDB1"),
     }
+
+
+def default_tns_alias():
+    return os.getenv("WEB_HR_TNS_ALIAS") or os.getenv("PDB_NAME") or "FREEPDB1"
 
 
 def expected_password(user_name):
@@ -46,9 +51,12 @@ def local_session(user_name, password):
     if not hmac.compare_digest(str(password or ""), str(expected or "")):
         raise RuntimeError("Invalid username or password.")
 
+    session_user = dict(user)
+    session_user["roles"] = list(user.get("roles", []))
+
     session_id = uuid.uuid4().hex
     SESSIONS[session_id] = {
-        "user": dict(user),
+        "user": session_user,
         "created": time.time(),
     }
     return session_id

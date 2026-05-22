@@ -80,7 +80,7 @@ fi
 
 tns_has_alias() {
   local dir="$1"
-  local alias_name="${WEB_HR_TNS_ALIAS:-freepdb1}"
+  local alias_name="${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}}"
   [ -f "${dir}/tnsnames.ora" ] || return 1
   grep -Eiq "^[[:space:]]*${alias_name}[[:space:]]*=" "${dir}/tnsnames.ora"
 }
@@ -105,16 +105,18 @@ find_tns_admin_with_alias() {
 }
 
 detected_config_dir="$(find_tns_admin_with_alias || true)"
+WEB_HR_EFFECTIVE_TNS_ALIAS="${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}}"
+export WEB_HR_EFFECTIVE_TNS_ALIAS
 if [ -n "$detected_config_dir" ]; then
   if [ -z "${WEB_HR_CONFIG_DIR:-}" ]; then
     export WEB_HR_CONFIG_DIR="$detected_config_dir"
-    echo "WARNING: WEB_HR_CONFIG_DIR was not set; using ${WEB_HR_CONFIG_DIR} for ${WEB_HR_TNS_ALIAS:-freepdb1}."
+    echo "WARNING: WEB_HR_CONFIG_DIR was not set; using ${WEB_HR_CONFIG_DIR} for ${WEB_HR_EFFECTIVE_TNS_ALIAS}."
   elif [ "$WEB_HR_CONFIG_DIR" != "$detected_config_dir" ] && ! tns_has_alias "$WEB_HR_CONFIG_DIR"; then
-    echo "WARNING: WEB_HR_CONFIG_DIR=${WEB_HR_CONFIG_DIR} does not contain ${WEB_HR_TNS_ALIAS:-freepdb1}; using ${detected_config_dir}."
+    echo "WARNING: WEB_HR_CONFIG_DIR=${WEB_HR_CONFIG_DIR} does not contain ${WEB_HR_EFFECTIVE_TNS_ALIAS}; using ${detected_config_dir}."
     export WEB_HR_CONFIG_DIR="$detected_config_dir"
   fi
 elif [ -z "${WEB_HR_CONFIG_DIR:-}" ] && [ -n "${TNS_ADMIN:-}" ] && ! tns_has_alias "$TNS_ADMIN"; then
-  echo "WARNING: TNS_ADMIN=${TNS_ADMIN} does not contain ${WEB_HR_TNS_ALIAS:-freepdb1}. Run ./setup_python_oracledb.sh."
+  echo "WARNING: TNS_ADMIN=${TNS_ADMIN} does not contain ${WEB_HR_EFFECTIVE_TNS_ALIAS}. Run ./setup_python_oracledb.sh."
 fi
 
 PYTHON_BIN="${PYTHON_BIN:-}"
@@ -197,7 +199,7 @@ print_verbose_startup() {
   for name in \
     WEB_HR_DB_MODE WEB_HR_HOST WEB_HR_PORT \
     WEB_HR_HTTPS_PORT WEB_HR_HTTP_REDIRECT_PORT WEB_HR_PUBLIC_HOST \
-    WEB_HR_TNS_ALIAS WEB_HR_CONFIG_DIR TNS_ADMIN WEB_HR_WALLET_LOCATION \
+    PDB_NAME WEB_HR_TNS_ALIAS WEB_HR_EFFECTIVE_TNS_ALIAS WEB_HR_CONFIG_DIR TNS_ADMIN WEB_HR_WALLET_LOCATION \
     WEB_HR_WALLET_PASSWORD WEB_HR_EMMA_PASSWORD WEB_HR_MARVIN_PASSWORD \
     WEB_HR_END_USER_PASSWORD WEB_HR_ADMIN_USER WEB_HR_ADMIN_PASSWORD \
     WEB_HR_TLS_CERT WEB_HR_TLS_KEY PYTHON_BIN

@@ -28,7 +28,7 @@ upsert_export() {
 
 tns_has_alias() {
   local dir="$1"
-  local alias_name="${WEB_HR_TNS_ALIAS:-freepdb1}"
+  local alias_name="${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}}"
   [ -f "${dir}/tnsnames.ora" ] || return 1
   grep -Eiq "^[[:space:]]*${alias_name}[[:space:]]*=" "${dir}/tnsnames.ora"
 }
@@ -135,11 +135,11 @@ upsert_export "PYTHON_BIN" "${VENV_DIR}/bin/python"
 
 NETWORK_CONFIG_DIR="$(find_tns_admin_with_alias || true)"
 if [ -n "$NETWORK_CONFIG_DIR" ]; then
-  echo "Using Oracle network config with ${WEB_HR_TNS_ALIAS:-freepdb1} alias:"
+  echo "Using Oracle network config with ${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}} alias:"
   echo "$NETWORK_CONFIG_DIR"
   upsert_export "WEB_HR_CONFIG_DIR" "$NETWORK_CONFIG_DIR"
 else
-  echo "WARNING: Could not find a tnsnames.ora containing ${WEB_HR_TNS_ALIAS:-freepdb1}."
+  echo "WARNING: Could not find a tnsnames.ora containing ${WEB_HR_TNS_ALIAS:-${PDB_NAME:-FREEPDB1}}."
   echo "         Set WEB_HR_CONFIG_DIR manually if python-oracledb cannot resolve the alias."
 fi
 

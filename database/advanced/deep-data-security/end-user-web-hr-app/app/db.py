@@ -6,7 +6,7 @@ from pathlib import Path
 class WebHrDatabase(object):
     def __init__(self):
         self.mode = os.getenv("WEB_HR_DB_MODE", "mock").lower()
-        self.tns_alias = os.getenv("WEB_HR_TNS_ALIAS", "freepdb1")
+        self.tns_alias = os.getenv("WEB_HR_TNS_ALIAS") or os.getenv("PDB_NAME") or "FREEPDB1"
 
     def employees_for_user(self, user):
         if self.mode == "oracledb":
@@ -38,6 +38,7 @@ class WebHrDatabase(object):
             "auth_mode": "local-end-user",
             "message": "This app does not use Entra ID, OAuth, application tokens, or OBO exchange.",
             "database_identity": user["username"],
+            "data_roles": user.get("roles", []),
         }
 
     def debug_context_for_user(self, user):
@@ -97,7 +98,6 @@ class WebHrDatabase(object):
                 add(name, "fail", str(exc))
 
         required_env = [
-            "WEB_HR_TNS_ALIAS",
             user.get("password_env", ""),
         ]
         missing_env = [name for name in required_env if not os.getenv(name)]
@@ -110,6 +110,7 @@ class WebHrDatabase(object):
                 "Required local end-user database settings are present.",
                 {
                     "tns_alias": self.tns_alias,
+                    "pdb_name": os.getenv("PDB_NAME", "FREEPDB1"),
                     "database_user": user["username"],
                     "password_env": user.get("password_env"),
                 },
@@ -201,7 +202,7 @@ class WebHrDatabase(object):
         if "emma" in username:
             rows = [rows[2]]
         elif not is_manager:
-            rows = rows[:1]
+            rows = [row for row in rows if row["user_name"] == username]
         else:
             rows = rows[1:]
         for row in rows:
@@ -277,7 +278,10 @@ class WebHrDatabase(object):
             "elevated": False,
             "rows": result["data"],
             "request_context": result["request_context"],
-            "note": "Oracle enforced visible rows and columns using the authenticated end user's active data roles.",
+            "note": (
+                "Oracle enforced visible rows and columns using the authenticated end user's active data roles. "
+                "For direct local end-user login, the database activates roles granted to the end user."
+            ),
         }
 
     def _update_employee_field_oracle(self, user, employee_id, field_name, value):

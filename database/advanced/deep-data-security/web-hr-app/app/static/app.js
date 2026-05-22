@@ -269,8 +269,8 @@ function showPolicyToggleDemo(enabled) {
       python_function: "WebHrDatabase._set_salary_update_policy_oracle(user, enabled)",
       database_procedure: enabled ? "SYS.WEB_HR_ENABLE_SALARY_UPDATES" : "SYS.WEB_HR_DISABLE_SALARY_UPDATES",
       deepsec_policy_change: enabled
-        ? "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary, department_id)."
-        : "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(department_id) only, removing UPDATE(salary).",
+        ? "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary, department_id, first_name)."
+        : "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(department_id, first_name) only, removing UPDATE(salary).",
       authorization_refresh: "The app reloads employees and calls ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) again for each row.",
       enforcement: "Salary edit enforcement stays in Oracle Deep Data Security. The UI only reflects Oracle's current policy decision."
     }

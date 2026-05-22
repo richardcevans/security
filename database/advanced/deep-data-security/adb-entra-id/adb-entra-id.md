@@ -3,8 +3,9 @@
 This lab builds the Deep Data Security data grants demo on Autonomous Database
 Serverless using Microsoft Entra ID authentication.
 
-The database is named `deepsec7` by default so it can run separately from the
-ADB OCI IAM lab database.
+The database name starts with `deepsec7` by default and adds a short
+machine-instance suffix so multiple DBSec-Lab environments can share the same
+OCI compartment and Entra tenant without name collisions.
 
 ### Objectives
 
@@ -105,11 +106,12 @@ export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
 Optional overrides:
 
 ```bash
-export DB_NAME=deepsec7
-export DB_DISPLAY_NAME=deepsec7
+export DB_NAME=deepsec7abc123
+export DB_DISPLAY_NAME=deepsec7abc123
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export DOMAIN_NAME=example.onmicrosoft.com
+export ADB_ENTRA_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
 export MARVIN_UPN=your.user@example.com
 export EMMA_UPN=emma@example.com
 ```
@@ -118,6 +120,11 @@ By default, `MARVIN_UPN` is the current `az login` user. The script assigns that
 user to the `EMPLOYEES` and `MANAGERS` app roles and creates Marvin's HR row with
 that UPN. This makes the verification step runnable without pre-creating a
 separate Marvin account.
+
+By default, `00_setup_adb_entra_id.sh` generates a machine-scoped instance ID
+and saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
+DBSec-Lab identity labs reuse the same machine ID. The default `DB_NAME` is
+`deepsec7<short-machine-suffix>`, such as `deepsec7ef143e`.
 
 ## 0. Download and Unzip the Lab Files
 
@@ -165,11 +172,11 @@ Load the generated environment file:
 source ./.adb-entra-id.env
 ```
 
-The Entra enterprise app names include the ADB name. With the default database
-name, these are:
+The Entra enterprise app names include the ADB name and the machine-instance
+suffix:
 
-- `Oracle Database 26ai ADB - deepsec7`
-- `Oracle Client Interactive ADB - deepsec7`
+- `Oracle Database 26ai ADB - <DB_NAME> - <machine-instance-id>`
+- `Oracle Client Interactive ADB - <DB_NAME> - <machine-instance-id>`
 
 ## 2. Enable Entra ID on ADB
 

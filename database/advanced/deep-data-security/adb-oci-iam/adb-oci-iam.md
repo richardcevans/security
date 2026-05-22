@@ -3,9 +3,22 @@
 This lab builds the Deep Data Security data grants demo on Autonomous Database
 Serverless 26ai using OCI IAM authentication.
 
-The first database is named `deepsec1` by default.
+The database name starts with `deepsec1` by default and adds a short
+machine-instance suffix so multiple DBSec-Lab environments can share the same
+OCI compartment and identity domain without name collisions.
+
+### Objectives
+
+In this lab, you will:
+
+- Create an Autonomous Database Serverless instance for the demo.
+- Configure OCI IAM authentication for the database.
+- Create Deep Data Security data roles and data grants.
+- Verify end-user access through OCI IAM OAuth2 tokens.
 
 > **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
+
+Estimated Time: 60 minutes
 
 ## What This Lab Does
 
@@ -40,7 +53,7 @@ The first database is named `deepsec1` by default.
 
 Most users only need to set the compartment. The defaults create:
 
-- ADB-S database `deepsec1`
+- ADB-S database `deepsec1<short-machine-suffix>`, such as `deepsec1ef143e`
 - OCI IAM users `marvin` and `emma`
 - OCI IAM groups `EMPLOYEES` and `MANAGERS`
 - Marvin in both groups; Emma in `EMPLOYEES` only
@@ -84,10 +97,11 @@ Optional overrides:
 
 ```bash
 <copy>
-export DB_NAME=deepsec1
+export DB_NAME=deepsec1abc123
 export DB_VERSION=26ai
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
+export ADB_OCI_IAM_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
 export OCI_IAM_EMPLOYEE_GROUP=EMPLOYEES
 export OCI_IAM_MANAGER_GROUP=MANAGERS
 export MARVIN_USERNAME=marvin
@@ -97,6 +111,11 @@ export EMMA_USERNAME=emma
 
 `DB_DISPLAY_NAME` defaults to `DB_NAME`. Set it only if you want the OCI Console
 display name to differ from the database name.
+
+By default, `00_setup_adb.sh` generates a machine-scoped instance ID and saves
+it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other DBSec-Lab
+identity labs reuse the same machine ID. The OCI IAM OAuth app names include
+both `DB_NAME` and this machine suffix.
 
 If your OCI IAM usernames are email-style, set the username domain before setup:
 
@@ -152,10 +171,9 @@ Move to the Deep Data Security labs directory and download the lab archive:
 
 ```bash
 <copy>
-mkdir -vp ~/livelabs/deep-data-security
-cd ~/livelabs/deep-data-security
-wget -O adb-oci-iam.zip \
-  "https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip"
+mkdir -vp $DBSEC_LABS/deep-data-security
+cd $DBSEC_LABS/deep-data-security
+wget -O adb-oci-iam.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip
 </copy>
 ```
 
@@ -223,12 +241,12 @@ source ./.adb-oci-iam.env
 
 This script creates or reuses:
 
-- OCI IAM OAuth resource app and public client app named with `DB_NAME`
-- OAuth database access scope named with `DB_NAME`
+- OCI IAM OAuth resource app and public client app named with `DB_NAME` and the machine-instance suffix
+- OAuth database access scope named with `DB_NAME` and the machine-instance suffix
 - Database-side OCI IAM OAuth credential for the resource app
 - Access-token group custom claim used by `IAM_OAUTH_GROUP=...`
-- ADB-S database: `deepsec1`
-- ADB wallet: `$HOME/adb_wallet/deepsec1`
+- ADB-S database: `deepsec1<short-machine-suffix>`
+- ADB wallet: `$HOME/adb_wallet/<DB_NAME>`
 - OCI IAM domain groups: `EMPLOYEES`, `MANAGERS`
 - OCI IAM domain users: `marvin`, `emma`
 
@@ -616,3 +634,8 @@ them, because they may be reused by other labs or policies.
 - [Enable OCI IAM authentication on Autonomous Database](https://docs.public.content.oci.oraclecloud.com/en-us/iaas/autonomous-database-serverless/doc/enable-iam-authentication.html)
 - [Connect to Autonomous Database with OCI IAM authentication](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html)
 - [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/oracle-deep-data-security-guide.pdf)
+
+## Acknowledgements
+
+- **Author** - Oracle Database Security Product Management
+- **Last Updated By/Date** - May 2026

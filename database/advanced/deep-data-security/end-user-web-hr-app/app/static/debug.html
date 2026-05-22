@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>End User Web HR App Diagnostics</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security</p>
+          <h1>Diagnostics</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section class="actions">
+        <a class="button ghost" href="/">Back To App</a>
+        <button id="preflightButton" type="button">Run Preflight</button>
+        <button id="requestContextButton" type="button">Refresh Request Context</button>
+        <button id="tokensButton" type="button">Refresh Auth Mode</button>
+        <button id="contextButton" type="button">Refresh Database Context</button>
+        <a class="button secondary" href="/api/debug/tokens" target="_blank" rel="noreferrer">Open Auth JSON</a>
+        <a class="button secondary" href="/api/debug/database-context" target="_blank" rel="noreferrer">Open Context JSON</a>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Preflight Check</h2>
+          <p class="small">Checks the app settings, Python driver, direct end-user database connection, active data roles, and optional audit visibility.</p>
+          <div id="preflightSummary" class="preflight-summary"></div>
+          <div id="preflightResults" class="preflight-list"></div>
+        </article>
+
+        <article class="panel">
+          <h2>Request Context</h2>
+          <p class="small">Runs the HR employee query and shows the authenticated database end-user context.</p>
+          <dl id="requestContext"></dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Authentication Flow</h2>
+        <p class="small">Shows the selected local end user, direct database authentication, and active Deep Data Security data roles.</p>
+        <div id="tokenFlow" class="token-flow"></div>
+      </section>
+
+      <section class="grid debug-grid">
+        <article class="panel">
+          <h2>Authentication Mode</h2>
+          <pre id="tokenDebug"></pre>
+        </article>
+
+        <article class="panel">
+          <h2>Database Context</h2>
+          <pre id="contextDebug"></pre>
+        </article>
+      </section>
+    </main>
+    <script src="/static/debug.js"></script>
+  </body>
+</html>

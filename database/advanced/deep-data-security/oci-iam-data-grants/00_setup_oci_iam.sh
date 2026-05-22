@@ -13,13 +13,36 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.oci-iam-data-grants.env"
+INSTANCE_FILE="${SCRIPT_DIR}/.oci-iam-data-grants.instance"
 WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
+source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
-export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-Oracle DB}"
-export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-Oracle Confidential Client}"
+OCI_IAM_LAB_INSTANCE_ID=$(make_lab_instance_id "dbsec-lab-machine" "$INSTANCE_FILE" "OCI_IAM_LAB_INSTANCE_ID")
+export OCI_IAM_LAB_INSTANCE_ID
+OCI_IAM_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$OCI_IAM_LAB_INSTANCE_ID" 6)
+export OCI_IAM_LAB_INSTANCE_SHORT
+
+export DB_SID="${DB_SID:-FREE}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
-export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-OracleDB}"
-export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-DB_ACCESS_SCOPE}"
+legacy_oci_db_app_name="Oracle DB"
+legacy_oci_client_app_name="Oracle Confidential Client"
+if [ -z "${OCI_DB_APP_NAME:-}" ] || [ "$OCI_DB_APP_NAME" = "$legacy_oci_db_app_name" ]; then
+  OCI_DB_APP_NAME="Oracle DB - ${PDB_NAME:-FREEPDB1} - ${OCI_IAM_LAB_INSTANCE_ID}"
+fi
+if [ -z "${OCI_CLIENT_APP_NAME:-}" ] || [ "$OCI_CLIENT_APP_NAME" = "$legacy_oci_client_app_name" ]; then
+  OCI_CLIENT_APP_NAME="Oracle Confidential Client - ${PDB_NAME:-FREEPDB1} - ${OCI_IAM_LAB_INSTANCE_ID}"
+fi
+export OCI_DB_APP_NAME
+export OCI_CLIENT_APP_NAME
+if [ -z "${OCI_DB_AUDIENCE:-}" ] || [ "$OCI_DB_AUDIENCE" = "OracleDB" ]; then
+  OCI_DB_AUDIENCE="OracleDB-${PDB_NAME:-FREEPDB1}-${OCI_IAM_LAB_INSTANCE_SHORT}"
+fi
+if [ -z "${OCI_DB_SCOPE_VALUE:-}" ] || [ "$OCI_DB_SCOPE_VALUE" = "DB_ACCESS_SCOPE" ]; then
+  OCI_DB_SCOPE_VALUE="DB_ACCESS_SCOPE_${OCI_IAM_LAB_INSTANCE_SHORT}"
+fi
+export OCI_DB_AUDIENCE
+export OCI_DB_SCOPE_VALUE
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
 DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
@@ -28,8 +51,6 @@ export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
-export DB_SID="${DB_SID:-FREE}"
-export PDB_NAME="${PDB_NAME:-FREEPDB1}"
 
 normalize_redirect_uri() {
   local first_uri
@@ -474,6 +495,11 @@ echo -e "${PURPLE}Using OCI IAM domain:${NC}"
 echo -e "${CYAN}  OCI_DOMAIN_URL = ${OCI_DOMAIN_URL}${NC}"
 echo -e "${CYAN}  OCI_DOMAIN_NAME = ${OCI_DOMAIN_NAME}${NC}"
 echo -e "${CYAN}  OCI_PROFILE    = ${OCI_PROFILE:-DEFAULT}${NC}"
+echo -e "${CYAN}  LAB_INSTANCE_ID = ${OCI_IAM_LAB_INSTANCE_ID}${NC}"
+echo -e "${CYAN}  DB app          = ${OCI_DB_APP_NAME}${NC}"
+echo -e "${CYAN}  Client app      = ${OCI_CLIENT_APP_NAME}${NC}"
+echo -e "${CYAN}  Audience        = ${OCI_DB_AUDIENCE}${NC}"
+echo -e "${CYAN}  Scope           = ${OCI_SCOPE}${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating or reusing DB resource app...${NC}"
@@ -553,6 +579,9 @@ export OCI_SCOPE='${OCI_SCOPE}'
 export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
 export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
 export OCI_USERNAME_DOMAIN='${OCI_USERNAME_DOMAIN}'
+export OCI_IAM_LAB_INSTANCE_ID='${OCI_IAM_LAB_INSTANCE_ID}'
+export OCI_DB_APP_NAME='${OCI_DB_APP_NAME}'
+export OCI_CLIENT_APP_NAME='${OCI_CLIENT_APP_NAME}'
 export DB_SID='${DB_SID}'
 export PDB_NAME='${PDB_NAME}'
 EOF

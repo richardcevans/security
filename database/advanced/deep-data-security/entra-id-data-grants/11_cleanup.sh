@@ -178,10 +178,8 @@ EOF
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Script 8 Completed: All Database Lab Objects Removed!                 ${NC}"
+echo -e "${GREEN}      Task 11 Completed: All Database Lab Objects Removed!                  ${NC}"
 echo -e "${GREEN}                                                                            ${NC}"
-echo -e "${GREEN}      Azure cleanup (manual):                                               ${NC}"
-echo -e "${GREEN}      1. Delete the Oracle Client Interactive - ${PDB_NAME} app registration              ${NC}"
-echo -e "${GREEN}      2. Delete the Oracle Database 26ai - ${PDB_NAME} app registration                   ${NC}"
+echo -e "${GREEN}      Entra cleanup: run ./11_cleanup_entra_id.sh                           ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo

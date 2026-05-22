@@ -13,6 +13,8 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.entra-id-data-grants.env"
+INSTANCE_FILE="${SCRIPT_DIR}/.entra-id-data-grants.instance"
+source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
 if [ "${ENTRA_USE_CURRENT_DB_ENV:-0}" != "1" ] && [ -n "${DBSEC_ADMIN:-}" ] && [ -f "${DBSEC_ADMIN}/setEnv-db23free.sh" ]; then
   # Keep the lab on the expected 26ai Free PDB even if the shell previously used cdb1/pdb1.
@@ -21,12 +23,24 @@ if [ "${ENTRA_USE_CURRENT_DB_ENV:-0}" != "1" ] && [ -n "${DBSEC_ADMIN:-}" ] && [
   source "${DBSEC_ADMIN}/setEnv-db23free.sh" FREE FREEPDB1
 fi
 
-export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai - ${PDB_NAME}}"
-export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive - ${PDB_NAME}}"
 export ENTRA_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 export CREATE_APP_ROLE_ASSIGNMENTS="${CREATE_APP_ROLE_ASSIGNMENTS:-1}"
 export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
+
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+ENTRA_LAB_INSTANCE_ID=$(make_lab_instance_id "dbsec-lab-machine" "$INSTANCE_FILE" "ENTRA_LAB_INSTANCE_ID")
+export ENTRA_LAB_INSTANCE_ID
+
+legacy_db_app_name="Oracle Database 26ai - ${PDB_NAME}"
+legacy_client_app_name="Oracle Client Interactive - ${PDB_NAME}"
+if [ -z "${ENTRA_DB_APP_NAME:-}" ] || [ "$ENTRA_DB_APP_NAME" = "$legacy_db_app_name" ]; then
+  ENTRA_DB_APP_NAME="Oracle Database 26ai - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}"
+fi
+if [ -z "${ENTRA_CLIENT_APP_NAME:-}" ] || [ "$ENTRA_CLIENT_APP_NAME" = "$legacy_client_app_name" ]; then
+  ENTRA_CLIENT_APP_NAME="Oracle Client Interactive - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}"
+fi
+export ENTRA_DB_APP_NAME
+export ENTRA_CLIENT_APP_NAME
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -134,13 +148,19 @@ export DOMAIN_NAME="$domain_name"
 tenant_id="${TENANT_ID:-$(az account show --query tenantId --output tsv)}"
 export TENANT_ID="$tenant_id"
 
-app_id_uri="${APP_ID_URI:-https://${DOMAIN_NAME}/${PDB_NAME}}"
+legacy_app_id_uri="https://${DOMAIN_NAME}/${PDB_NAME}"
+if [ -z "${APP_ID_URI:-}" ] || [ "$APP_ID_URI" = "$legacy_app_id_uri" ]; then
+  app_id_uri="https://${DOMAIN_NAME}/${PDB_NAME}-${ENTRA_LAB_INSTANCE_ID}"
+else
+  app_id_uri="$APP_ID_URI"
+fi
 export APP_ID_URI="$app_id_uri"
 
 echo -e "${PURPLE}Using Microsoft Entra configuration:${NC}"
 echo -e "${CYAN}  TENANT_ID              = ${TENANT_ID}${NC}"
 echo -e "${CYAN}  DOMAIN_NAME            = ${DOMAIN_NAME}${NC}"
 echo -e "${CYAN}  PDB_NAME               = ${PDB_NAME}${NC}"
+echo -e "${CYAN}  ENTRA_LAB_INSTANCE_ID  = ${ENTRA_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  ENTRA_DB_APP_NAME      = ${ENTRA_DB_APP_NAME}${NC}"
 echo -e "${CYAN}  ENTRA_CLIENT_APP_NAME  = ${ENTRA_CLIENT_APP_NAME}${NC}"
 echo -e "${CYAN}  APP_ID_URI             = ${APP_ID_URI}${NC}"
@@ -335,6 +355,7 @@ export APP_ID='${db_app_id}'
 export APP_ID_URI='${APP_ID_URI}'
 export CLIENT_ID='${client_app_id}'
 export PDB_NAME='${PDB_NAME}'
+export ENTRA_LAB_INSTANCE_ID='${ENTRA_LAB_INSTANCE_ID}'
 export ENTRA_DB_APP_NAME='${ENTRA_DB_APP_NAME}'
 export ENTRA_CLIENT_APP_NAME='${ENTRA_CLIENT_APP_NAME}'
 export MARVIN_UPN='${MARVIN_UPN}'

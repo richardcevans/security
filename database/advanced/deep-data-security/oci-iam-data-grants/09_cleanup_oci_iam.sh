@@ -13,8 +13,9 @@ NC='\033[0m'
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.oci-iam-data-grants.env"
 
-export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-Oracle DB}"
-export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-Oracle Confidential Client}"
+export PDB_NAME="${PDB_NAME:-FREEPDB1}"
+export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-Oracle DB - ${PDB_NAME}${OCI_IAM_LAB_INSTANCE_ID:+ - ${OCI_IAM_LAB_INSTANCE_ID}}}"
+export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-Oracle Confidential Client - ${PDB_NAME}${OCI_IAM_LAB_INSTANCE_ID:+ - ${OCI_IAM_LAB_INSTANCE_ID}}}"
 export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"

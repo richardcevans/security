@@ -81,7 +81,7 @@ GRANT employee_context_admin TO HRAPP_EMPLOYEES;
 GRANT employee_context_admin TO HRAPP_MANAGERS;
 
 CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS
-  AS SELECT (employee_id, first_name, last_name, user_name, department_id, manager_id, ssn, salary, phone_number), UPDATE(phone_number)
+  AS SELECT (employee_id, first_name, last_name, user_name, department_id, manager_id, ssn, salary, phone_number), UPDATE(phone_number, first_name)
   ON hr.employees
   WHERE upper(user_name) = upper(ora_end_user_context.username)
   TO HRAPP_EMPLOYEES;
@@ -92,7 +92,7 @@ CREATE OR REPLACE DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT
     TO HRAPP_EMPLOYEES, HRAPP_MANAGERS;
 
 CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id)
+  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
   ON hr.employees
   WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
   TO HRAPP_MANAGERS;

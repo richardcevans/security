@@ -155,8 +155,8 @@ If your organization uses tightly scoped OCI policies, ask the tenancy administr
 
 The lab creates or configures:
 
-- OCI IAM DB resource app: `Oracle DB`
-- OCI IAM OAuth client app: `Oracle Confidential Client`
+- OCI IAM DB resource app: `Oracle DB - FREEPDB1 - <machine-instance-id>`
+- OCI IAM OAuth client app: `Oracle Confidential Client - FREEPDB1 - <machine-instance-id>`
 - OCI IAM groups: `EMPLOYEES`, `MANAGERS`
 - OCI IAM demo users: `marvin`, `emma`
 - OCI IAM custom access-token claim: `group`
@@ -182,6 +182,7 @@ The scripts use these defaults unless you override them before running `00_setup
 | `OCI_DOMAIN_NAME` | `Default` | OCI IAM identity domain display name |
 | `DB_SID` | `FREE` | Local CDB instance used for SYSDBA setup |
 | `PDB_NAME` | `FREEPDB1` | PDB/service used by the lab |
+| `OCI_IAM_LAB_INSTANCE_ID` | generated once per VM | Machine suffix for OCI IAM app names, audience, and scope |
 | `MARVIN_USERNAME` | `marvin` | Manager test user |
 | `EMMA_USERNAME` | `emma` | Employee test user |
 | `OCI_SCOPE` | `OracleDBDB_ACCESS_SCOPE` | OAuth2 scope requested by the token helper |
@@ -191,7 +192,7 @@ Network ports used by the lab:
 
 | Port | Purpose |
 |---|---|
-| `1521` | TCP listener endpoint |
+| Existing TCP listener port | Preserved from the current `listener.ora` |
 | `2484` | TCPS listener endpoint |
 | `8888-8890` | Local OAuth2 callback ports |
 
@@ -207,7 +208,13 @@ To use a different PDB:
 
 ```bash
 export PDB_NAME=FREEPDB1
+export OCI_IAM_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
 ```
+
+By default, `00_setup_oci_iam.sh` generates a machine-scoped instance ID and
+saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
+DBSec-Lab identity labs reuse the same machine ID, so one VM reuses one OCI IAM
+DB resource app and one OCI IAM client app for `FREEPDB1`.
 
 To use a different OCI IAM domain by display name:
 
@@ -745,8 +752,8 @@ OCI IAM setup looks correct for the lab.
 
 This checks:
 
-- `Oracle DB` app exists
-- `Oracle Confidential Client` app exists
+- `Oracle DB - FREEPDB1 - <machine-instance-id>` app exists
+- `Oracle Confidential Client - FREEPDB1 - <machine-instance-id>` app exists
 - `EMPLOYEES` group exists
 - `MANAGERS` group exists
 - `marvin` user exists
@@ -816,7 +823,7 @@ Verify listener status:
 lsnrctl status
 ```
 
-Expected listener output should show TCP port `1521`, TCPS port `2484`, and service `freepdb1`.
+Expected listener output should show the existing TCP listener port, TCPS port `2484`, and service `freepdb1`.
 
 ## Step 9: Verify Wallet
 

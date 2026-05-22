@@ -38,7 +38,7 @@ In this lab, you will:
 - Creates Deep Data Security data roles and data grants.
 - Verifies Marvin and Emma see different data from the same SQL.
 
-## Assumptions
+### Prerequisites
 
 - You are running on the DBSec-Lab VM as OS user `oracle`.
 - Oracle AI Database 26ai Free is installed and running.
@@ -55,8 +55,10 @@ In this lab, you will:
 | CDB SID | `FREE` |
 | PDB | `FREEPDB1` |
 | TNS alias | `hrdb` |
-| DB resource app | `Oracle Database 26ai - FREEPDB1` |
-| Browser client app | `Oracle Client Interactive - FREEPDB1` |
+| Machine instance ID | generated once in `~/.dbsec-labs/instances/dbsec-lab-machine.instance` |
+| DB resource app | `Oracle Database 26ai - FREEPDB1 - <machine-instance-id>` |
+| Browser client app | `Oracle Client Interactive - FREEPDB1 - <machine-instance-id>` |
+| Application ID URI | `https://<DOMAIN_NAME>/FREEPDB1-<machine-instance-id>` |
 | OAuth scope | `session:scope:connect` |
 | Marvin UPN | `marvin@<DOMAIN_NAME>` |
 | Emma UPN | `emma@<DOMAIN_NAME>` |
@@ -70,6 +72,7 @@ Optional overrides:
 export DB_SID=FREE
 export PDB_NAME=FREEPDB1
 export DOMAIN_NAME=example.onmicrosoft.com
+export ENTRA_LAB_INSTANCE_ID=my-dbsec-lab
 export MARVIN_UPN=marvin@example.onmicrosoft.com
 export EMMA_UPN=emma@example.onmicrosoft.com
 export CREATE_APP_ROLE_ASSIGNMENTS=1
@@ -79,21 +82,29 @@ export CREATE_APP_ROLE_ASSIGNMENTS=1
 Set `CREATE_APP_ROLE_ASSIGNMENTS=0` if your Entra administrator wants to assign
 users to app roles manually.
 
+By default, `02_setup_entra_id.sh` generates a machine-scoped
+`ENTRA_LAB_INSTANCE_ID` the first time it runs and saves it in
+`~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other DBSec-Lab labs use
+the same machine ID, so one VM reuses one Entra DB app and one Entra client app
+for `FREEPDB1` instead of creating lab-specific duplicates. Set
+`ENTRA_LAB_INSTANCE_ID` before Task 2 only if you want a predictable app-name
+suffix.
+
 ## Task 0: Download The Lab Files
 
-Open a terminal as OS user `oracle`, move to your Deep Data Security labs directory,
-download the ZIP, and unzip it.
+1. Open a terminal as OS user `oracle`, move to your Deep Data Security labs directory,
+   download the ZIP, and unzip it.
 
-```bash
-<copy>
-mkdir -vp $DBSEC_LABS/deep-data-security
-cd $DBSEC_LABS/deep-data-security
-wget -O entra-id-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/aSXtPT18-67-gR7BdvSd5VtxmxemrI5KpRkoMYoN6S22aUhRnrB5O12ZaoXbjgLE/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip
-unzip -o entra-id-data-grants.zip
-cd entra-id-data-grants
-ls
-</copy>
-```
+    ```bash
+    <copy>
+    mkdir -vp $DBSEC_LABS/deep-data-security
+    cd $DBSEC_LABS/deep-data-security
+    wget -O entra-id-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/aSXtPT18-67-gR7BdvSd5VtxmxemrI5KpRkoMYoN6S22aUhRnrB5O12ZaoXbjgLE/n/oradbclouducm/b/dbsec_public/o/entra-id-data-grants.zip
+    unzip -o entra-id-data-grants.zip
+    cd entra-id-data-grants
+    ls
+    </copy>
+    ```
 
 Use `unzip -o` when refreshing the lab files. Do not use `unzip -f` for lab
 updates because it will not add new files.
@@ -117,103 +128,105 @@ Important files:
 
 ## Task 1: Install Azure CLI And Sign In
 
-Azure CLI is required for `02_setup_entra_id.sh`.
+1. Install Azure CLI. Azure CLI is required for `02_setup_entra_id.sh`.
 
-Install Azure CLI without updating any other configured repositories:
+    Install Azure CLI without updating any other configured repositories:
 
-```bash
-<copy>
-OS_MAJOR=$(rpm -E %{rhel})
-case "$OS_MAJOR" in
-  8)
-    MS_REPO_RHEL_VERSION="8"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
-    ;;
-  9)
-    MS_REPO_RHEL_VERSION="9.0"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
-    ;;
-  10)
-    MS_REPO_RHEL_VERSION="10"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
-    ;;
-  *)
-    echo "Unsupported Oracle Linux/RHEL-compatible major version: $OS_MAJOR"
-    exit 1
-    ;;
-esac
-sudo rpm --import "$MS_KEY_URL"
-curl -fL -o /tmp/packages-microsoft-prod.rpm "https://packages.microsoft.com/config/rhel/${MS_REPO_RHEL_VERSION}/packages-microsoft-prod.rpm"
-sudo rpm -Uvh --replacepkgs /tmp/packages-microsoft-prod.rpm
-sudo dnf clean metadata
-sudo dnf makecache --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
-sudo dnf install -y azure-cli --nobest --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
-az version
-</copy>
-```
+    ```bash
+    <copy>
+    OS_MAJOR=$(rpm -E %{rhel})
+    case "$OS_MAJOR" in
+      8)
+        MS_REPO_RHEL_VERSION="8"
+        MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+        ;;
+      9)
+        MS_REPO_RHEL_VERSION="9.0"
+        MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
+        ;;
+      10)
+        MS_REPO_RHEL_VERSION="10"
+        MS_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
+        ;;
+      *)
+        echo "Unsupported Oracle Linux/RHEL-compatible major version: $OS_MAJOR"
+        exit 1
+        ;;
+    esac
+    sudo rpm --import "$MS_KEY_URL"
+    curl -fL -o /tmp/packages-microsoft-prod.rpm "https://packages.microsoft.com/config/rhel/${MS_REPO_RHEL_VERSION}/packages-microsoft-prod.rpm"
+    sudo rpm -Uvh --replacepkgs /tmp/packages-microsoft-prod.rpm
+    sudo dnf clean metadata
+    sudo dnf makecache --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
+    sudo dnf install -y azure-cli --nobest --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
+    az version
+    </copy>
+    ```
 
-Sign in:
+2. Sign in:
 
-```bash
-<copy>
-az login
-</copy>
-```
+    ```bash
+    <copy>
+    az login
+    </copy>
+    ```
 
-Verify the selected tenant:
+3. Verify the selected tenant:
 
-```bash
-<copy>
-az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output table
-</copy>
-```
+    ```bash
+    <copy>
+    az account show --query "{tenantId:tenantId,name:name,user:user.name}" --output table
+    </copy>
+    ```
 
 ## Task 2: Configure Microsoft Entra ID
 
-Create or reuse the Entra DB resource application, browser client application,
-enterprise apps, app roles, scopes, and role assignments.
+1. Create or reuse the Entra DB resource application, browser client application,
+   enterprise apps, app roles, scopes, and role assignments.
 
-Load the Oracle AI Database 26ai Free environment so the generated Entra app
-names use `FREEPDB1`.
+2. Load the Oracle AI Database 26ai Free environment so the generated Entra app
+   names use `FREEPDB1` plus this lab directory's unique instance ID.
 
-```bash
-<copy>
-source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
-</copy>
-```
+    ```bash
+    <copy>
+    source $DBSEC_ADMIN/setEnv-db23free.sh FREE FREEPDB1
+    </copy>
+    ```
 
-```bash
-<copy>
-./02_setup_entra_id.sh
-</copy>
-```
+3. Run the Entra ID setup script:
 
-Review the generated environment file:
+    ```bash
+    <copy>
+    ./02_setup_entra_id.sh
+    </copy>
+    ```
 
-```bash
-<copy>
-cat ./.entra-id-data-grants.env
-</copy>
-```
+4. Review the generated environment file:
 
-Load the generated environment file:
+    ```bash
+    <copy>
+    cat ./.entra-id-data-grants.env
+    </copy>
+    ```
 
-```bash
-<copy>
-source ./.entra-id-data-grants.env
-</copy>
-```
+5. Load the generated environment file:
 
-The script writes `.entra-id-data-grants.env`. Load it before running later
-tasks.
+    ```bash
+    <copy>
+    source ./.entra-id-data-grants.env
+    </copy>
+    ```
 
-Verify the Entra setup:
+    The script writes `.entra-id-data-grants.env`. Load it before running later
+    tasks.
 
-```bash
-<copy>
-./02_verify_entra_id_setup.sh
-</copy>
-```
+6. Verify the Entra setup:
+
+    ```bash
+    <copy>
+    ./02_verify_entra_id_setup.sh
+    </copy>
+    ```
 
 Expected setup:
 
@@ -228,58 +241,58 @@ manual portal fallback in
 
 ## Task 3: Run Database Preflight
 
-Run the preflight checks.
+1. Run the preflight checks.
 
-```bash
-<copy>
-./03_preflight.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./03_preflight.sh
+    </copy>
+    ```
 
 The preflight confirms the local database, PDB, SQL*Plus, listener utilities,
 and browser-related environment are ready for the lab.
 
 ## Task 4: Configure The Database Identity Provider
 
-Configure the PDB to validate Entra ID tokens.
+1. Configure the PDB to validate Entra ID tokens.
 
-```bash
-<copy>
-./04_configure_db_identity_provider.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./04_configure_db_identity_provider.sh
+    </copy>
+    ```
 
 This task sets the database identity provider parameters from
 `.entra-id-data-grants.env`. It must be run before browser-based login can work.
 
 ## Task 5: Configure TCPS Network Access
 
-Configure the local wallet, listener, `sqlnet.ora`, and `tnsnames.ora` entry used
-by browser-based Entra ID authentication.
+1. Configure the local wallet, listener, `sqlnet.ora`, and `tnsnames.ora` entry used
+   by browser-based Entra ID authentication.
 
-```bash
-<copy>
-./05_configure_network.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./05_configure_network.sh
+    </copy>
+    ```
 
-The script creates the `hrdb` TNS alias. Verification scripts connect with:
+2. Note the `hrdb` TNS alias. Verification scripts connect with:
 
-```bash
-<copy>
-sqlplus /@hrdb
-</copy>
-```
+    ```bash
+    <copy>
+    sqlplus /@hrdb
+    </copy>
+    ```
 
 ## Task 6: Create The HR Schema
 
-Create the schema-only HR owner and sample employee data.
+1. Create the schema-only HR owner and sample employee data.
 
-```bash
-<copy>
-./06_create_hr_schema.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./06_create_hr_schema.sh
+    </copy>
+    ```
 
 `HR` is created with `NO AUTHENTICATION`; end users do not log in as `HR`.
 The `user_name` values are set to Entra ID user names such as
@@ -287,13 +300,13 @@ The `user_name` values are set to Entra ID user names such as
 
 ## Task 7: Create Data Roles And Data Grants
 
-Create the Deep Data Security data roles, data grants, and end user context.
+1. Create the Deep Data Security data roles, data grants, and end user context.
 
-```bash
-<copy>
-./07_create_data_roles_and_grants.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./07_create_data_roles_and_grants.sh
+    </copy>
+    ```
 
 The script creates:
 
@@ -305,35 +318,35 @@ The script creates:
 
 ## Task 8: Verify Database Setup
 
-Confirm the identity provider, network alias, HR rows, data roles, and data
-grants are in place.
+1. Confirm the identity provider, network alias, HR rows, data roles, and data
+   grants are in place.
 
-```bash
-<copy>
-./08_verify_db_setup.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./08_verify_db_setup.sh
+    </copy>
+    ```
 
-Expected highlights:
+2. Review the expected highlights:
 
-```text
-identity_provider_type    AZURE_AD
-HR employee rows          7
-HRAPP_EMPLOYEES           azure_role=EMPLOYEES
-HRAPP_MANAGERS            azure_role=MANAGERS
-```
+    ```text
+    identity_provider_type    AZURE_AD
+    HR employee rows          7
+    HRAPP_EMPLOYEES           azure_role=EMPLOYEES
+    HRAPP_MANAGERS            azure_role=MANAGERS
+    ```
 
 ## Task 9: Verify Marvin
 
-When the browser opens, sign in as Marvin.
+1. Run the Marvin verification script. When the browser opens, sign in as Marvin.
 
-```bash
-<copy>
-./09_verify_as_marvin.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./09_verify_as_marvin.sh
+    </copy>
+    ```
 
-Expected Marvin result:
+2. Review the expected Marvin result:
 
 - Token identity is Marvin.
 - Active data roles include `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`.
@@ -343,16 +356,19 @@ Expected Marvin result:
 
 ## Task 10: Verify Emma
 
-If the browser reuses Marvin's session, close browser windows, sign out, or use
-a private/incognito browser session. When the browser opens, sign in as Emma.
+1. Prepare a separate browser session for Emma. If the browser reuses Marvin's
+   session, close browser windows, sign out, or use a private/incognito browser
+   session.
 
-```bash
-<copy>
-./10_verify_as_emma.sh
-</copy>
-```
+2. Run the Emma verification script. When the browser opens, sign in as Emma.
 
-Expected Emma result:
+    ```bash
+    <copy>
+    ./10_verify_as_emma.sh
+    </copy>
+    ```
+
+3. Review the expected Emma result:
 
 - Token identity is Emma.
 - Active data roles include `HRAPP_EMPLOYEES` only.
@@ -362,21 +378,21 @@ Expected Emma result:
 
 ## Task 11: Clean Up
 
-Clean up database objects and restore local network files:
+1. Clean up database objects and restore local network files:
 
-```bash
-<copy>
-./11_cleanup.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./11_cleanup.sh
+    </copy>
+    ```
 
-If the Entra applications were created only for this lab, remove them too:
+2. If the Entra applications were created only for this lab, remove them too:
 
-```bash
-<copy>
-./11_cleanup_entra_id.sh
-</copy>
-```
+    ```bash
+    <copy>
+    ./11_cleanup_entra_id.sh
+    </copy>
+    ```
 
 ## Troubleshooting Summary
 
@@ -384,14 +400,14 @@ Detailed troubleshooting moved to
 [`entra-id-data-grants-reference.md`](./entra-id-data-grants-reference.md).
 Start with these checks:
 
-```bash
-<copy>
-source ./.entra-id-data-grants.env
-./02_verify_entra_id_setup.sh
-./08_verify_db_setup.sh
-tnsping hrdb
-</copy>
-```
+    ```bash
+    <copy>
+    source ./.entra-id-data-grants.env
+    ./02_verify_entra_id_setup.sh
+    ./08_verify_db_setup.sh
+    tnsping hrdb
+    </copy>
+    ```
 
 Common issues:
 
@@ -430,6 +446,8 @@ The following sections were moved to
 - [Microsoft identity platform documentation](https://learn.microsoft.com/entra/identity-platform/)
 - [Oracle Database integration with Microsoft Entra ID](https://docs.oracle.com/en/database/oracle/oracle-database/26/dbseg/)
 - [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/)
+
+You may now proceed to the next lab.
 
 ## Acknowledgements
 

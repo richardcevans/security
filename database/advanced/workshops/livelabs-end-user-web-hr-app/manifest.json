@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - End User Web HR App with Oracle Deep Data Security",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture of this workshop and what it can do",
+      "publisheddate": "05/15/2026",
+      "filename": "../../intro/intro-deep-data-security.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Verify Setup of compute instance",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/verify-compute/verify-compute-ssh-and-novnc.md"
+    },
+    {
+      "title": "Lab 1: End User Web HR App with Oracle Deep Data Security",
+      "description": "Run a local web application that connects directly as Oracle Database end users and demonstrates password-based Deep Data Security data grants",
+      "publisheddate": "05/15/2026",
+      "filename": "../../deep-data-security/end-user-web-hr-app/end-user-web-hr-app.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

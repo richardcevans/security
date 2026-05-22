@@ -33,7 +33,8 @@ The app uses the existing HR schema, Entra database resource app, app roles, and
 1. Open a Terminal session on your **DBSec-Lab** VM as OS user *oracle* and use `cd` command to move to the Deep Data Security labs directory.
 
     ````
-    <copy>cd $DBSEC_HOME/livelabs/deep-data-security</copy>
+    <copy>mkdir -vp $DBSEC_LABS/deep-data-security
+cd $DBSEC_LABS/deep-data-security</copy>
     ````
 
 2. Use the Linux command `wget` to download a bundled (zipped) file of the commands for the lab.
@@ -194,7 +195,7 @@ unset WALLET_DIR TNS_ADMIN
 The web app buttons call these procedures to demonstrate a DBA policy change:
 
 - `Disable Salary Edits` calls `SYS.WEB_HR_DISABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` without `UPDATE(salary)`.
-- `Restore Salary Edits` calls `SYS.WEB_HR_ENABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` with `UPDATE(salary, department_id)`.
+- `Restore Salary Edits` calls `SYS.WEB_HR_ENABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` with `UPDATE(salary, department_id, first_name)`.
 
 The app code does not change the authorization rule itself. After either procedure runs, the app reloads the employee rows and asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again. Salary cells render as editable only when Deep Data Security says the current end user can update that row and column.
 
@@ -255,6 +256,22 @@ https://<public-ip>:8012
 ```
 
 The default public setup writes `WEB_HR_HOST=0.0.0.0` and the demo TLS certificate paths into `.web-hr-app.env`, so `./run.sh` listens on the VM public interface with HTTPS after that environment file is sourced.
+
+To redirect HTTP traffic to HTTPS, run the HTTPS listener on one port and the
+HTTP redirect listener on another port. For example:
+
+```bash
+<copy>
+export WEB_HR_PORT=8012
+export WEB_HR_HTTPS_PORT=8443
+export WEB_HR_PUBLIC_HOST=<public-ip-or-dns-name>
+./start.sh --verbose
+</copy>
+```
+
+Requests to `http://<public-ip-or-dns-name>:8012` will return a permanent
+redirect to `https://<public-ip-or-dns-name>:8443`. If you want to keep HTTPS
+on `WEB_HR_PORT`, set `WEB_HR_HTTP_REDIRECT_PORT` to a different HTTP port.
 
 Real database mode requires a current python-oracledb version with Deep Data Security support:
 

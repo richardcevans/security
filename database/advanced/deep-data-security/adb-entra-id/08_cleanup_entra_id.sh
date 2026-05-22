@@ -32,6 +32,7 @@ fi
 export DB_NAME="${DB_NAME:-deepsec7}"
 export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai ADB - ${DB_NAME}}"
 export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive ADB - ${DB_NAME}}"
+export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 if ! command -v az >/dev/null 2>&1; then
   echo -e "${RED}ERROR: Azure CLI is not installed or not on PATH.${NC}"

@@ -8,6 +8,17 @@ This lab walks you through configuring OCI IAM OAuth2 authentication for Oracle 
 
 Estimated Time: 60 minutes
 
+## Introduction
+
+### Objectives
+
+In this lab, you will:
+
+- Configure OCI IAM OAuth2 applications for database access.
+- Configure Oracle AI Database 26ai to validate OCI IAM tokens.
+- Create Deep Data Security data roles and data grants.
+- Verify that Marvin and Emma see different data through the same SQL.
+
 ## The Challenge
 
 AI copilots and agentic applications are transforming the enterprise, but many never make it past the security review. The blocking question is always the same: how do you guarantee the AI agent only shows each user what they are authorized to see?
@@ -63,11 +74,13 @@ SQLPlus does not open the OCI IAM browser login directly in this lab. Run `./get
 
 ## Task 0: Download Lab Scripts
 
-Open a terminal on your DBSec-Lab VM as OS user `oracle`, move to the LiveLabs directory, and unpack the lab bundle.
+Open a terminal on your DBSec-Lab VM as OS user `oracle`, move to the Deep Data Security labs directory, download the lab bundle, and unpack it.
 
 ````bash
-<copy>cd livelabs
-tar xvf dbsec-livelabs-oci-iam-data-grants.tar.gz
+<copy>mkdir -vp $DBSEC_LABS/deep-data-security
+cd $DBSEC_LABS/deep-data-security
+wget -O oci-iam-data-grants.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/I9cfyu3dqeyT3oChMRXnOIzj7M1J840zGNaTXbyYm9HCmSHUbiJxw4GjFNUGBPPa/n/oradbclouducm/b/dbsec_public/o/oci-iam-data-grants.zip
+unzip -o oci-iam-data-grants.zip
 cd oci-iam-data-grants
 ls</copy>
 ````
@@ -95,12 +108,18 @@ The setup script discovers the OCI IAM Domain URL automatically and prefers the 
 
 The script creates or reuses:
 
-- DB resource application named `Oracle DB`
-- Interactive client application named `Oracle Confidential Client`
+- DB resource application named `Oracle DB - FREEPDB1 - <machine-instance-id>`
+- Interactive client application named `Oracle Confidential Client - FREEPDB1 - <machine-instance-id>`
 - `EMPLOYEES` and `MANAGERS` groups
 - Marvin and Emma users by default
 - A custom access-token claim named `group`, populated from `$user.groups.*.display`
 - `.oci-iam-data-grants.env`
+
+By default, `00_setup_oci_iam.sh` generates a machine-scoped instance ID and
+saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
+DBSec-Lab identity labs reuse the same machine ID, so one VM reuses one OCI IAM
+DB resource app and one OCI IAM client app for `FREEPDB1` instead of creating
+lab-specific duplicates.
 
 Default group membership:
 
@@ -190,7 +209,7 @@ OCI IAM token authentication requires a TLS connection. This task configures the
 This script:
 
 1. Creates a wallet with a self-signed certificate if one does not exist
-2. Backs up and updates `listener.ora` to add a TCPS endpoint on port 2484
+2. Backs up and updates `listener.ora` to preserve the existing TCP listener address and add a TCPS endpoint on port 2484
 3. Backs up and updates `sqlnet.ora` with the wallet location
 4. Adds the `hrdb` TNS entry to `tnsnames.ora` with `TOKEN_AUTH=OAUTH`
 5. Restarts the listener and registers the database
@@ -275,7 +294,7 @@ The employee grant allows users to see their own row and update only `phone_numb
 CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS
   AS SELECT (employee_id, first_name, last_name, user_name,
              department_id, manager_id, ssn, salary, phone_number),
-     UPDATE(phone_number)
+     UPDATE(phone_number, first_name)
   ON hr.employees
   WHERE upper(user_name) = upper(ora_end_user_context.username)
   TO HRAPP_EMPLOYEES;
@@ -285,7 +304,7 @@ The manager grant allows managers to see direct reports, excluding `ssn`, and up
 
 ```sql
 CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id)
+  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
   ON hr.employees
   WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
   TO HRAPP_MANAGERS;
@@ -383,17 +402,17 @@ The cleanup script:
 3. Drops remaining data grants, end user context, roles, data roles, and the HR schema
 4. Resets `identity_provider_type` and `identity_provider_oauth_config`
 
-Then clean up the OCI IAM objects:
+    Then clean up the OCI IAM objects:
 
-````bash
-<copy>./09_cleanup_oci_iam.sh</copy>
-````
+    ````bash
+    <copy>./09_cleanup_oci_iam.sh</copy>
+    ````
 
-The OCI cleanup script deletes the lab-named applications, groups, optional demo users, and custom `group` claim. It asks you to type `DELETE` before removing IAM objects. For unattended cleanup, run:
+    The OCI cleanup script deletes the lab-named applications, groups, optional demo users, and custom `group` claim. It asks you to type `DELETE` before removing IAM objects. For unattended cleanup, run:
 
-````bash
-<copy>./09_cleanup_oci_iam.sh -f</copy>
-````
+    ````bash
+    <copy>./09_cleanup_oci_iam.sh -f</copy>
+    ````
 
 ## Complete Script Sequence
 

@@ -14,7 +14,7 @@
       "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
     },
     {
-      "title": "Lab 1: Identity-Aware Access Control with Oracle Deep Data Security and Microsoft Entra ID",
+      "title": "Identity-Aware Database Access with Microsoft Entra ID and Oracle Deep Data Security",
       "description": "In this lab you will learn how to configure Microsoft Entra ID authentication and Oracle Deep Data Security data grants for identity-aware database access",
       "publisheddate": "04/12/2026",
       "filename": "../../deep-data-security/entra-id-data-grants/entra-id-data-grants.md"

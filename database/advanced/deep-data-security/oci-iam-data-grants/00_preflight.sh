@@ -147,7 +147,7 @@ echo
 echo -e "${GREEN}Listener${NC}"
 if lsnrctl status >/tmp/oci_iam_lab_preflight_listener.out 2>&1; then
   ok "listener status command completed"
-  grep -E "PORT=1521|PORT=2484|Service \"${PDB_NAME,,}\"|Service \"${PDB_NAME}\"" /tmp/oci_iam_lab_preflight_listener.out | sed 's/^/    /' || warn "expected ports/services not currently visible"
+  grep -E "PORT=[0-9]+|Service \"${PDB_NAME,,}\"|Service \"${PDB_NAME}\"" /tmp/oci_iam_lab_preflight_listener.out | sed 's/^/    /' || warn "expected ports/services not currently visible"
 else
   warn "listener status failed"
   sed 's/^/    /' /tmp/oci_iam_lab_preflight_listener.out || true

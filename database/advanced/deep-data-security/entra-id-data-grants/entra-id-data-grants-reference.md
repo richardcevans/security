@@ -94,6 +94,7 @@ This lab assumes:
 |---|---|---|
 | `DB_SID` | `FREE` | Local CDB instance used by the scripts |
 | `PDB_NAME` | `FREEPDB1` | PDB/service used by the lab |
+| `ENTRA_LAB_INSTANCE_ID` | generated once per VM | Machine suffix for Entra app names and Application ID URI |
 | `CLIENT_ID` | none | Entra ID client app Application ID for browser authentication |
 | `APP_ID` | none | Entra ID database app Application ID |
 | `APP_ID_URI` | none | Entra ID Application ID URI exposed by the database app |
@@ -101,17 +102,23 @@ This lab assumes:
 | `DOMAIN_NAME` | none | Entra username domain used in HR sample rows |
 | `WALLET_DIR` | `$ORACLE_BASE/admin/$ORACLE_SID/wallet` | TCPS wallet location |
 
-Use PDB-specific Entra application names so multiple database labs can coexist in the same tenant:
+Use PDB-specific Entra application names plus a machine-instance suffix so
+multiple DBSec-Lab VMs can coexist in the same tenant without creating
+lab-specific duplicate Entra apps on the same VM:
 
 ```text
-Oracle Database 26ai - ${PDB_NAME}
+Oracle Database 26ai - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}
 ```
 
 ```text
-Oracle Client Interactive - ${PDB_NAME}
+Oracle Client Interactive - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}
 ```
 
-The examples below use the default `PDB_NAME=FREEPDB1`.
+The setup script generates `ENTRA_LAB_INSTANCE_ID` the first time it runs and
+saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
+DBSec-Lab labs reuse the same machine ID. Set it before running Task 2 only when
+you want a predictable suffix. The examples below use the default
+`PDB_NAME=FREEPDB1`.
 
 The setup script writes these values to:
 
@@ -282,7 +289,7 @@ Sensitive local files, values, and sessions:
 | Entra Application ID URI | `APP_ID_URI` | Token audience/resource identifier |
 | Entra tenant ID | `TENANT_ID` | Token issuer/tenant validation |
 | Entra client app ID | `CLIENT_ID` | Used by `AZURE_INTERACTIVE` browser login |
-| Lab env file | `.entra-id-data-grants.env` | Contains app IDs, tenant ID, domain, and PDB-specific app names |
+| Lab env file | `.entra-id-data-grants.env` | Contains app IDs, tenant ID, domain, machine instance ID, and app names |
 | Browser session cookies | Browser profile | Can silently log in as the previous user |
 | TCPS wallet | `$ORACLE_BASE/admin/$ORACLE_SID/wallet` | Contains listener TLS wallet |
 | Network backups | `$ORACLE_HOME/network/admin/*.bak` | May contain old connection descriptors |
@@ -517,8 +524,8 @@ Verify the Entra objects:
 
 The setup script creates or reuses:
 
-- app registration and enterprise application: `Oracle Database 26ai - ${PDB_NAME}`
-- app registration and enterprise application: `Oracle Client Interactive - ${PDB_NAME}`
+- app registration and enterprise application: `Oracle Database 26ai - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}`
+- app registration and enterprise application: `Oracle Client Interactive - ${PDB_NAME} - ${ENTRA_LAB_INSTANCE_ID}`
 - app roles on the database app: `EMPLOYEES`, `MANAGERS`
 - delegated permission scope: `session:scope:connect`
 - public client redirect URI: `http://localhost`
@@ -950,7 +957,7 @@ This script:
       CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS
         AS SELECT (employee_id, first_name, last_name, user_name,
                    department_id, manager_id, ssn, salary, phone_number),
-           UPDATE(phone_number)
+           UPDATE(phone_number, first_name)
         ON hr.employees
         WHERE upper(user_name) = upper(ora_end_user_context.username)
         TO HRAPP_EMPLOYEES;
@@ -962,7 +969,7 @@ This script:
 
       ```sql
       CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-        AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id)
+        AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
         ON hr.employees
         WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
         TO HRAPP_MANAGERS;
@@ -993,7 +1000,7 @@ This script connects as Marvin using `sqlplus /@hrdb`, which should launch the E
 1. **Identity:** `CURRENT_USER = XS$NULL`, `AUTHENTICATED_IDENTITY = marvin@<your-tenant>.onmicrosoft.com`
 2. **Active data roles:** `HRAPP_EMPLOYEES`, `HRAPP_MANAGERS` (plus default roles)
 3. **Query results:** `SELECT * FROM hr.employees` returns **4 rows** — Marvin + 3 direct reports
-4. **Per-column authorization:** SSN visible for self only, salary visible for all 4, UPDATE only on phone_number (self) and salary/department (reports)
+4. **Per-column authorization:** SSN visible for self only, salary visible for all 4, UPDATE on phone_number and first_name (self) and salary/department/first_name (reports)
 
 | EMPLOYEE\_ID | FIRST\_NAME | SSN | SALARY | MANAGER\_ID |
 |---|---|---|---|---|

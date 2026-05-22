@@ -3,6 +3,7 @@ import mimetypes
 import os
 import ssl
 import sys
+import threading
 import traceback
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -57,6 +58,44 @@ class WebHrServer(ThreadingMixIn, HTTPServer):
             self.shutdown_request(request)
             return
         super().process_request_thread(request, client_address)
+
+
+class HttpRedirectServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+    def __init__(self, server_address, RequestHandlerClass, https_port):
+        self.https_port = https_port
+        super().__init__(server_address, RequestHandlerClass)
+
+
+class RedirectHandler(BaseHTTPRequestHandler):
+    server_version = "WebHRRedirect/0.1"
+
+    def do_HEAD(self):
+        self._redirect_to_https()
+
+    def do_GET(self):
+        self._redirect_to_https()
+
+    def do_POST(self):
+        self._redirect_to_https()
+
+    def _redirect_to_https(self):
+        host = os.getenv("WEB_HR_PUBLIC_HOST", "") or self.headers.get("Host", "")
+        if ":" in host and not host.startswith("["):
+            host = host.split(":", 1)[0]
+        if not host or host in ("0.0.0.0", "::"):
+            host = "localhost"
+        port = getattr(self.server, "https_port", 443)
+        authority = host if port == 443 else "{0}:{1}".format(host, port)
+        location = "https://{0}{1}".format(authority, self.path)
+        self.send_response(HTTPStatus.PERMANENT_REDIRECT)
+        self.send_header("Location", location)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
+    def log_message(self, fmt, *args):
+        print("{0} - {1}".format(self.address_string(), fmt % args))
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -330,15 +369,32 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     host = os.getenv("WEB_HR_HOST", "127.0.0.1")
-    port = int(os.getenv("WEB_HR_PORT", "8012"))
+    port = int(os.getenv("WEB_HR_HTTPS_PORT", os.getenv("WEB_HR_PORT", "8012")))
     tls_cert = os.getenv("WEB_HR_TLS_CERT", "")
     tls_key = os.getenv("WEB_HR_TLS_KEY", "")
     tls_context = None
     scheme = "http"
+    redirect_server = None
     if tls_cert and tls_key:
         tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         tls_context.load_cert_chain(certfile=tls_cert, keyfile=tls_key)
         scheme = "https"
+        redirect_port = os.getenv("WEB_HR_HTTP_REDIRECT_PORT", "")
+        if not redirect_port and os.getenv("WEB_HR_HTTPS_PORT"):
+            redirect_port = os.getenv("WEB_HR_PORT", "")
+        if redirect_port:
+            redirect_port = int(redirect_port)
+            try:
+                redirect_server = HttpRedirectServer((host, redirect_port), RedirectHandler, https_port=port)
+            except OSError as exc:
+                if exc.errno == 98:
+                    print(
+                        "HTTP redirect port {0} is already in use. Stop the existing server or run "
+                        "with WEB_HR_HTTP_REDIRECT_PORT=<other-port> ./run.sh".format(redirect_port),
+                        file=sys.stderr,
+                    )
+                    raise SystemExit(1)
+                raise
     try:
         server = WebHrServer((host, port), Handler, tls_context=tls_context)
     except OSError as exc:
@@ -352,6 +408,10 @@ def main():
         raise
     if tls_context:
         print("TLS enabled with certificate: {0}".format(tls_cert))
+    if redirect_server:
+        thread = threading.Thread(target=redirect_server.serve_forever, daemon=True)
+        thread.start()
+        print("HTTP redirects enabled at http://{0}:{1} -> https://{0}:{2}".format(host, redirect_server.server_port, port))
     print("Web HR App running at {0}://{1}:{2}".format(scheme, host, port))
     if os.getenv("WEB_HR_REDIRECT_URI"):
         print("Redirect URI: {0}".format(os.getenv("WEB_HR_REDIRECT_URI")))

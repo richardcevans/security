@@ -13,20 +13,26 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.env"
+INSTANCE_FILE="${SCRIPT_DIR}/.adb-entra-id.instance"
+source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
-export DB_NAME="${DB_NAME:-deepsec7}"
+ADB_ENTRA_LAB_INSTANCE_ID=$(make_lab_instance_id "dbsec-lab-machine" "$INSTANCE_FILE" "ADB_ENTRA_LAB_INSTANCE_ID")
+export ADB_ENTRA_LAB_INSTANCE_ID
+ADB_ENTRA_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$ADB_ENTRA_LAB_INSTANCE_ID" 6)
+export ADB_ENTRA_LAB_INSTANCE_SHORT
+
+export DB_NAME="${DB_NAME:-deepsec7${ADB_ENTRA_LAB_INSTANCE_SHORT}}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
 export DB_VERSION="${DB_VERSION:-26ai}"
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}-entra}"
 export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
-export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai ADB - ${DB_NAME}}"
-export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive ADB - ${DB_NAME}}"
 export ENTRA_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 export CREATE_APP_ROLE_ASSIGNMENTS="${CREATE_APP_ROLE_ASSIGNMENTS:-1}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
+export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -175,7 +181,22 @@ export DOMAIN_NAME="$domain_name"
 
 tenant_id="${TENANT_ID:-$(az account show --query tenantId --output tsv)}"
 export TENANT_ID="$tenant_id"
-app_id_uri="${APP_ID_URI:-https://${DOMAIN_NAME}/${DB_NAME}}"
+legacy_db_app_name="Oracle Database 26ai ADB - ${DB_NAME}"
+legacy_client_app_name="Oracle Client Interactive ADB - ${DB_NAME}"
+if [ -z "${ENTRA_DB_APP_NAME:-}" ] || [ "$ENTRA_DB_APP_NAME" = "$legacy_db_app_name" ]; then
+  ENTRA_DB_APP_NAME="Oracle Database 26ai ADB - ${DB_NAME} - ${ADB_ENTRA_LAB_INSTANCE_ID}"
+fi
+if [ -z "${ENTRA_CLIENT_APP_NAME:-}" ] || [ "$ENTRA_CLIENT_APP_NAME" = "$legacy_client_app_name" ]; then
+  ENTRA_CLIENT_APP_NAME="Oracle Client Interactive ADB - ${DB_NAME} - ${ADB_ENTRA_LAB_INSTANCE_ID}"
+fi
+export ENTRA_DB_APP_NAME
+export ENTRA_CLIENT_APP_NAME
+legacy_app_id_uri="https://${DOMAIN_NAME}/${DB_NAME}"
+if [ -z "${APP_ID_URI:-}" ] || [ "$APP_ID_URI" = "$legacy_app_id_uri" ]; then
+  app_id_uri="https://${DOMAIN_NAME}/${DB_NAME}-${ADB_ENTRA_LAB_INSTANCE_ID}"
+else
+  app_id_uri="$APP_ID_URI"
+fi
 export APP_ID_URI="$app_id_uri"
 marvin_upn="${MARVIN_UPN:-$(az ad signed-in-user show --query userPrincipalName --output tsv 2>/dev/null || true)}"
 if [ -z "$marvin_upn" ]; then
@@ -187,6 +208,7 @@ export EMMA_UPN="${EMMA_UPN:-emma@${DOMAIN_NAME}}"
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  ROOT_COMP_ID          = ${ROOT_COMP_ID}${NC}"
 echo -e "${CYAN}  DB_NAME               = ${DB_NAME}${NC}"
+echo -e "${CYAN}  LAB_INSTANCE_ID       = ${ADB_ENTRA_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  DB_VERSION            = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE           = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR            = ${WALLET_DIR}${NC}"
@@ -415,6 +437,7 @@ export DOMAIN_NAME='${DOMAIN_NAME}'
 export APP_ID='${db_app_id}'
 export APP_ID_URI='${APP_ID_URI}'
 export CLIENT_ID='${client_app_id}'
+export ADB_ENTRA_LAB_INSTANCE_ID='${ADB_ENTRA_LAB_INSTANCE_ID}'
 export ENTRA_DB_APP_NAME='${ENTRA_DB_APP_NAME}'
 export ENTRA_CLIENT_APP_NAME='${ENTRA_CLIENT_APP_NAME}'
 export MARVIN_UPN='${MARVIN_UPN}'

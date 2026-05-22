@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VENV_DIR="${WEB_HR_VENV_DIR:-${HOME}/end-user-web-hr-app-venv}"
+PYTHON_BIN="${WEB_HR_PYTHON_BIN:-python3.9}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVER_CERT="${WEB_HR_SERVER_CERT:-}"
+PYTHON_WALLET_DIR="${WEB_HR_WALLET_LOCATION:-${SCRIPT_DIR}/python-wallet}"
+ENV_FILE="${SCRIPT_DIR}/.env"
+
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+upsert_export() {
+  local name="$1"
+  local value="$2"
+  local escaped
+  escaped="$(printf '%s' "$value" | sed "s/'/'\\\\''/g")"
+  if grep -Eq "^(export[[:space:]]+)?${name}=" "$ENV_FILE"; then
+    echo "Updating ${name} in ${ENV_FILE}."
+    sed -i -E "s|^(export[[:space:]]+)?${name}=.*|export ${name}='${escaped}'|" "$ENV_FILE"
+  else
+    echo "Adding ${name} to ${ENV_FILE}."
+    echo "export ${name}='${escaped}'" >> "$ENV_FILE"
+  fi
+}
+
+tns_has_alias() {
+  local dir="$1"
+  local alias_name="${WEB_HR_TNS_ALIAS:-freepdb1}"
+  [ -f "${dir}/tnsnames.ora" ] || return 1
+  grep -Eiq "^[[:space:]]*${alias_name}[[:space:]]*=" "${dir}/tnsnames.ora"
+}
+
+find_tns_admin_with_alias() {
+  local dir
+  for dir in \
+    "${WEB_HR_CONFIG_DIR:-}" \
+    "${TNS_ADMIN:-}" \
+    "${ORACLE_HOME:-}/network/admin" \
+    /opt/oracle/product/*/dbhome_*/network/admin \
+    /u01/app/oracle/product/*/dbhome_*/network/admin
+  do
+    [ -n "$dir" ] || continue
+    [ -d "$dir" ] || continue
+    if tns_has_alias "$dir"; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+install_python39() {
+  if command_exists "$PYTHON_BIN"; then
+    return
+  fi
+
+  echo "Python 3.9 was not found. Installing Oracle Linux 8 python39 module..."
+
+  if [ "$(id -u)" -eq 0 ]; then
+    dnf module install -y python39
+  elif command_exists sudo; then
+    sudo dnf module install -y python39
+  else
+    echo "ERROR: sudo is required to install python39, or run this script as root."
+    exit 1
+  fi
+}
+
+ensure_pip_support() {
+  if "$PYTHON_BIN" -m pip --version >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "python3.9 pip support was not found. Installing python39-pip..."
+
+  if [ "$(id -u)" -eq 0 ]; then
+    dnf install -y python39-pip
+  elif command_exists sudo; then
+    sudo dnf install -y python39-pip
+  else
+    echo "ERROR: sudo is required to install python39-pip, or run this script as root."
+    exit 1
+  fi
+}
+
+install_python39
+ensure_pip_support
+
+echo "Using Python:"
+"$PYTHON_BIN" --version
+
+echo
+if [ -d "$VENV_DIR" ]; then
+  echo "Reusing existing virtual environment and updating packages:"
+else
+  echo "Creating virtual environment:"
+fi
+echo "$VENV_DIR"
+"$PYTHON_BIN" -m venv "$VENV_DIR"
+
+# shellcheck disable=SC1091
+source "${VENV_DIR}/bin/activate"
+
+echo
+echo "Installing or updating python-oracledb 4.x in the virtual environment..."
+python -m pip install --upgrade pip
+python -m pip install "oracledb>=4"
+
+echo
+echo "Verifying python-oracledb..."
+python -c "import oracledb; print('python-oracledb', oracledb.__version__)"
+
+if [ -n "$SERVER_CERT" ]; then
+  echo
+  echo "Preparing python-oracledb Thin-mode trust wallet..."
+  if [ ! -f "$SERVER_CERT" ]; then
+    echo "ERROR: WEB_HR_SERVER_CERT was set but the file was not found:"
+    echo "$SERVER_CERT"
+    exit 1
+  fi
+  mkdir -p "$PYTHON_WALLET_DIR"
+  echo "Writing or replacing python-oracledb Thin-mode trust wallet:"
+  echo "${PYTHON_WALLET_DIR}/ewallet.pem"
+  cp "$SERVER_CERT" "${PYTHON_WALLET_DIR}/ewallet.pem"
+  chmod 700 "$PYTHON_WALLET_DIR"
+  chmod 600 "${PYTHON_WALLET_DIR}/ewallet.pem"
+  upsert_export "WEB_HR_WALLET_LOCATION" "$PYTHON_WALLET_DIR"
+fi
+
+touch "$ENV_FILE"
+upsert_export "PYTHON_BIN" "${VENV_DIR}/bin/python"
+
+NETWORK_CONFIG_DIR="$(find_tns_admin_with_alias || true)"
+if [ -n "$NETWORK_CONFIG_DIR" ]; then
+  echo "Using Oracle network config with ${WEB_HR_TNS_ALIAS:-freepdb1} alias:"
+  echo "$NETWORK_CONFIG_DIR"
+  upsert_export "WEB_HR_CONFIG_DIR" "$NETWORK_CONFIG_DIR"
+else
+  echo "WARNING: Could not find a tnsnames.ora containing ${WEB_HR_TNS_ALIAS:-freepdb1}."
+  echo "         Set WEB_HR_CONFIG_DIR manually if python-oracledb cannot resolve the alias."
+fi
+
+echo
+echo "Ready."
+echo "Next:"
+echo "./start.sh --verbose"

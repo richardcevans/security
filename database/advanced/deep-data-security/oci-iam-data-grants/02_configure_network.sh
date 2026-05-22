@@ -55,6 +55,29 @@ fi
 
 FQDN=$(hostname -f)
 CERT_DN="CN=${FQDN},O=DBSecLab,C=US"
+NETWORK_ADMIN="${ORACLE_HOME}/network/admin"
+LISTENER_ORA="${NETWORK_ADMIN}/listener.ora"
+SQLNET_ORA="${NETWORK_ADMIN}/sqlnet.ora"
+TNSNAMES_ORA="${NETWORK_ADMIN}/tnsnames.ora"
+
+TCP_LISTENER_ADDRESS=""
+if [ -f "$LISTENER_ORA" ]; then
+    TCP_LISTENER_ADDRESS=$(awk '
+        tolower($0) ~ /protocol[[:space:]]*=[[:space:]]*tcp[)][[:space:]]*/ && tolower($0) ~ /port[[:space:]]*=/ {
+            line = $0
+            sub(/^[[:space:]]*/, "", line)
+            sub(/[[:space:]]*$/, "", line)
+            print line
+            exit
+        }
+    ' "$LISTENER_ORA")
+fi
+if [ -z "$TCP_LISTENER_ADDRESS" ]; then
+    TCP_LISTENER_ADDRESS="(ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))"
+    echo -e "${YELLOW}WARNING: Could not find an existing TCP listener address in ${LISTENER_ORA}.${NC}"
+    echo -e "${YELLOW}         Falling back to ${TCP_LISTENER_ADDRESS}.${NC}"
+fi
+TCPS_LISTENER_ADDRESS="(ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))"
 
 echo -e "${PURPLE}Configuration:${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
@@ -68,6 +91,8 @@ echo -e "${CYAN}  OCI_AUDIENCE    = ${OCI_AUDIENCE}${NC}"
 echo -e "${CYAN}  OCI_SCOPE       = ${OCI_SCOPE}${NC}"
 echo -e "${CYAN}  OCI_TOKEN_AUTH  = ${OCI_TOKEN_AUTH}${NC}"
 echo -e "${CYAN}  OCI_TOKEN_DIR   = ${OCI_TOKEN_DIR}${NC}"
+echo -e "${CYAN}  TCP_ADDR        = ${TCP_LISTENER_ADDRESS}${NC}"
+echo -e "${CYAN}  TCPS_ADDR       = ${TCPS_LISTENER_ADDRESS}${NC}"
 echo
 
 echo -e "${YELLOW}Step 1: Creating wallet directory and certificate...${NC}"
@@ -88,14 +113,14 @@ fi
 echo
 
 echo -e "${YELLOW}Step 2: Configuring listener.ora...${NC}"
-cp -vp "$ORACLE_HOME/network/admin/listener.ora" "$ORACLE_HOME/network/admin/listener.ora.bak" 2>/dev/null
+cp -vp "$LISTENER_ORA" "${LISTENER_ORA}.bak" 2>/dev/null
 
-cat > "$ORACLE_HOME/network/admin/listener.ora" <<EOF
+cat > "$LISTENER_ORA" <<EOF
 LISTENER =
   (DESCRIPTION_LIST =
     (DESCRIPTION =
-      (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
-      (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+      ${TCP_LISTENER_ADDRESS}
+      ${TCPS_LISTENER_ADDRESS}
     )
   )
 
@@ -115,9 +140,9 @@ echo -e "${CYAN}  listener.ora updated.${NC}"
 echo
 
 echo -e "${YELLOW}Step 3: Configuring sqlnet.ora...${NC}"
-cp -vp "$ORACLE_HOME/network/admin/sqlnet.ora" "$ORACLE_HOME/network/admin/sqlnet.ora.bak" 2>/dev/null
+cp -vp "$SQLNET_ORA" "${SQLNET_ORA}.bak" 2>/dev/null
 
-cat > "$ORACLE_HOME/network/admin/sqlnet.ora" <<EOF
+cat > "$SQLNET_ORA" <<EOF
 WALLET_LOCATION =
   (SOURCE =
     (METHOD = FILE)
@@ -135,10 +160,10 @@ echo -e "${CYAN}  sqlnet.ora updated.${NC}"
 echo
 
 echo -e "${YELLOW}Step 4: Adding hrdb entry to tnsnames.ora...${NC}"
-cp -vp "$ORACLE_HOME/network/admin/tnsnames.ora" "$ORACLE_HOME/network/admin/tnsnames.ora.bak" 2>/dev/null
-sed -i '/^hrdb/,/^$/d' "$ORACLE_HOME/network/admin/tnsnames.ora" 2>/dev/null
+cp -vp "$TNSNAMES_ORA" "${TNSNAMES_ORA}.bak" 2>/dev/null
+sed -i '/^hrdb/,/^$/d' "$TNSNAMES_ORA" 2>/dev/null
 
-cat >> "$ORACLE_HOME/network/admin/tnsnames.ora" <<EOF
+cat >> "$TNSNAMES_ORA" <<EOF
 hrdb =
   (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
@@ -177,8 +202,8 @@ END;
 
 ALTER SYSTEM SET local_listener =
   '(ADDRESS_LIST =
-     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
-     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+     ${TCP_LISTENER_ADDRESS}
+     ${TCPS_LISTENER_ADDRESS}
    )'
   SCOPE = BOTH;
 
@@ -188,8 +213,8 @@ ALTER SESSION SET CONTAINER = ${PDB_NAME};
 
 ALTER SYSTEM SET local_listener =
   '(ADDRESS_LIST =
-     (ADDRESS = (PROTOCOL = TCP)(HOST = ${FQDN})(PORT = 1521))
-     (ADDRESS = (PROTOCOL = TCPS)(HOST = ${FQDN})(PORT = 2484))
+     ${TCP_LISTENER_ADDRESS}
+     ${TCPS_LISTENER_ADDRESS}
    )'
   SCOPE = BOTH;
 

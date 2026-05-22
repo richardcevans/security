@@ -108,7 +108,7 @@ set pages 9999
 prompt
 prompt ========================================================================
 prompt Test 2: Can Emma update her salary?
-prompt  - Employee data grant allows UPDATE(phone_number) only.
+prompt  - Employee data grant allows UPDATE(phone_number, first_name) only.
 prompt  - Salary is not in the UPDATE column list.
 prompt ========================================================================
 

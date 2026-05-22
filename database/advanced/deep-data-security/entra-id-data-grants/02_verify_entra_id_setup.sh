@@ -14,8 +14,8 @@ source "${SCRIPT_DIR}/lib_env_check.sh"
 require_entra_lab_env
 
 export PDB_NAME="${PDB_NAME:-FREEPDB1}"
-export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai - ${PDB_NAME}}"
-export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive - ${PDB_NAME}}"
+export ENTRA_DB_APP_NAME="${ENTRA_DB_APP_NAME:-Oracle Database 26ai - ${PDB_NAME}${ENTRA_LAB_INSTANCE_ID:+ - ${ENTRA_LAB_INSTANCE_ID}}}"
+export ENTRA_CLIENT_APP_NAME="${ENTRA_CLIENT_APP_NAME:-Oracle Client Interactive - ${PDB_NAME}${ENTRA_LAB_INSTANCE_ID:+ - ${ENTRA_LAB_INSTANCE_ID}}}"
 export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 echo

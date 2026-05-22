@@ -2,7 +2,7 @@
 
 ## About this Workshop
 ### Overview
-*Estimated Time to complete the workshop*: 75 minutes
+Estimated Time: 75 minutes
 
 This workshop environment is dedicated to Oracle Database Security features and functionalities.
 
@@ -13,7 +13,7 @@ Now, you no longer need important resources on your PC (storage, CPU or memory),
 ### Components
 The architecture of this **Oracle Deep Data Security** Hands-On Lab is as following:
 
-  ![Oracle Deep Data Security Architecture](../deep-data-security/entra-id-data-grants/images/architecture.png "Architecture diagram showing Marvin and Emma authenticating with Microsoft Entra ID and Oracle Deep Data Security enforcing per-user access.")
+  ![Oracle Deep Data Security architecture showing Microsoft Entra ID authentication and Oracle Deep Data Security per-user access](images/architecture.png)
 
 Users authenticate with Microsoft Entra ID. The database enforces per-user access with data grants — no application filtering required.
 

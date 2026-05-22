@@ -31,6 +31,7 @@ The app intentionally exposes a broad database-agent surface. The LLM can genera
 ## Task 0: Download find-the-money.zip
 
 ```bash
+mkdir -vp $DBSEC_LABS/deep-data-security
 cd $DBSEC_LABS/deep-data-security
 wget -O find-the-money.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/xTq6v3hC4YVpHJ6Sygc-uzvGWpxX_8F5HMX_CUcM_WJ4hZ36xRQuApU4WZA0a5Mj/n/oradbclouducm/b/dbsec_public/o/find-the-money.zip
 unzip -o find-the-money.zip

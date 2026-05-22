@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>End User Web HR App</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security</p>
+          <h1>End User Web HR App</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section id="loginPanel" class="panel login-panel">
+        <form id="loginForm" class="login-form">
+          <div>
+            <h2>Sign In</h2>
+            <p class="small">Use Emma or Marvin with the lab password.</p>
+          </div>
+          <label>
+            <span>Username</span>
+            <input id="loginUsername" name="username" type="text" autocomplete="username" value="emma" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="loginPassword" name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button id="loginButton" type="submit">Sign In</button>
+          <p id="loginError" class="form-error" role="alert"></p>
+        </form>
+      </section>
+
+      <section class="actions">
+        <a class="button ghost" href="/debug">Diagnostics</a>
+        <a class="button ghost" href="/logout">Sign Out</a>
+      </section>
+
+      <section id="modeBanner" class="mode-banner"></section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Normal Employee Query</h2>
+          <p class="small">Connects directly as the selected Oracle Database end user. Deep Data Security decides which rows and columns are visible or editable.</p>
+          <div class="button-row">
+            <button id="employeesButton">Load Employees</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+	                  <th>ID</th>
+	                  <th>First Name</th>
+	                  <th>Last Name</th>
+                  <th>Job</th>
+                  <th>Phone</th>
+                  <th>Salary</th>
+                  <th>SSN</th>
+                  <th>Dept</th>
+                  <th>Manager</th>
+                </tr>
+              </thead>
+              <tbody id="employeeRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Visible Salary Summary</h2>
+          <p class="small">Runs as the signed-in end user. Aggregates only include rows Oracle allows that user to see.</p>
+          <button id="summaryButton">Summarize Visible Rows</button>
+          <dl id="summary"></dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Raw Response</h2>
+        <pre id="raw"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Unified Audit Trail</h2>
+        <p class="small">Shows recent SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
+        <button id="auditButton" type="button">Refresh Audit Events</button>
+        <div class="table-wrap">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>End User</th>
+                <th>Database User</th>
+                <th>Host / Client</th>
+                <th>SQL Text</th>
+                <th>Return</th>
+              </tr>
+            </thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

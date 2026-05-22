@@ -12,7 +12,9 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.adb-oci-iam.env"
+INSTANCE_FILE="${SCRIPT_DIR}/.adb-oci-iam.instance"
 WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
+source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
 usage() {
   cat <<'EOF'
@@ -39,7 +41,12 @@ show_cmd() {
   printf '\n'
 }
 
-export DB_NAME="${DB_NAME:-deepsec1}"
+ADB_OCI_IAM_LAB_INSTANCE_ID=$(make_lab_instance_id "dbsec-lab-machine" "$INSTANCE_FILE" "ADB_OCI_IAM_LAB_INSTANCE_ID")
+export ADB_OCI_IAM_LAB_INSTANCE_ID
+ADB_OCI_IAM_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$ADB_OCI_IAM_LAB_INSTANCE_ID" 6)
+export ADB_OCI_IAM_LAB_INSTANCE_SHORT
+
+export DB_NAME="${DB_NAME:-deepsec1${ADB_OCI_IAM_LAB_INSTANCE_SHORT}}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
 if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
   DB_DISPLAY_NAME="$DB_NAME"
@@ -58,33 +65,31 @@ export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
-export OCI_DB_APP_NAME="${OCI_DB_APP_NAME:-${DB_NAME} ADB OCI IAM DB Resource}"
-export OCI_CLIENT_APP_NAME="${OCI_CLIENT_APP_NAME:-${DB_NAME} ADB OCI IAM Public Client}"
 export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
-export OCI_DB_AUDIENCE="${OCI_DB_AUDIENCE:-${DB_NAME}OracleDB}"
-export OCI_DB_SCOPE_VALUE="${OCI_DB_SCOPE_VALUE:-${DB_NAME}_DB_ACCESS_SCOPE}"
+legacy_oci_db_app_name="${DB_NAME} ADB OCI IAM DB Resource"
+legacy_oci_client_app_name="${DB_NAME} ADB OCI IAM Public Client"
+if [ -z "${OCI_DB_APP_NAME:-}" ] || [ "$OCI_DB_APP_NAME" = "$legacy_oci_db_app_name" ] || [ "$OCI_DB_APP_NAME" = "ADB OCI IAM DB Resource" ]; then
+  OCI_DB_APP_NAME="${DB_NAME} ADB OCI IAM DB Resource - ${ADB_OCI_IAM_LAB_INSTANCE_ID}"
+fi
+if [ -z "${OCI_CLIENT_APP_NAME:-}" ] || [ "$OCI_CLIENT_APP_NAME" = "$legacy_oci_client_app_name" ] || [ "$OCI_CLIENT_APP_NAME" = "ADB OCI IAM Public Client" ]; then
+  OCI_CLIENT_APP_NAME="${DB_NAME} ADB OCI IAM Public Client - ${ADB_OCI_IAM_LAB_INSTANCE_ID}"
+fi
+export OCI_DB_APP_NAME
+export OCI_CLIENT_APP_NAME
+if [ -z "${OCI_DB_AUDIENCE:-}" ] || [ "$OCI_DB_AUDIENCE" = "OracleDB" ] || [ "$OCI_DB_AUDIENCE" = "${DB_NAME}OracleDB" ]; then
+  OCI_DB_AUDIENCE="${DB_NAME}OracleDB${ADB_OCI_IAM_LAB_INSTANCE_SHORT}"
+fi
+if [ -z "${OCI_DB_SCOPE_VALUE:-}" ] || [ "$OCI_DB_SCOPE_VALUE" = "DB_ACCESS_SCOPE" ] || [ "$OCI_DB_SCOPE_VALUE" = "${DB_NAME}_DB_ACCESS_SCOPE" ]; then
+  OCI_DB_SCOPE_VALUE="${DB_NAME}_DB_ACCESS_SCOPE_${ADB_OCI_IAM_LAB_INSTANCE_SHORT}"
+fi
+export OCI_DB_AUDIENCE
+export OCI_DB_SCOPE_VALUE
 export OCI_SCOPE="${OCI_SCOPE:-${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}}"
 DEFAULT_REDIRECT_URIS="http://localhost:8888/callback,http://localhost:8889/callback,http://localhost:8890/callback,http://127.0.0.1:8888/callback,http://127.0.0.1:8889/callback,http://127.0.0.1:8890/callback"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
 export OCI_REDIRECT_URIS="${OCI_REDIRECT_URIS:-$DEFAULT_REDIRECT_URIS}"
 
-if [ "$OCI_DB_APP_NAME" = "ADB OCI IAM DB Resource" ]; then
-  OCI_DB_APP_NAME="${DB_NAME} ADB OCI IAM DB Resource"
-  export OCI_DB_APP_NAME
-fi
-if [ "$OCI_CLIENT_APP_NAME" = "ADB OCI IAM Public Client" ]; then
-  OCI_CLIENT_APP_NAME="${DB_NAME} ADB OCI IAM Public Client"
-  export OCI_CLIENT_APP_NAME
-fi
-if [ "$OCI_DB_AUDIENCE" = "OracleDB" ]; then
-  OCI_DB_AUDIENCE="${DB_NAME}OracleDB"
-  export OCI_DB_AUDIENCE
-fi
-if [ "$OCI_DB_SCOPE_VALUE" = "DB_ACCESS_SCOPE" ]; then
-  OCI_DB_SCOPE_VALUE="${DB_NAME}_DB_ACCESS_SCOPE"
-  export OCI_DB_SCOPE_VALUE
-fi
-if [ "$OCI_SCOPE" = "OracleDBDB_ACCESS_SCOPE" ]; then
+if [ "$OCI_SCOPE" = "OracleDBDB_ACCESS_SCOPE" ] || [ "$OCI_SCOPE" = "${DB_NAME}OracleDB${DB_NAME}_DB_ACCESS_SCOPE" ]; then
   OCI_SCOPE="${OCI_DB_AUDIENCE}${OCI_DB_SCOPE_VALUE}"
   export OCI_SCOPE
 fi
@@ -648,6 +653,7 @@ echo -e "${CYAN}Configuration:${NC}"
 echo -e "${CYAN}  OCI_COMPARTMENT = ${OCI_COMPARTMENT}${NC}"
 echo -e "${CYAN}  ROOT_COMP_ID    = ${ROOT_COMP_ID}${NC}"
 echo -e "${CYAN}  DB_NAME         = ${DB_NAME}${NC}"
+echo -e "${CYAN}  LAB_INSTANCE_ID = ${ADB_OCI_IAM_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  DB_DISPLAY_NAME = ${DB_DISPLAY_NAME}${NC}"
 echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
@@ -802,6 +808,7 @@ export OCI_AUDIENCE='${OCI_DB_AUDIENCE}'
 export OCI_SCOPE='${OCI_SCOPE}'
 export OCI_REDIRECT_URI='${OCI_REDIRECT_URI}'
 export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
+export ADB_OCI_IAM_LAB_INSTANCE_ID='${ADB_OCI_IAM_LAB_INSTANCE_ID}'
 export OCI_DB_APP_NAME='${OCI_DB_APP_NAME}'
 export OCI_CLIENT_APP_NAME='${OCI_CLIENT_APP_NAME}'
 export OCI_IAM_EMPLOYEE_GROUP='${OCI_IAM_EMPLOYEE_GROUP}'

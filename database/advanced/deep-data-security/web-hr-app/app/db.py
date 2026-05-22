@@ -361,23 +361,36 @@ class WebHrDatabase(object):
             except ValueError:
                 raise ValueError("{0} must be numeric.".format(field_name))
 
-        sql = "UPDATE hr.employees SET {0} = :value WHERE employee_id = :employee_id".format(column)
+        current_row = self._visible_row_for_employee(user, employee_id)
+        match_column, match_value = self._update_match_predicate(current_row)
+        sql = "UPDATE hr.employees SET {0} = :value WHERE {1} = :match_value".format(column, match_column)
         row_count = self._run_with_context(
             user,
             None,
             sql,
             fetch="rowcount",
-            params={"value": value, "employee_id": employee_id},
+            params={"value": value, "match_value": match_value},
         )
         payload = self._employees_oracle(user)
         payload["updated"] = {
             "employee_id": employee_id,
             "field": field_name,
+            "match_column": match_column,
             "row_count": row_count,
         }
         if row_count == 0:
             payload["note"] = "No rows were updated. Deep Data Security did not authorize that edit for the current end user."
         return payload
+
+    def _visible_row_for_employee(self, user, employee_id):
+        payload = self._employees_oracle(user)
+        for row in payload.get("rows", []):
+            if row.get("EMPLOYEE_ID") == employee_id:
+                return row
+        raise ValueError("Employee {0} is not visible to {1}.".format(employee_id, user["username"]))
+
+    def _update_match_predicate(self, row):
+        return "first_name", row.get("FIRST_NAME")
 
     def _audit_events_oracle(self):
         sql = """
@@ -692,7 +705,7 @@ def _preflight_summary(checks):
 
 
 def _policy_toggle_demo(enabled):
-    update_clause = "UPDATE (salary, department_id)" if enabled else "UPDATE (department_id)"
+    update_clause = "UPDATE (salary, department_id, first_name)" if enabled else "UPDATE (department_id, first_name)"
     return {
         "button_effect": "Restore Salary Edits" if enabled else "Disable Salary Edits",
         "what_changes": "The app calls a SYS definer-rights procedure installed by 04_configure_policy_toggle_demo.sh.",

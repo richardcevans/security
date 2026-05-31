@@ -50,19 +50,82 @@ In this lab, you will:
 - Demonstrates that broad SQL and vector retrieval are scoped by Deep Data
   Security instead of application-side filters.
 
-## Assumptions
+## Before You Start
 
+Use this checklist before you run the first command:
+
+- You can sign in to an OCI tenancy.
 - You have access to an OCI compartment where you can create or reuse an
   Autonomous Database Serverless instance.
-- OCI CLI and SQL*Plus are available. OCI Cloud Shell is the recommended
-  environment for the setup script.
-- You can create or use a tutorial owner schema. This lab uses
-  `DEEPSEC_ADMIN`.
-- You can create local Deep Sec end users named `linda` and `wendy`.
-- Python 3.10 or later is available on the machine where you run the app.
+- Your tenancy has capacity for an Always Free ADB-S instance, or you are
+  allowed to create a paid ADB-S instance after changing the setup script
+  defaults.
+- OCI Cloud Shell is available. Cloud Shell is recommended because OCI CLI is
+  already configured there.
+- SQL*Plus is available in the shell where you run the setup script.
+- Python 3.10 or later is available in the shell where you run the app.
+- You are running this lab in a sandbox, demo, or disposable environment.
 
 This app targets ADB-S 26ai. It does not target Oracle Database Free or a local
 Oracle container.
+
+## Beginner Concepts
+
+This lab uses a few Deep Data Security terms:
+
+- `DEEPSEC_ADMIN` is a normal database schema user. It owns the demo tables and
+  runs the setup scripts.
+- `linda` and `wendy` are Deep Sec end users. They are not schema owners and do
+  not own tables. They represent the people using the app.
+- A data role is a policy holder. This lab creates `LOAN_OFFICER_ROLE` and
+  `UNDERWRITER_ROLE`.
+- A data grant is the row and column rule attached to a data role.
+- `DEAL_DIRECT_LOGON_ROLE` carries `CREATE SESSION` so the local Deep Sec end
+  users can connect directly for this compact lab.
+
+The key idea is that the app does not decide what Linda or Wendy can see. The
+database applies the data grants before rows, columns, or policy documents leave
+Oracle Database.
+
+## ADB-S Setup Notes
+
+The setup script creates an Always Free ADB-S instance by default. If your
+tenancy already has the maximum number of Always Free Autonomous Databases, the
+create step may fail. In that case, either delete an unused Always Free database,
+reuse an existing ADB-S 26ai database by setting `DB_NAME`, or adjust the script
+for a paid ADB-S instance if your organization allows it.
+
+The default database name is `dealdeepsec<host-suffix>`, where the suffix is
+derived from the shell host name. This avoids name collisions when several lab
+machines use the same compartment.
+
+The setup script writes secrets to local files:
+
+- `.deal-adb.env`
+- `.env`
+
+Both files are ignored by Git. Keep them on the lab machine only.
+
+## Find Your Compartment
+
+If you do not know which compartment to use, list the compartments visible to
+your OCI user:
+
+```bash
+<copy>
+oci iam compartment list \
+  --compartment-id-in-subtree true \
+  --access-level ACCESSIBLE \
+  --lifecycle-state ACTIVE \
+  --all \
+  --query 'data[].{Name:name,OCID:id}' \
+  --output table
+</copy>
+```
+
+Use either the compartment name or OCID with `00_setup_adb.sh`. If you are only
+testing in a personal tenancy, you can use `root`, but most organizations prefer
+a dedicated compartment.
 
 ## Task 0: Download the App
 
@@ -92,6 +155,16 @@ Oracle container.
     cd deep-sec-ai-lending-app
     ls
     </copy>
+    ```
+
+    You should see files such as:
+
+    ```text
+    00_setup_adb.sh
+    01_verify_deepsec.py
+    04_configure_deepsec.py
+    10_run_deal_sessions.py
+    deep-sec-ai-lending-app.md
     ```
 
 ## Task 1: Create ADB-S and Prepare Deep Sec
@@ -126,6 +199,20 @@ SQL*Plus can reach your tenancy and ADB-S wallet.
     - grants `DEAL_DIRECT_LOGON_ROLE` to `DEEPSEC_ADMIN` with admin option
     - writes `.deal-adb.env` and the Python app `.env`
 
+    A successful run ends with output similar to:
+
+    ```text
+    Task 0 Completed: ADB-S and DEAL Deep Sec Admin Ready
+    Environment file: ./deep-sec-ai-lending-app/.deal-adb.env
+    Python app .env:  ./deep-sec-ai-lending-app/.env
+    Next:
+      source ./.deal-adb.env
+      python 01_verify_deepsec.py
+    ```
+
+    If ADB creation fails with an Always Free capacity or limit message, see
+    [Troubleshooting](#troubleshooting).
+
 2. Optional: override defaults before running the script.
 
     ```bash
@@ -150,6 +237,16 @@ SQL*Plus can reach your tenancy and ADB-S wallet.
     The Python scripts read `.env` directly, so you do not need to manually set
     ADB wallet values after the setup script completes.
 
+4. Confirm the generated files exist.
+
+    ```bash
+    <copy>
+    ls -l .deal-adb.env .env
+    </copy>
+    ```
+
+    Both files should be present and readable only by your user.
+
 ## Task 2: Configure Python and the App Environment
 
 1. Create a Python virtual environment.
@@ -165,6 +262,10 @@ SQL*Plus can reach your tenancy and ADB-S wallet.
 
     The `oci` package is required only for the optional OCI Generative AI task,
     but installing it here keeps the environment ready for every script.
+
+    Look for successful installation messages for `oracledb`,
+    `python-dotenv`, and `oci`. If `pip` reports permission errors, confirm that
+    your virtual environment is active.
 
 2. If you did not run `00_setup_adb.sh`, create `.env` from the example file.
 
@@ -215,6 +316,8 @@ python-oracledb mode: Thin
 Deep Sec metadata visible to this schema: ...
 ```
 
+Continue only after this script connects successfully and reports Thin mode.
+
 If the script reports Thick mode, remove any call to
 `oracledb.init_oracle_client()` from your environment. This lab requires
 `python-oracledb` Thin mode.
@@ -235,6 +338,15 @@ If the script reports Thick mode, remove any call to
     - `LOAN_POLICIES`, including a `VECTOR(3, FLOAT32)` column named
       `EMBEDDING`
 
+    Expected output:
+
+    ```text
+    Dropped existing DEAL demo tables if they existed.
+    Created loan_applications.
+    Created loan_policies with VECTOR(3, FLOAT32) embedding column.
+    Schema setup complete.
+    ```
+
 2. Load the synthetic lending data and policy documents.
 
     ```bash
@@ -246,6 +358,14 @@ If the script reports Thick mode, remove any call to
     The data includes six loan applications and eight policy documents. The
     policy rows use deterministic three-dimensional vectors so the lab does not
     require an embedding model.
+
+    Expected output:
+
+    ```text
+    Inserted 6 loan applications.
+    Inserted 8 loan policy documents.
+    Synthetic data load complete.
+    ```
 
 ## Task 5: Configure Deep Data Security
 
@@ -269,6 +389,17 @@ If the script reports Thick mode, remove any call to
 
     After this script completes, reads from these tables are governed by Deep
     Data Security data grants.
+
+    Expected output includes:
+
+    ```text
+    Granted LOAN_OFFICER_ROLE to LINDA.
+    Granted UNDERWRITER_ROLE to WENDY.
+    Granted DEAL_DIRECT_LOGON_ROLE to LOAN_OFFICER_ROLE.
+    Granted DEAL_DIRECT_LOGON_ROLE to UNDERWRITER_ROLE.
+    Enabled mandatory data-grant enforcement on DEAL tables.
+    Configured Deep Data Security for DEAL.
+    ```
 
 ## Task 6: Verify Row and Column Enforcement
 
@@ -295,6 +426,22 @@ ORDER BY id
 
 The app does not add a Linda or Wendy `WHERE` clause.
 
+Expected proof points:
+
+```text
+As linda:
+  Rows returned: 3
+  Visible application ids: 101, 102, 105
+  ...
+  risk_score: NULL
+
+As wendy:
+  Rows returned: 4
+  Visible application ids: 102, 103, 105, 106
+  ...
+  risk_score: 72
+```
+
 ## Task 7: Verify Deep Sec-Scoped Vector Retrieval
 
 1. Run a vector warm-up as Linda.
@@ -304,6 +451,8 @@ The app does not add a Linda or Wendy `WHERE` clause.
     python 07_vector_basics.py
     </copy>
     ```
+
+    Linda should receive general or loan-officer policy titles only.
 
 2. Run the secured vector retrieval demo.
 
@@ -315,6 +464,9 @@ The app does not add a Linda or Wendy `WHERE` clause.
 
     Linda and Wendy use the same vector search shape, but the database limits
     which policy rows can be ranked and returned for each end user.
+
+    Expected proof point: Wendy can receive underwriting policy titles, while
+    Linda cannot receive Wendy-only underwriting policy rows.
 
 3. Optionally compare vector-style retrieval with a keyword query.
 
@@ -352,6 +504,21 @@ The app does not add a Linda or Wendy `WHERE` clause.
     - Wendy receives underwriter policy documents.
     - The bypass check reports scoped results even though the app did not use
       application-side row, redaction, or audience filters.
+
+    Expected output includes:
+
+    ```text
+    DEAL session: linda
+    Visible applications: 3
+    Restricted risk_score: NULL
+
+    DEAL session: wendy
+    Visible applications: 4
+    Underwriting risk_score: 72
+
+    Bypass check
+    No application-side row filter, redaction, or audience filter was used.
+    ```
 
 ## Task 9: Optional OCI Generative AI Chatbot
 
@@ -391,8 +558,8 @@ see.
 
 ## Task 10: Clean Up
 
-Run the cleanup script as the `DEEPSEC_ADMIN` owner when you no longer need the
-demo objects.
+Run the cleanup script when you no longer need the demo objects but want to keep
+the ADB-S instance.
 
 ```bash
 <copy>
@@ -405,7 +572,90 @@ app. It does not drop the `DEEPSEC_ADMIN` schema, the local Deep Sec end users,
 or `DEAL_DIRECT_LOGON_ROLE`. Drop those separately only if they are no longer
 used by any lab.
 
+Expected output includes `Ran:` or `Skipped:` lines for each grant, role, and
+table. `Skipped` usually means the object was already gone.
+
+## Task 11: Optional Delete ADB-S
+
+Use this task only when you created a disposable ADB-S instance for this lab and
+no longer need it.
+
+1. Confirm the generated ADB environment file exists.
+
+    ```bash
+    <copy>
+    ls -l .deal-adb.env
+    </copy>
+    ```
+
+2. Delete the ADB-S instance.
+
+    ```bash
+    <copy>
+    ./12_delete_adb.sh --confirm-delete-adb
+    </copy>
+    ```
+
+3. To also delete the downloaded wallet directory recorded in `.deal-adb.env`,
+   add `--delete-wallet`.
+
+    ```bash
+    <copy>
+    ./12_delete_adb.sh --confirm-delete-adb --delete-wallet
+    </copy>
+    ```
+
+The delete script refuses to run unless you pass `--confirm-delete-adb`. It
+only deletes the wallet directory automatically when the path is under
+`$HOME/adb_wallet`.
+
+## Validation Notes
+
+The lab package has been checked for local syntax and packaging:
+
+- `00_setup_adb.sh` passes shell syntax validation.
+- The Python scripts modified for this lab pass Python bytecode compilation.
+- The published ZIP contains `00_setup_adb.sh` with executable Unix file mode.
+- The published ZIP reuses the existing PAR URL shown in Task 0.
+
+The live ADB-S creation path is validated when Task 1 completes in your OCI
+tenancy. If Task 1 fails, keep the error text and use the troubleshooting
+sections below.
+
 ## Troubleshooting
+
+### The setup script cannot find a compartment
+
+Run the compartment list command in [Find Your Compartment](#find-your-compartment).
+Use either the exact `Name` value or the `OCID` value. If your organization uses
+policies that limit compartment visibility, ask your tenancy administrator for
+the compartment where you can create Autonomous Database resources.
+
+### ADB creation fails because of Always Free limits
+
+The setup script creates Always Free ADB-S by default. If OCI reports an Always
+Free limit, you have three options:
+
+- Delete an unused Always Free Autonomous Database and rerun `00_setup_adb.sh`.
+- Reuse an existing ADB-S 26ai database by setting `DB_NAME` to that database
+  name before rerunning the script.
+- If your organization allows paid resources, edit `00_setup_adb.sh` and remove
+  `--is-free-tier true` before creating the database.
+
+Do not switch to Oracle Database Free or a local container for this lab. The lab
+targets ADB-S 26ai.
+
+### SQL*Plus is not available
+
+Run the setup from OCI Cloud Shell if possible. If you use your own client
+machine, install Oracle Instant Client with SQL*Plus and confirm this command
+works before rerunning setup:
+
+```bash
+<copy>
+sqlplus -v
+</copy>
+```
 
 ### The app cannot find a wallet alias
 

@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+wallet*/
+Wallet*/
+*.pem
+*.key
+*.p12
+*.sso
+*.jks
+*.log

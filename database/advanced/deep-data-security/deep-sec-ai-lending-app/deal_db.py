@@ -154,7 +154,7 @@ def run_for_user(end_user, work):
 
 
 def object_name(name):
-    owner = optional_env("DEAL_OBJECT_OWNER", "DEEPSEC")
+    owner = optional_env("DEAL_OBJECT_OWNER", "DEEPSEC_ADMIN")
     if optional_env("DEEPSEC_CONTEXT_MODE", "direct_logon") == "direct_logon":
         return f"{owner}.{name}"
     return name

@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+.deal-adb.env
 .venv/
 venv/
 __pycache__/

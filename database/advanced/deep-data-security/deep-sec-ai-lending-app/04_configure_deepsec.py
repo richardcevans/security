@@ -33,6 +33,12 @@ with connect() as conn:
     cur.execute("grant data role underwriter_role to wendy")
     print("Granted UNDERWRITER_ROLE to WENDY.")
 
+    cur.execute("grant deal_direct_logon_role to loan_officer_role")
+    print("Granted DEAL_DIRECT_LOGON_ROLE to LOAN_OFFICER_ROLE.")
+
+    cur.execute("grant deal_direct_logon_role to underwriter_role")
+    print("Granted DEAL_DIRECT_LOGON_ROLE to UNDERWRITER_ROLE.")
+
     grants = [
         """
         create or replace data grant deal_loan_officer_read as
@@ -82,6 +88,10 @@ with connect() as conn:
 
     conn.commit()
 
+    cur.execute("set use data grants only on loan_applications enabled")
+    cur.execute("set use data grants only on loan_policies enabled")
+
     print("Created loan application read grants.")
     print("Created loan policy read grants.")
+    print("Enabled mandatory data-grant enforcement on DEAL tables.")
     print("Configured Deep Data Security for DEAL.")

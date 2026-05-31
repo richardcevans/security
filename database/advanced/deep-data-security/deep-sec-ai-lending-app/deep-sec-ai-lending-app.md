@@ -52,11 +52,12 @@ In this lab, you will:
 
 ## Assumptions
 
-- You have Oracle AI Database 26ai on Autonomous Database Serverless.
-- You have downloaded and unzipped the ADB wallet.
-- You can connect as `ADMIN` or another account that can grant the required
-  Deep Data Security privileges.
-- You can create or use a tutorial owner schema. This lab uses `DEEPSEC`.
+- You have access to an OCI compartment where you can create or reuse an
+  Autonomous Database Serverless instance.
+- OCI CLI and SQL*Plus are available. OCI Cloud Shell is the recommended
+  environment for the setup script.
+- You can create or use a tutorial owner schema. This lab uses
+  `DEEPSEC_ADMIN`.
 - You can create local Deep Sec end users named `linda` and `wendy`.
 - Python 3.10 or later is available on the machine where you run the app.
 
@@ -93,62 +94,61 @@ Oracle container.
     </copy>
     ```
 
-## Task 1: Prepare the ADB-S Database
+## Task 1: Create ADB-S and Prepare Deep Sec
 
-Run this task as `ADMIN` or as another administrator account for the ADB-S
-database.
+Run the setup script from OCI Cloud Shell or from a client where OCI CLI and
+SQL*Plus can reach your tenancy and ADB-S wallet.
 
-1. Create the tutorial owner schema if it does not already exist.
+1. Create or reuse the ADB-S instance and prepare the database users.
 
-    ```sql
+    ```bash
     <copy>
-    CREATE USER deepsec IDENTIFIED BY "<owner-password>";
-    ALTER USER deepsec QUOTA UNLIMITED ON data;
-
-    GRANT CREATE SESSION TO deepsec;
-    GRANT CREATE TABLE TO deepsec;
+    ./00_setup_adb.sh <compartment-name-or-ocid>
     </copy>
     ```
 
-    If your ADB-S database uses a different default tablespace, replace `data`
-    with the appropriate tablespace name.
+    To use the root compartment, run:
 
-2. Grant the Deep Data Security privileges needed by the setup scripts.
-
-    ```sql
+    ```bash
     <copy>
-    GRANT CREATE DATA ROLE TO deepsec;
-    GRANT CREATE DATA GRANT TO deepsec;
-    GRANT CREATE ANY DATA GRANT TO deepsec;
-    GRANT ADMINISTER ANY DATA GRANT TO deepsec;
-    GRANT GRANT ANY DATA ROLE TO deepsec;
-    GRANT CREATE END USER TO deepsec;
-    GRANT CREATE END USER SECURITY CONTEXT TO deepsec;
-    GRANT SET USE DATA GRANTS ONLY TO deepsec;
+    ./00_setup_adb.sh root
     </copy>
     ```
 
-3. Create the local Deep Sec end users used by the demo.
+    The setup script:
 
-    ```sql
+    - creates or reuses an Autonomous Database Serverless 26ai instance
+    - downloads and unzips the ADB wallet
+    - creates or resets `DEEPSEC_ADMIN`
+    - grants the Deep Data Security privileges required by this lab
+    - creates local Deep Sec end users `linda` and `wendy`
+    - creates `DEAL_DIRECT_LOGON_ROLE` with `CREATE SESSION`
+    - grants `DEAL_DIRECT_LOGON_ROLE` to `DEEPSEC_ADMIN` with admin option
+    - writes `.deal-adb.env` and the Python app `.env`
+
+2. Optional: override defaults before running the script.
+
+    ```bash
     <copy>
-    CREATE END USER "linda" IDENTIFIED BY "<linda-password>";
-    CREATE END USER "wendy" IDENTIFIED BY "<wendy-password>";
+    export DB_NAME=dealdeepsec01
+    export ADMIN_PWD='Oracle123+Oracle123+'
+    export DEEPSEC_ADMIN_PWD='Oracle123+DeepSec+'
+    export LINDA_PWD='Oracle123+Linda+'
+    export WENDY_PWD='Oracle123+Wendy+'
+    ./00_setup_adb.sh <compartment-name-or-ocid>
     </copy>
     ```
 
-4. Create the database role that allows the local Deep Sec end users to connect
-   directly after their data roles exist.
+3. Load the generated ADB environment file.
 
-    ```sql
+    ```bash
     <copy>
-    CREATE ROLE deal_direct_logon_role;
-    GRANT CREATE SESSION TO deal_direct_logon_role;
+    source ./.deal-adb.env
     </copy>
     ```
 
-    The final grants from this role to the Deep Sec data roles happen later,
-    after the app creates `LOAN_OFFICER_ROLE` and `UNDERWRITER_ROLE`.
+    The Python scripts read `.env` directly, so you do not need to manually set
+    ADB wallet values after the setup script completes.
 
 ## Task 2: Configure Python and the App Environment
 
@@ -166,7 +166,7 @@ database.
     The `oci` package is required only for the optional OCI Generative AI task,
     but installing it here keeps the environment ready for every script.
 
-2. Create `.env` from the example file.
+2. If you did not run `00_setup_adb.sh`, create `.env` from the example file.
 
     ```bash
     <copy>
@@ -177,7 +177,7 @@ database.
 3. Edit `.env` and set the ADB-S connection values.
 
     ```text
-    ADB_USERNAME=DEEPSEC
+    ADB_USERNAME=DEEPSEC_ADMIN
     ADB_PASSWORD=<owner-password>
     ADB_DSN=<adb-wallet-alias-or-connect-descriptor>
     ADB_WALLET_LOCATION=<path-to-unzipped-wallet>
@@ -190,7 +190,7 @@ database.
     DEEPSEC_CONTEXT_MODE=direct_logon
     DEEPSEC_LINDA_KEY=<linda-password>
     DEEPSEC_WENDY_KEY=<wendy-password>
-    DEAL_OBJECT_OWNER=DEEPSEC
+    DEAL_OBJECT_OWNER=DEEPSEC_ADMIN
     ```
 
     `DEEPSEC_DATABASE_ACCESS_TOKEN` is not used in `direct_logon` mode.
@@ -209,7 +209,7 @@ Look for output similar to:
 
 ```text
 DEAL environment check
-Connected as: DEEPSEC
+Connected as: DEEPSEC_ADMIN
 Database version: Oracle AI Database 26ai ...
 python-oracledb mode: Thin
 Deep Sec metadata visible to this schema: ...
@@ -257,35 +257,18 @@ If the script reports Thick mode, remove any call to
     </copy>
     ```
 
-    This script creates:
+    This script creates and enables:
 
     - `LOAN_OFFICER_ROLE`
     - `UNDERWRITER_ROLE`
     - data grants on `LOAN_APPLICATIONS`
     - data grants on `LOAN_POLICIES`
     - data-role assignments for `linda` and `wendy`
+    - `DEAL_DIRECT_LOGON_ROLE` bindings to both data roles
+    - mandatory data-grant enforcement on both demo tables
 
-2. As `ADMIN`, grant the direct-logon role to the two data roles.
-
-    ```sql
-    <copy>
-    GRANT deal_direct_logon_role TO loan_officer_role;
-    GRANT deal_direct_logon_role TO underwriter_role;
-    </copy>
-    ```
-
-3. As the `DEEPSEC` owner, enable mandatory data-grant enforcement on the demo
-   tables.
-
-    ```sql
-    <copy>
-    SET USE DATA GRANTS ONLY ON loan_applications ENABLED;
-    SET USE DATA GRANTS ONLY ON loan_policies ENABLED;
-    </copy>
-    ```
-
-    After this point, reads from these tables are governed by Deep Data
-    Security data grants.
+    After this script completes, reads from these tables are governed by Deep
+    Data Security data grants.
 
 ## Task 6: Verify Row and Column Enforcement
 
@@ -408,8 +391,8 @@ see.
 
 ## Task 10: Clean Up
 
-Run the cleanup script as the `DEEPSEC` owner when you no longer need the demo
-objects.
+Run the cleanup script as the `DEEPSEC_ADMIN` owner when you no longer need the
+demo objects.
 
 ```bash
 <copy>
@@ -418,9 +401,9 @@ python 99_cleanup.py
 ```
 
 The script drops the data grants, data roles, and demo tables created by the
-app. It does not drop the `DEEPSEC` schema, the local Deep Sec end users, or
-`DEAL_DIRECT_LOGON_ROLE`. Drop those separately only if they are no longer used
-by any lab.
+app. It does not drop the `DEEPSEC_ADMIN` schema, the local Deep Sec end users,
+or `DEAL_DIRECT_LOGON_ROLE`. Drop those separately only if they are no longer
+used by any lab.
 
 ## Troubleshooting
 

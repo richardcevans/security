@@ -26,6 +26,8 @@ def try_execute(cur, statement):
 
 with connect() as conn:
     cur = conn.cursor()
+    try_execute(cur, "set use data grants only on loan_applications disabled")
+    try_execute(cur, "set use data grants only on loan_policies disabled")
     for kind, name in OBJECTS:
         try_execute(cur, f"drop {kind} {name}")
     try_execute(cur, "drop table loan_policies purge")

@@ -97,7 +97,7 @@ Optional overrides:
 
 ```bash
 <copy>
-export DB_NAME=deepsec1abc123
+export DB_NAME=deepsec1
 export DB_VERSION=26ai
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'

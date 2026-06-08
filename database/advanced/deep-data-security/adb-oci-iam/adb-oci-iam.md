@@ -18,7 +18,7 @@ In this lab, you will:
 
 > **Warning:** Run this lab only in an isolated demo, sandbox, or non-production environment. The steps can create or modify identity applications, users, groups, database identity-provider settings, network files, data roles, data grants, audit policies, and other security configuration. Do not run the lab against production tenancies, tenants, databases, applications, or directories, and do not overwrite existing policies or configuration. Follow your organization's change control, approval, and security procedures before adapting any step outside a lab environment.
 
-Estimated Time: 60 minutes
+Estimated Time: 55 minutes
 
 ## What This Lab Does
 
@@ -167,12 +167,12 @@ Sign in as Marvin for the first token and Emma for the second token.
 
 ## 0. Download and Unzip the Lab Files
 
-Move to the Deep Data Security labs directory and download the lab archive:
+Create a Cloud Shell working directory and download the lab archive:
 
 ```bash
 <copy>
-mkdir -vp $DBSEC_LABS/deep-data-security
-cd $DBSEC_LABS/deep-data-security
+mkdir -vp "$HOME/dbsec-labs/deep-data-security"
+cd "$HOME/dbsec-labs/deep-data-security"
 wget -O adb-oci-iam.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip
 </copy>
 ```
@@ -224,6 +224,11 @@ Important files include:
 | `06_cleanup_adb_lab.sh` | Removes lab database objects and optional OCI resources |
 
 ## 1. Create ADB-S and Download the Wallet
+
+The setup script prints the target tenancy, compartment, IAM domain, groups, and
+demo users before it creates or modifies OCI IAM resources. Type
+`NON-PRODUCTION` only if you confirm this is an isolated demo, sandbox, or
+non-production environment.
 
 ```bash
 <copy>

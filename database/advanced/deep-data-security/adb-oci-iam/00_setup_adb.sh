@@ -41,6 +41,37 @@ show_cmd() {
   printf '\n'
 }
 
+require_non_production_acknowledgement() {
+  echo
+  echo -e "${YELLOW}Production safety acknowledgement required.${NC}"
+  echo -e "${YELLOW}This lab can create or modify OCI IAM OAuth apps, groups, demo users, and group memberships.${NC}"
+  echo -e "${YELLOW}Run it only in an isolated demo, sandbox, or non-production tenancy/domain.${NC}"
+  echo
+  echo -e "${CYAN}Target tenancy      = ${TENANCY_OCID}${NC}"
+  echo -e "${CYAN}Target compartment  = ${ROOT_COMP_ID}${NC}"
+  echo -e "${CYAN}Target IAM domain   = ${OCI_DOMAIN_URL}${NC}"
+  echo -e "${CYAN}IAM groups          = ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
+  if [ "$CREATE_DEMO_USERS" = "1" ]; then
+    echo -e "${CYAN}Demo users          = ${MARVIN_USERNAME}, ${EMMA_USERNAME}${NC}"
+  else
+    echo -e "${CYAN}Demo users          = skipped because CREATE_DEMO_USERS=0${NC}"
+  fi
+  echo
+  printf 'Type NON-PRODUCTION to confirm this is not a production environment: '
+
+  local answer
+  if ! IFS= read -r answer; then
+    echo
+    echo -e "${RED}ERROR: Could not read acknowledgement. Aborting before OCI IAM changes.${NC}" >&2
+    exit 1
+  fi
+
+  if [ "$answer" != "NON-PRODUCTION" ]; then
+    echo -e "${RED}ERROR: Acknowledgement not provided. Aborting before OCI IAM changes.${NC}" >&2
+    exit 1
+  fi
+}
+
 ADB_OCI_IAM_LAB_INSTANCE_ID=$(make_lab_instance_id "dbsec-lab-machine" "$INSTANCE_FILE" "ADB_OCI_IAM_LAB_INSTANCE_ID")
 export ADB_OCI_IAM_LAB_INSTANCE_ID
 ADB_OCI_IAM_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$ADB_OCI_IAM_LAB_INSTANCE_ID" 6)
@@ -646,6 +677,10 @@ if [ -z "${ROOT_COMP_ID:-}" ]; then
   fi
 fi
 export ROOT_COMP_ID
+
+OCI_DOMAIN_URL=$(discover_domain_url)
+export OCI_DOMAIN_URL
+require_non_production_acknowledgement
 
 setup_oauth_apps
 

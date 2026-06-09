@@ -167,7 +167,7 @@ else
 fi
 
 if [ "$DELETE_ADB" = true ]; then
-  if confirm "This deletes the Autonomous Database ${DB_NAME}."; then
+  if confirm "This deletes the Autonomous AI Database ${DB_NAME}."; then
     if [ -z "${ROOT_COMP_ID:-}" ]; then
       echo -e "${RED}ERROR: ROOT_COMP_ID is not set; cannot delete ADB safely.${NC}"
       exit 1

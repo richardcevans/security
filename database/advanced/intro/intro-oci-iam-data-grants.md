@@ -13,7 +13,7 @@ environment.
 
 You do not need significant resources on your PC, complex local tools, or a
 pre-built database environment. The lab runs from OCI Cloud Shell and uses
-Autonomous Database Serverless with OCI IAM authentication.
+Autonomous AI Database Serverless with OCI IAM authentication.
 
 ### Components
 The architecture of this **Oracle Deep Data Security** hands-on lab is shown
@@ -28,13 +28,13 @@ the database instead of relying on application-side filtering.
 During this lab, you will use:
   - OCI Cloud Shell
   - OCI Console
-  - Autonomous Database Serverless
+  - Autonomous AI Database Serverless (ADB-S)
   - SQL*Plus or SQLcl from Cloud Shell
 
 ### Objectives
 This hands-on lab gives you an opportunity to configure **OCI IAM**
-authentication for Autonomous Database Serverless 26ai and layer **Oracle Deep
-Data Security** - end users, data roles, and data grants - so the database
+authentication for Autonomous AI Database 26ai and layer **Oracle Deep Data
+Security** - end users, data roles, and data grants - so the database
 enforces per-user access based on OCI IAM group membership.
 
 You may now [proceed to the next lab](#next)

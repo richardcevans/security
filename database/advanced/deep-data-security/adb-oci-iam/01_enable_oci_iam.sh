@@ -1,5 +1,5 @@
 #!/bin/bash
-# Enable OCI IAM authentication on Autonomous Database using DBMS_CLOUD_ADMIN.
+# Enable OCI IAM authentication on Autonomous AI Database using DBMS_CLOUD_ADMIN.
 
 set -euo pipefail
 

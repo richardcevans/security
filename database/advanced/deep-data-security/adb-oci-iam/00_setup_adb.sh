@@ -1,5 +1,5 @@
 #!/bin/bash
-# Create or reuse an Autonomous Database Serverless instance and wallet.
+# Create or reuse an Autonomous AI Database Serverless instance and wallet.
 # Intended to run from OCI Cloud Shell.
 
 set -euo pipefail
@@ -127,7 +127,7 @@ fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 0: Create OCI IAM Apps, ADB-S Instance, and Wallet               ${NC}"
+echo -e "${GREEN}      Task 0: Create OCI IAM Apps, Autonomous AI Database, and Wallet       ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
@@ -695,10 +695,10 @@ echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  IAM groups      = ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
 echo -e "${CYAN}  OAuth client    = ${OCI_CLIENT_ID}${NC}"
-echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous Database 26ai.${NC}"
+echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous AI Database 26ai.${NC}"
 echo
 
-echo -e "${YELLOW}Step 3: Creating or reusing Autonomous Database...${NC}"
+echo -e "${YELLOW}Step 3: Creating or reusing Autonomous AI Database...${NC}"
 echo -e "${CYAN}  Checking for existing ADB:${NC}"
 show_cmd oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
@@ -768,7 +768,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
 else
   if [ "$ADB_DB_VERSION" != "$DB_VERSION" ]; then
     echo -e "${RED}ERROR: Found existing ADB ${DB_NAME}, but it is ${ADB_DB_VERSION}, not ${DB_VERSION}.${NC}"
-    echo -e "${YELLOW}This lab requires Autonomous Database ${DB_VERSION} for Deep Data Security end-user context privileges.${NC}"
+    echo -e "${YELLOW}This lab requires Autonomous AI Database ${DB_VERSION} for Deep Data Security end-user context privileges.${NC}"
     echo -e "${YELLOW}Use a different DB_NAME or delete/recreate the existing database as ${DB_VERSION}.${NC}"
     exit 1
   fi

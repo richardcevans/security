@@ -1,17 +1,13 @@
-# ADB OCI IAM Deep Data Security Lab
+# Autonomous AI Database OCI IAM Deep Data Security Lab
 
-This lab builds the Deep Data Security data grants demo on Autonomous Database
-Serverless 26ai using OCI IAM authentication.
-
-The database name starts with `deepsec1` by default and adds a short
-machine-instance suffix so multiple DBSec-Lab environments can share the same
-OCI compartment and identity domain without name collisions.
+This lab builds the Deep Data Security data grants demo on Autonomous AI
+Database Serverless 26ai using OCI IAM authentication.
 
 ### Objectives
 
 In this lab, you will:
 
-- Create an Autonomous Database Serverless instance for the demo.
+- Create an Autonomous AI Database instance for the demo.
 - Configure OCI IAM authentication for the database.
 - Create Deep Data Security data roles and data grants.
 - Verify end-user access through OCI IAM OAuth2 tokens.
@@ -22,8 +18,8 @@ Estimated Time: 55 minutes
 
 ## What This Lab Does
 
-- Creates or reuses an ADB-S 26ai instance.
-- Downloads the ADB client wallet into Cloud Shell.
+- Creates or reuses an Autonomous AI Database 26ai instance.
+- Downloads the database client wallet into Cloud Shell.
 - Enables OCI IAM authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
 - Maps OCI IAM groups to database data roles.
@@ -36,24 +32,25 @@ Estimated Time: 55 minutes
 - You are running from OCI Cloud Shell.
 - OCI CLI is already available and authenticated by Cloud Shell.
 - SQL*Plus or SQLcl is available in Cloud Shell.
-- Your OCI user can create Autonomous Databases in the target compartment.
+- Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your OCI user can create OCI IAM domain users and groups, or reuse existing
   Marvin and Emma users and `EMPLOYEES` / `MANAGERS` groups.
-- The target database is Autonomous Database 26ai. Deep Data Security end-user
+- The target database is Autonomous AI Database 26ai. Deep Data Security end-user
   context privileges used by this lab are not supported on 19c.
-- You know the compartment name where the ADB-S instance should be created, or
-  you want to use the root compartment.
-- The lab can run in an Always Free tenancy when Always Free ADB resources are
-  available. To confirm whether your tenancy is Free Trial, Always Free, or paid,
-  check the OCI Console under your profile menu and tenancy or billing details.
-  The OCI CLI can confirm tenancy access, but it usually does not identify the
-  billing type directly.
+- You know the compartment name where the Autonomous AI Database instance should
+  be created, or you want to use the root compartment.
+- The lab can run in an Always Free tenancy when Always Free Autonomous AI
+  Database resources are available. To confirm whether your tenancy is Free
+  Trial, Always Free, or paid, check the OCI Console under your profile menu and
+  tenancy or billing details. The OCI CLI can confirm tenancy access, but it
+  usually does not identify the billing type directly.
 
 ## Lab Variables
 
 Most users only need to set the compartment. The defaults create:
 
-- ADB-S database `deepsec1<short-machine-suffix>`, such as `deepsec1ef143e`
+- Autonomous AI Database `deepsec1<short-machine-suffix>`, such as
+  `deepsec1ef143e`
 - OCI IAM users `marvin` and `emma`
 - OCI IAM groups `EMPLOYEES` and `MANAGERS`
 - Marvin in both groups; Emma in `EMPLOYEES` only
@@ -133,39 +130,7 @@ By default, `00_setup_adb.sh` creates or reuses the real OCI IAM domain users
 `marvin` and `emma`. Set `CREATE_DEMO_USERS=0` only if you want to create or
 manage those users manually.
 
-## Run Order
-
-For a clean run, execute the tasks in this order:
-
-```bash
-<copy>
-./00_setup_adb.sh
-source ./.adb-oci-iam.env
-./set_oci_iam_passwords.sh --all
-./01_enable_oci_iam.sh
-./02_create_hr_schema.sh
-./03_create_data_roles_and_grants.sh
-./verify_db_setup.sh
-</copy>
-```
-
-Then test each user with a fresh OAuth token:
-
-```bash
-<copy>
-rm -rf "$HOME/.oci/adb-oci-iam"
-./04_get_iam_oauth_token.sh --headless
-./05_verify_as_marvin.sh
-
-rm -rf "$HOME/.oci/adb-oci-iam"
-./04_get_iam_oauth_token.sh --headless
-./06_verify_as_emma.sh
-</copy>
-```
-
-Sign in as Marvin for the first token and Emma for the second token.
-
-## 0. Download and Unzip the Lab Files
+## Task 0. Download and Unzip the Lab Files
 
 Create a Cloud Shell working directory and download the lab archive:
 
@@ -212,9 +177,9 @@ Important files include:
 
 | File | Purpose |
 | --- | --- |
-| `00_setup_adb.sh` | Creates OCI IAM apps, groups, demo users, ADB, wallet, and `.adb-oci-iam.env` |
+| `00_setup_adb.sh` | Creates OCI IAM apps, groups, demo users, Autonomous AI Database, wallet, and `.adb-oci-iam.env` |
 | `set_oci_iam_passwords.sh` | Sets or resets passwords for Marvin and Emma |
-| `01_enable_oci_iam.sh` | Enables OCI IAM authentication on ADB and creates `OCI_IAM_DOMAIN_DB_CRED$` |
+| `01_enable_oci_iam.sh` | Enables OCI IAM authentication on Autonomous AI Database and creates `OCI_IAM_DOMAIN_DB_CRED$` |
 | `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
 | `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
 | `04_get_iam_oauth_token.sh` | Gets an OCI IAM OAuth2 token for the signed-in user |
@@ -223,7 +188,7 @@ Important files include:
 | `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
 | `06_cleanup_adb_lab.sh` | Removes lab database objects and optional OCI resources |
 
-## 1. Create ADB-S and Download the Wallet
+## Task 1. Create Autonomous AI Database and Download the Wallet
 
 The setup script prints the target tenancy, compartment, IAM domain, groups, and
 demo users before it creates or modifies OCI IAM resources. Type
@@ -250,8 +215,8 @@ This script creates or reuses:
 - OAuth database access scope named with `DB_NAME` and the machine-instance suffix
 - Database-side OCI IAM OAuth credential for the resource app
 - Access-token group custom claim used by `IAM_OAUTH_GROUP=...`
-- ADB-S database: `deepsec1<short-machine-suffix>`
-- ADB wallet: `$HOME/adb_wallet/<DB_NAME>`
+- Autonomous AI Database: `deepsec1<short-machine-suffix>`
+- Database wallet: `$HOME/adb_wallet/<DB_NAME>`
 - OCI IAM domain groups: `EMPLOYEES`, `MANAGERS`
 - OCI IAM domain users: `marvin`, `emma`
 
@@ -281,7 +246,7 @@ To set only Emma's password:
 The password is not written to `.adb-oci-iam.env`. If you forget a demo user's
 password, rerun the password helper.
 
-## 2. Enable OCI IAM on ADB
+## Task 2. Enable OCI IAM on Autonomous AI Database
 
 ```bash
 <copy>
@@ -289,7 +254,8 @@ password, rerun the password helper.
 </copy>
 ```
 
-ADB does not use a SYS connection for this. The script connects as `ADMIN` and runs:
+Autonomous AI Database does not use a SYS connection for this. The script
+connects as `ADMIN` and runs:
 
 ```sql
 BEGIN
@@ -313,10 +279,10 @@ from `TOKEN_LOCATION`.
 
 If this task prints `ALTER SYSTEM SET identity_provider_oauth_config`, you are
 running an old copy of the lab files. Re-download the ZIP and unzip with `-o`.
-The current ADB script uses `DBMS_CLOUD_ADMIN.ENABLE_EXTERNAL_AUTHENTICATION`
+The current lab script uses `DBMS_CLOUD_ADMIN.ENABLE_EXTERNAL_AUTHENTICATION`
 with the `params` argument instead of a direct `ALTER SYSTEM`.
 
-## 3. Create the HR Schema
+## Task 3. Create the HR Schema
 
 ```bash
 <copy>
@@ -327,7 +293,7 @@ with the `params` argument instead of a direct `ALTER SYSTEM`.
 The HR schema is created with `NO AUTHENTICATION`. It owns the data, but users do
 not log in as `HR`.
 
-## 4. Create Data Roles and Data Grants
+## Task 4. Create Data Roles and Data Grants
 
 ```bash
 <copy>
@@ -342,7 +308,7 @@ The script creates:
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
 - HR row and column data grants
 
-## 5. Verify the ADMIN-Side Setup
+## Task 5. Verify the ADMIN-Side Setup
 
 ```bash
 <copy>
@@ -364,7 +330,7 @@ HRAPP_EMPLOYEES                     iam_oauth_group=EMPLOYEES
 HRAPP_MANAGERS                      iam_oauth_group=MANAGERS
 ```
 
-## 6. Get an OCI IAM OAuth2 Access Token
+## Task 6. Get an OCI IAM OAuth2 Access Token
 
 Use `--headless` in OCI Cloud Shell when your browser opens on your local machine:
 
@@ -374,7 +340,7 @@ Use `--headless` in OCI Cloud Shell when your browser opens on your local machin
 </copy>
 ```
 
-This script updates the ADB wallet `sqlnet.ora` with:
+This script updates the database wallet `sqlnet.ora` with:
 
 ```text
 TOKEN_AUTH=OAUTH
@@ -432,7 +398,7 @@ Before verification, check the token subject and groups:
 For Marvin, expect `user_name` or `sub` to be `marvin`, and `group` to include
 `EMPLOYEES` and `MANAGERS`. For Emma, expect `emma` and `EMPLOYEES` only.
 
-## 7. Verify Data Grants as Marvin
+## Task 7. Verify Data Grants as Marvin
 
 Get a token and sign in as Marvin:
 
@@ -467,7 +433,7 @@ HRAPP_MANAGERS
 Marvin sees 4 rows: Marvin, Emma, Charlie, and Dana.
 ```
 
-## 8. Verify Data Grants as Emma
+## Task 8. Verify Data Grants as Emma
 
 Clear Marvin's token, get a new token, and sign in as Emma:
 
@@ -585,7 +551,7 @@ rm -rf "$HOME/.oci/adb-oci-iam"
 ```
 
 This removes the local token cache only. It does not change the OCI IAM user,
-groups, ADB instance, wallet, or database objects.
+groups, Autonomous AI Database instance, wallet, or database objects.
 
 ## Clean Up the Lab
 
@@ -605,7 +571,7 @@ To skip the prompt:
 </copy>
 ```
 
-To delete the ADB instance too:
+To delete the Autonomous AI Database instance too:
 
 ```bash
 <copy>
@@ -613,8 +579,8 @@ To delete the ADB instance too:
 </copy>
 ```
 
-To remove database objects, delete the ADB instance, delete the lab OAuth apps,
-and remove local generated wallet/env/token files:
+To remove database objects, delete the Autonomous AI Database instance, delete
+the lab OAuth apps, and remove local generated wallet/env/token files:
 
 ```bash
 <copy>
@@ -636,9 +602,9 @@ them, because they may be reused by other labs or policies.
 
 ## References
 
-- [Enable OCI IAM authentication on Autonomous Database](https://docs.public.content.oci.oraclecloud.com/en-us/iaas/autonomous-database-serverless/doc/enable-iam-authentication.html)
-- [Connect to Autonomous Database with OCI IAM authentication](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html)
-- [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/oracle-deep-data-security-guide.pdf)
+- [Enable OCI IAM authentication on Autonomous AI Database](https://docs.public.content.oci.oraclecloud.com/en-us/iaas/autonomous-database-serverless/doc/enable-iam-authentication.html)
+- [Connect to Autonomous AI Database with OCI IAM authentication](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html)
+- [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html)
 
 ## Acknowledgements
 

@@ -97,6 +97,8 @@ Optional overrides:
 <copy>
 export DB_NAME=deepsec1
 export DB_VERSION=26ai
+export ADB_LICENSE_MODEL=BRING_YOUR_OWN_LICENSE
+export ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export ADB_OCI_IAM_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
@@ -109,6 +111,11 @@ export EMMA_USERNAME=emma
 
 `DB_DISPLAY_NAME` defaults to `DB_NAME`. Set it only if you want the OCI Console
 display name to differ from the database name.
+
+`ADB_LICENSE_MODEL` defaults to `BRING_YOUR_OWN_LICENSE`. Set
+`ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY` only when you want the Autonomous AI
+Database to receive early maintenance patches; leave it unset for the regular
+maintenance schedule.
 
 By default, `00_setup_adb.sh` generates a machine-scoped instance ID and saves
 it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other DBSec-Lab

@@ -84,6 +84,22 @@ if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
 fi
 export DB_DISPLAY_NAME
 export DB_VERSION="${DB_VERSION:-26ai}"
+export ADB_LICENSE_MODEL="${ADB_LICENSE_MODEL:-BRING_YOUR_OWN_LICENSE}"
+ADB_LICENSE_MODEL=$(printf '%s' "$ADB_LICENSE_MODEL" | tr '[:lower:]' '[:upper:]')
+if [ "$ADB_LICENSE_MODEL" != "BRING_YOUR_OWN_LICENSE" ] && [ "$ADB_LICENSE_MODEL" != "LICENSE_INCLUDED" ]; then
+  echo -e "${RED}ERROR: ADB_LICENSE_MODEL must be BRING_YOUR_OWN_LICENSE or LICENSE_INCLUDED.${NC}" >&2
+  exit 1
+fi
+export ADB_LICENSE_MODEL
+export ADB_MAINTENANCE_SCHEDULE_TYPE="${ADB_MAINTENANCE_SCHEDULE_TYPE:-}"
+if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
+  ADB_MAINTENANCE_SCHEDULE_TYPE=$(printf '%s' "$ADB_MAINTENANCE_SCHEDULE_TYPE" | tr '[:lower:]' '[:upper:]')
+  if [ "$ADB_MAINTENANCE_SCHEDULE_TYPE" != "EARLY" ] && [ "$ADB_MAINTENANCE_SCHEDULE_TYPE" != "REGULAR" ]; then
+    echo -e "${RED}ERROR: ADB_MAINTENANCE_SCHEDULE_TYPE must be EARLY or REGULAR.${NC}" >&2
+    exit 1
+  fi
+  export ADB_MAINTENANCE_SCHEDULE_TYPE
+fi
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}}"
@@ -692,6 +708,10 @@ echo -e "${CYAN}  DB_NAME         = ${DB_NAME}${NC}"
 echo -e "${CYAN}  LAB_INSTANCE_ID = ${ADB_OCI_IAM_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  DB_DISPLAY_NAME = ${DB_DISPLAY_NAME}${NC}"
 echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
+echo -e "${CYAN}  LICENSE_MODEL   = ${ADB_LICENSE_MODEL}${NC}"
+if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
+  echo -e "${CYAN}  MAINTENANCE     = ${ADB_MAINTENANCE_SCHEDULE_TYPE}${NC}"
+fi
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  IAM groups      = ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
@@ -724,6 +744,10 @@ ADB_ANY_STATE=$(oci db autonomous-database list \
   --all \
   --raw-output \
   --query "data[?\"db-name\"=='${DB_NAME}'].\"lifecycle-state\" | [0]")
+adb_maintenance_args=()
+if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
+  adb_maintenance_args=(--maintenance-schedule-type "$ADB_MAINTENANCE_SCHEDULE_TYPE")
+fi
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
   if [ -n "$ADB_ANY_STATE" ] && [ "$ADB_ANY_STATE" != "null" ]; then
@@ -736,6 +760,8 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --display-name "$DB_DISPLAY_NAME" \
     --db-version "$DB_VERSION" \
     --is-free-tier true \
+    --license-model "$ADB_LICENSE_MODEL" \
+    "${adb_maintenance_args[@]}" \
     --admin-password '<hidden>' \
     --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
@@ -746,6 +772,8 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --display-name "$DB_DISPLAY_NAME" \
     --db-version "$DB_VERSION" \
     --is-free-tier true \
+    --license-model "$ADB_LICENSE_MODEL" \
+    "${adb_maintenance_args[@]}" \
     --admin-password "$ADMIN_PWD" \
     --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
@@ -826,6 +854,8 @@ export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
 export DB_VERSION='${DB_VERSION}'
+export ADB_LICENSE_MODEL='${ADB_LICENSE_MODEL}'
+export ADB_MAINTENANCE_SCHEDULE_TYPE='${ADB_MAINTENANCE_SCHEDULE_TYPE}'
 export ADB_OCID='${ADB_OCID}'
 export ADB_SERVICE='${ADB_SERVICE}'
 export ADMIN_PWD='${ADMIN_PWD}'

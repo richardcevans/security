@@ -296,7 +296,7 @@ if open_browser:
         print("Could not open a browser automatically. Open this URL manually:")
         print(auth_url)
 else:
-    print("Open this URL in the NoVNC browser:")
+    print("Open this URL in any browser where you can sign in to OCI IAM:")
     print(auth_url)
 print()
 
@@ -312,13 +312,20 @@ if "error" in result:
 
 code = result.get("code")
 if not code:
-    print("Copy the final redirected URL from the browser address bar, or copy only the code= value.")
+    print("Copy the entire final redirected URL from the browser address bar.")
     if headless:
-        print("The localhost page may not load in headless mode. That is expected; the address bar is the important part.")
-    code = extract_authorization_code(prompt_from_tty("Paste redirected URL or authorization code: "))
+        print("The localhost page will usually fail to load from a local browser when the script runs in Cloud Shell.")
+        print("That is expected; paste the full localhost callback URL shown in the address bar.")
+    for attempt in range(1, 4):
+        pasted_value = prompt_from_tty("Paste the full callback URL: ")
+        if pasted_value.strip():
+            code = extract_authorization_code(pasted_value)
+            break
+        if attempt < 3:
+            print("No URL pasted. Paste the full callback URL, then press Enter.")
 
 if not code:
-    print("ERROR: Could not determine authorization code.", file=sys.stderr)
+    print("ERROR: Could not determine authorization code. Re-run this script and paste the full callback URL from the browser address bar.", file=sys.stderr)
     sys.exit(1)
 
 def request_token(strip_padding=False):
@@ -375,7 +382,7 @@ os.chmod(token_path, 0o600)
 
 print()
 print("OAuth2 access token written for SQL*Plus.")
-print(f"  TOKEN_LOCATION = {token_dir}")
+print(f"  TOKEN_LOCATION={token_dir}")
 print(f"  token file     = {token_path}")
 print(f"  expires_in     = {token_response.get('expires_in', 'unknown')}")
 PY

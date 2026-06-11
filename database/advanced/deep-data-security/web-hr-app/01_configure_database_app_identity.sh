@@ -69,10 +69,12 @@ prompt   CREATE SESSION
 prompt   CREATE END USER SECURITY CONTEXT
 prompt   UPDATE ANY END USER CONTEXT
 prompt   SELECT ON HR.EMPLOYEES
+prompt   UPDATE(employee_id, phone_number, salary, department_id) ON HR.EMPLOYEES
 GRANT CREATE SESSION TO web_hr_app_user;
 GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
 GRANT UPDATE ANY END USER CONTEXT TO web_hr_app_user;
 GRANT SELECT ON hr.employees TO web_hr_app_user;
+GRANT UPDATE (employee_id, phone_number, salary, department_id) ON hr.employees TO web_hr_app_user;
 
 prompt
 prompt ========================================================================
@@ -80,6 +82,32 @@ prompt Require Deep Data Security data grants for HR.EMPLOYEES access
 prompt ========================================================================
 
 SET USE DATA GRANTS ONLY ON hr.employees ENABLED;
+
+prompt
+prompt ========================================================================
+prompt Refresh end-user data grants for key-based web application updates
+prompt ========================================================================
+prompt The web app updates rows by employee_id. Include employee_id in the
+prompt UPDATE column list so Deep Data Security can authorize the key predicate.
+prompt The application still exposes only phone_number, salary, and department_id.
+
+CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS
+  AS SELECT (employee_id, first_name, last_name, user_name, department_id, manager_id, ssn, salary, phone_number),
+     UPDATE(employee_id, phone_number, first_name)
+  ON hr.employees
+  WHERE upper(user_name) = upper(ora_end_user_context.username)
+  TO HRAPP_EMPLOYEES;
+
+CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
+  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (employee_id, salary, department_id, first_name)
+  ON hr.employees
+  WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
+  TO HRAPP_MANAGERS;
+
+CREATE OR REPLACE DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT
+  AS SELECT ON SYS.END_USER_CONTEXT
+   WHERE OWNER = 'HR' AND NAME = 'EMP_CTX'
+    TO HRAPP_EMPLOYEES, HRAPP_MANAGERS;
 
 prompt
 prompt ========================================================================
@@ -136,6 +164,19 @@ SELECT grantee, grantee_type, data_role
 
 col grant_name format a36
 col privilege format a20
+col predicate format a80
+SELECT grant_name, privilege, grantee, predicate
+  FROM dba_data_grants
+ WHERE object_owner = 'HR'
+   AND object_name = 'EMPLOYEES'
+   AND grant_name IN ('HRAPP_EMPLOYEES_ACCESS', 'HRAPP_MANAGER_ACCESS')
+ ORDER BY grant_name, privilege, grantee;
+
+SELECT grant_name, privilege, grantee, predicate
+  FROM dba_data_grants
+ WHERE grant_name = 'EMPLOYEE_CONTEXT_GRANT'
+ ORDER BY grant_name, privilege, grantee;
+
 SELECT grant_name, privilege, grantee
   FROM dba_data_grants
  WHERE grant_name = 'HRAPP_COMPENSATION_SUMMARY'

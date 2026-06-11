@@ -31,7 +31,8 @@ Estimated Time: 55 minutes
 
 - You are running from OCI Cloud Shell.
 - OCI CLI is already available and authenticated by Cloud Shell.
-- SQL*Plus or SQLcl is available in Cloud Shell.
+- SQL*Plus is available in Cloud Shell. The lab scripts use `sqlplus`; they do
+  not currently use SQLcl.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your OCI user can create OCI IAM domain users and groups, or reuse existing
   Marvin and Emma users and `EMPLOYEES` / `MANAGERS` groups.
@@ -152,23 +153,11 @@ cd adb-oci-iam
 </copy>
 ```
 
-If the archive creates a nested `adb-oci-iam` directory, move its contents up into
-the current lab directory:
-
-```bash
-<copy>
-if [ -d adb-oci-iam ]; then
-  cp -R adb-oci-iam/. .
-  rm -rf adb-oci-iam
-fi
-</copy>
-```
-
 Verify the extracted lab files:
 
 ```bash
 <copy>
-ls
+ls -al
 </copy>
 ```
 
@@ -190,6 +179,22 @@ Important files include:
 
 ## Task 1. Create Autonomous AI Database and Download the Wallet
 
+`00_setup_adb.sh` tries to discover the OCI IAM domain URL automatically by
+listing active IAM domains in your tenancy and selecting the domain named by
+`OCI_DOMAIN_NAME` (`Default` unless you override it). This works only when your
+Cloud Shell OCI CLI user has permission to list IAM domains.
+
+If your tenancy policy does not allow domain discovery, set `OCI_DOMAIN_URL`
+before you run the setup script. In the OCI Console, open **Identity & Security >
+Domains > Domains**, pick the domain labeled **Current domain**, then copy the
+domain URL.
+
+```bash
+<copy>
+export OCI_DOMAIN_URL=https://idcs-xxxxxxxx.identity.oraclecloud.com:443
+</copy>
+```
+
 The setup script prints the target tenancy, compartment, IAM domain, groups, and
 demo users before it creates or modifies OCI IAM resources. Type
 `NON-PRODUCTION` only if you confirm this is an isolated demo, sandbox, or
@@ -200,6 +205,8 @@ non-production environment.
 ./00_setup_adb.sh
 </copy>
 ```
+
+> Note: Creating an ADB instance may take several minutes. Please be patient. 
 
 Load the generated environment file:
 
@@ -332,7 +339,8 @@ HRAPP_MANAGERS                      iam_oauth_group=MANAGERS
 
 ## Task 6. Get an OCI IAM OAuth2 Access Token
 
-Use `--headless` in OCI Cloud Shell when your browser opens on your local machine:
+Use `--headless` in OCI Cloud Shell when your browser opens on your local
+machine. You do not need NoVNC for this flow:
 
 ```bash
 <copy>
@@ -361,11 +369,11 @@ required for SQL*Plus or for a public interactive OAuth client.
 
 In headless mode:
 
-1. Open the printed login URL in a browser.
+1. Open the printed login URL in any browser where you can sign in to OCI IAM.
 2. Sign in as the target demo user.
 3. The final `localhost:8888/callback?...` page may fail to load. That is expected.
-4. Copy the full callback URL from the browser address bar.
-5. Paste it back into the Cloud Shell prompt.
+4. Copy the entire callback URL from the browser address bar.
+5. Paste the full URL back into the Cloud Shell prompt, then press Enter.
 
 After login, the script writes that user's OAuth2 access token here:
 
@@ -433,6 +441,16 @@ HRAPP_MANAGERS
 Marvin sees 4 rows: Marvin, Emma, Charlie, and Dana.
 ```
 
+After Marvin is verified, you can connect directly with SQL*Plus without
+rerunning the verification script:
+
+```bash
+<copy>
+export TOKEN_LOCATION=$HOME/.oci/adb-oci-iam
+sqlplus -L /@${ADB_SERVICE}
+</copy>
+```
+
 ## Task 8. Verify Data Grants as Emma
 
 Clear Marvin's token, get a new token, and sign in as Emma:
@@ -467,11 +485,13 @@ HRAPP_EMPLOYEES
 Emma sees 1 row: Emma.
 ```
 
-Both verification scripts connect with:
+After Emma is verified, you can connect directly with SQL*Plus without rerunning
+the verification script:
 
 ```bash
 <copy>
-sqlplus /@${ADB_SERVICE}
+export TOKEN_LOCATION=$HOME/.oci/adb-oci-iam
+sqlplus -L /@${ADB_SERVICE}
 </copy>
 ```
 

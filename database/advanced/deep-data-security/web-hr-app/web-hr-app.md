@@ -158,8 +158,27 @@ GRANT CREATE SESSION TO web_hr_app_user;
 GRANT CREATE END USER SECURITY CONTEXT TO web_hr_app_user;
 GRANT UPDATE ANY END USER CONTEXT TO web_hr_app_user;
 GRANT SELECT ON hr.employees TO web_hr_app_user;
+GRANT UPDATE (employee_id, phone_number, salary, department_id) ON hr.employees TO web_hr_app_user;
 
 SET USE DATA GRANTS ONLY ON hr.employees ENABLED;
+
+CREATE OR REPLACE DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS
+  AS SELECT (employee_id, first_name, last_name, user_name, department_id, manager_id, ssn, salary, phone_number),
+     UPDATE(employee_id, phone_number, first_name)
+  ON hr.employees
+  WHERE upper(user_name) = upper(ora_end_user_context.username)
+  TO HRAPP_EMPLOYEES;
+
+CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
+  AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (employee_id, salary, department_id, first_name)
+  ON hr.employees
+  WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
+  TO HRAPP_MANAGERS;
+
+CREATE OR REPLACE DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT
+  AS SELECT ON SYS.END_USER_CONTEXT
+   WHERE OWNER = 'HR' AND NAME = 'EMP_CTX'
+    TO HRAPP_EMPLOYEES, HRAPP_MANAGERS;
 
 CREATE OR REPLACE APPLICATION IDENTITY web_hr_app
   MAPPED TO 'AZURE_CLIENT_ID=<web-hr-app-client-id>';
@@ -195,7 +214,7 @@ unset WALLET_DIR TNS_ADMIN
 The web app buttons call these procedures to demonstrate a DBA policy change:
 
 - `Disable Salary Edits` calls `SYS.WEB_HR_DISABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` without `UPDATE(salary)`.
-- `Restore Salary Edits` calls `SYS.WEB_HR_ENABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` with `UPDATE(salary, department_id, first_name)`.
+- `Restore Salary Edits` calls `SYS.WEB_HR_ENABLE_SALARY_UPDATES`, which recreates `HR.HRAPP_MANAGER_ACCESS` with `UPDATE(employee_id, salary, department_id, first_name)`. The app does not expose `employee_id` as editable; it is present so Oracle can authorize key-based `WHERE employee_id = :employee_id` updates.
 
 The app code does not change the authorization rule itself. After either procedure runs, the app reloads the employee rows and asks Oracle for `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary)` again. Salary cells render as editable only when Deep Data Security says the current end user can update that row and column.
 
@@ -283,6 +302,8 @@ source ~/web-hr-app-venv/bin/activate
 
 The helper creates a Python 3.9 virtual environment, installs `oracledb>=4`, exports the lab database server certificate if needed, and creates a Thin-mode trust wallet at `./python-wallet/ewallet.pem`. This keeps TLS verification enabled while trusting only the lab database certificate.
 
+The trust wallet is local to the VM and is not included in `web-hr-app.zip`. After downloading or unpacking the app on a new VM or under a new directory, rerun `./setup_python_oracledb.sh` before starting the app in real database mode.
+
 If the app returns `DPY-6005` with `CERTIFICATE_VERIFY_FAILED` or `self signed certificate`, the browser HTTPS certificate is not the problem. The Python database client does not trust the database listener certificate yet. Rerun:
 
 ```bash
@@ -354,7 +375,7 @@ For DBAs, the important point is that authorization remains in the database. The
 - Row visibility and column masking from Deep Data Security data grants.
 - `ORA_IS_COLUMN_AUTHORIZED(ssn)` to distinguish a masked SSN from a real `NULL`.
 - `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', column_name)` to decide whether the UI should render a field as editable.
-- Ordinary `UPDATE hr.employees ...` statements for edits; Oracle still allows or blocks the change.
+- Ordinary `UPDATE hr.employees ... WHERE employee_id = :employee_id` statements for edits; Oracle still allows or blocks the change.
 - Unified Audit records showing `END_USER_NAME`, even though the physical database session is the pooled application user.
 - A DBA policy toggle that removes and restores `UPDATE(salary)` without changing application code.
 
@@ -393,7 +414,7 @@ In real mode the application:
 5. Sets an end user security context for that request using both tokens.
 6. Runs the normal employee query.
 7. Uses `ORA_IS_COLUMN_AUTHORIZED` and `ORA_CHECK_DATA_PRIVILEGE` in the SQL query to show masked values and decide which cells the UI renders as editable.
-8. Sends ordinary `UPDATE hr.employees ...` statements for edits. Deep Data Security still enforces whether the row and column can be changed.
+8. Sends ordinary `UPDATE hr.employees ... WHERE employee_id = :employee_id` statements for edits. The app resolves the visible row, request context, update, and read-back under one attached end-user security context; Deep Data Security still enforces whether the row and column can be changed.
 9. Displays `UNIFIED_AUDIT_TRAIL.END_USER_NAME` for audited `SELECT` and `UPDATE` actions on `HR.EMPLOYEES`.
 10. Clears the end user security context before returning the connection to the pool.
 

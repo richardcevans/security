@@ -16,6 +16,13 @@ show_cmd() {
   printf '\n'
 }
 
+require_sqlplus() {
+  if ! command -v sqlplus >/dev/null 2>&1; then
+    echo "ERROR: sqlplus is not available in PATH. This lab currently requires SQL*Plus; the scripts do not use SQLcl." >&2
+    exit 1
+  fi
+}
+
 require_wallet_files() {
   local missing=false
 
@@ -45,5 +52,6 @@ require_wallet_files() {
 }
 
 admin_sqlplus() {
+  require_sqlplus
   sqlplus -L -s "admin/${ADMIN_PWD}@${ADB_SERVICE}"
 }

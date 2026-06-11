@@ -79,6 +79,37 @@ SELECT owner, table_name, grantee, privilege
    AND grantee = 'WEB_HR_APP_USER'
  ORDER BY privilege;
 
+col column_name format a24
+SELECT owner, table_name, column_name, grantee, privilege
+  FROM dba_col_privs
+ WHERE owner = 'HR'
+   AND table_name = 'EMPLOYEES'
+   AND grantee = 'WEB_HR_APP_USER'
+ ORDER BY privilege, column_name;
+
+prompt
+prompt ========================================================================
+prompt Active Deep Data Security grants used by employee edits
+prompt ========================================================================
+
+col grant_name format a36
+col privilege format a14
+col grantee format a28
+col object_owner format a14
+col object_name format a24
+col predicate format a80
+SELECT grant_name, privilege, grantee, object_owner, object_name, predicate
+  FROM dba_data_grants
+ WHERE object_owner = 'HR'
+   AND object_name = 'EMPLOYEES'
+   AND grant_name IN ('HRAPP_EMPLOYEES_ACCESS', 'HRAPP_MANAGER_ACCESS')
+ ORDER BY grant_name, privilege, grantee;
+
+SELECT grant_name, privilege, grantee, object_owner, object_name, predicate
+  FROM dba_data_grants
+ WHERE grant_name = 'EMPLOYEE_CONTEXT_GRANT'
+ ORDER BY grant_name, privilege, grantee;
+
 prompt
 prompt ========================================================================
 prompt Elevation data role granted to application identity

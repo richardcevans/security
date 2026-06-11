@@ -25,8 +25,9 @@ echo -e "${GREEN}===============================================================
 echo
 echo -e "${PURPLE}First run ./04_get_iam_oauth_token.sh and sign in as ${MARVIN_USERNAME}.${NC}"
 echo -e "${PURPLE}Marvin must be in ${OCI_IAM_EMPLOYEE_GROUP} and ${OCI_IAM_MANAGER_GROUP}.${NC}"
-echo -e "${CYAN}TOKEN_LOCATION = ${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}${NC}"
-show_cmd sqlplus -L -s "/@${ADB_SERVICE}"
+echo -e "${CYAN}TOKEN_LOCATION=${OCI_TOKEN_DIR:-$HOME/.oci/adb-oci-iam}${NC}"
+require_sqlplus
+echo "  sqlplus -L -s /@${ADB_SERVICE}"
 echo
 
 check_oauth_token "$MARVIN_USERNAME" "$OCI_IAM_EMPLOYEE_GROUP" "$OCI_IAM_MANAGER_GROUP"

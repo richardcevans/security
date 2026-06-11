@@ -82,6 +82,13 @@ delete_domain_app() {
     return 0
   fi
 
+  run_cleanup_cmd "Deactivating OCI IAM app ${app_name}" \
+    oci identity-domains app patch \
+      --endpoint "$OCI_DOMAIN_URL" \
+      --app-id "$app_id" \
+      --schemas '["urn:ietf:params:scim:api:messages:2.0:PatchOp"]' \
+      --operations '[{"op":"replace","path":"active","value":false}]'
+
   run_cleanup_cmd "Deleting OCI IAM app ${app_name}" \
     oci identity-domains app delete \
       --endpoint "$OCI_DOMAIN_URL" \

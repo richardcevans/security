@@ -26,7 +26,7 @@
         <a class="button secondary" href="/api/debug/database-context" target="_blank" rel="noreferrer">Open Context JSON</a>
       </section>
 
-      <section class="grid">
+      <section class="grid debug-grid">
         <article class="panel">
           <h2>Preflight Check</h2>
           <p class="small">Checks the app settings, token exchange, Python driver, database connection, data roles, and audit visibility.</p>
@@ -35,9 +35,23 @@
         </article>
 
         <article class="panel">
+          <h2>Connection Identities</h2>
+          <p class="small">Shows the pooled application database identity and the end-user security context used for Marvin or Emma.</p>
+          <dl id="connectionIdentities"></dl>
+        </article>
+      </section>
+
+      <section class="grid debug-grid">
+        <article class="panel">
           <h2>Pooled Request Context</h2>
           <p class="small">Runs the HR employee query and shows the end user context attached to the pooled database connection.</p>
           <dl id="requestContext"></dl>
+        </article>
+
+        <article class="panel">
+          <h2>Connection Model</h2>
+          <p class="small">Summarizes how the browser user, application identity, pooled database user, and Deep Data Security roles fit together.</p>
+          <dl id="connectionModel"></dl>
         </article>
       </section>
 

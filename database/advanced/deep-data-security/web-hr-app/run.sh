@@ -252,9 +252,30 @@ PY
   echo
 }
 
+validate_oracle_client_files() {
+  if [ "${WEB_HR_DB_MODE:-}" != "oracledb" ]; then
+    return
+  fi
+
+  if [ -n "${WEB_HR_WALLET_LOCATION:-}" ] && [ ! -f "${WEB_HR_WALLET_LOCATION}/ewallet.pem" ]; then
+    cat >&2 <<EOF
+ERROR: WEB_HR_WALLET_LOCATION is set, but the python-oracledb trust wallet is missing.
+  WEB_HR_WALLET_LOCATION = ${WEB_HR_WALLET_LOCATION}
+  Missing file           = ${WEB_HR_WALLET_LOCATION}/ewallet.pem
+
+Run this from the web-hr-app directory, then restart:
+  ./setup_python_oracledb.sh
+  ./start.sh --verbose
+EOF
+    exit 1
+  fi
+}
+
 if [ "$VERBOSE" = "1" ]; then
   print_verbose_startup
 fi
+
+validate_oracle_client_files
 
 export PYTHONUNBUFFERED="${PYTHONUNBUFFERED:-1}"
 exec "$PYTHON_BIN" -m app.main

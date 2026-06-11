@@ -1,5 +1,6 @@
+import json
 import os
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from app.identity import decode_jwt_without_validation, public_claims
 from urllib.parse import urlencode
@@ -60,9 +61,11 @@ class WebHrDatabase(object):
                 "message": "Database token diagnostics are available in oracledb mode.",
             }
 
+        app_token = self._application_access_token()
         db_token = self._database_access_token_for_user(user["access_token"])
         return {
             "mode": "oracledb",
+            "application_database_token": public_claims(decode_jwt_without_validation(app_token)),
             "database_access_token": public_claims(decode_jwt_without_validation(db_token)),
         }
 
@@ -71,33 +74,32 @@ class WebHrDatabase(object):
             return {
                 "mode": self.mode,
                 "message": "Database context diagnostics are available in oracledb mode.",
+                "connection_model": self._connection_model(user, None),
             }
 
-        identity_sql = """
-            SELECT ORA_END_USER_CONTEXT.username AS username,
-                   SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
-                   SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
-                   SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
-                   SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user
-              FROM dual
-        """
-        roles_sql = """
-            SELECT role_name
-              FROM v$end_user_data_role
-             ORDER BY role_name
-        """
-        identity = self._run_with_context(user, None, identity_sql, fetch="one")
-        roles = self._run_with_context(user, None, roles_sql, fetch="rows")
+        pooled_identity = self._pooled_connection_identity()
+        end_user_context = self._run_with_context(
+            user,
+            None,
+            "SELECT 1 AS context_probe FROM dual",
+            fetch="one",
+            include_context=True,
+        )["request_context"]
+        roles = end_user_context.get("active_data_roles", [])
         payload = {
             "mode": "oracledb",
-            "identity": identity,
+            "application_identity": self._application_identity_summary(),
+            "pooled_connection_identity": pooled_identity,
+            "end_user_context": end_user_context,
+            "connection_model": self._connection_model(user, end_user_context),
+            "identity": end_user_context.get("identity"),
             "active_data_roles": roles,
         }
         print("")
         print("========================================================================")
         print("Database context diagnostics")
         print("========================================================================")
-        print(__import__("json").dumps(payload, indent=2, sort_keys=True))
+        print(json.dumps(payload, indent=2, sort_keys=True, default=str))
         print("========================================================================")
         print("")
         return payload
@@ -151,10 +153,15 @@ class WebHrDatabase(object):
         else:
             add("Oracle network config", "warn", "WEB_HR_CONFIG_DIR/TNS_ADMIN is not set; relying on default Oracle lookup.")
         if wallet_location:
-            status = "pass" if os.path.isdir(wallet_location) else "fail"
-            add("Client wallet", status, "Wallet directory: {0}".format(wallet_location))
+            wallet_pem = os.path.join(wallet_location, "ewallet.pem")
+            status = "pass" if os.path.isfile(wallet_pem) else "fail"
+            add("Client wallet", status, "Wallet PEM: {0}".format(wallet_pem))
         else:
-            add("Client wallet", "warn", "WEB_HR_WALLET_LOCATION is not set; the TNS alias must resolve wallet settings.")
+            default_wallet_pem = Path(__file__).resolve().parent.parent / "python-wallet" / "ewallet.pem"
+            if default_wallet_pem.is_file():
+                add("Client wallet", "pass", "Default wallet PEM: {0}".format(default_wallet_pem))
+            else:
+                add("Client wallet", "warn", "WEB_HR_WALLET_LOCATION is not set; the TNS alias must resolve wallet settings.")
 
         if self.mode != "oracledb":
             add("Database mode", "warn", "WEB_HR_DB_MODE is {0}; database checks are skipped.".format(self.mode))
@@ -204,16 +211,51 @@ class WebHrDatabase(object):
         def app_connection_check():
             row = self._run_app_query(
                 """
-                SELECT SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                SELECT SYS_CONTEXT('USERENV','SESSIONID') AS session_id,
+                       SYS_CONTEXT('USERENV','SERVICE_NAME') AS service_name,
+                       SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                       SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
                        SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
-                       SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user
+                       SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user,
+                       SYS_CONTEXT('USERENV','SESSION_USER') AS session_user,
+                       SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema
                   FROM dual
                 """,
                 fetch="one",
             )
-            return "Application token can acquire a pooled database connection.", row
+            row["EXPECTED_POOL_USER"] = "WEB_HR_APP_USER"
+            row["ORACLE_APPLICATION_IDENTITY"] = "WEB_HR_APP"
+            return "Application token can acquire a pooled database connection as WEB_HR_APP_USER.", row
 
         run("Pooled app connection", app_connection_check)
+
+        def app_hr_privilege_check():
+            rows = self._run_app_query(
+                """
+                SELECT privilege, column_name
+                  FROM all_col_privs
+                 WHERE table_schema = 'HR'
+                   AND table_name = 'EMPLOYEES'
+                   AND grantee = SYS_CONTEXT('USERENV','CURRENT_USER')
+                   AND privilege = 'UPDATE'
+                   AND column_name IN ('EMPLOYEE_ID', 'PHONE_NUMBER', 'SALARY', 'DEPARTMENT_ID')
+                 ORDER BY column_name
+                """,
+                fetch="rows",
+            )
+            granted_columns = sorted(row.get("COLUMN_NAME") for row in rows)
+            required_columns = ["DEPARTMENT_ID", "EMPLOYEE_ID", "PHONE_NUMBER", "SALARY"]
+            missing_columns = [column for column in required_columns if column not in granted_columns]
+            if missing_columns:
+                raise RuntimeError(
+                    "WEB_HR_APP_USER is missing UPDATE on HR.EMPLOYEES columns: {0}. "
+                    "Run ./01_configure_database_app_identity.sh again.".format(", ".join(missing_columns))
+                )
+            return "Application identity has required HR.EMPLOYEES update columns.", {
+                "update_columns": granted_columns,
+            }
+
+        run("Application HR update grants", app_hr_privilege_check)
 
         def context_check():
             result = self._run_with_context(
@@ -221,6 +263,7 @@ class WebHrDatabase(object):
                 None,
                 """
                 SELECT ORA_END_USER_CONTEXT.username AS username,
+                       ORA_END_USER_CONTEXT.HR.EMP_CTX.ID AS employee_context_id,
                        SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method
                   FROM dual
                 """,
@@ -300,10 +343,15 @@ class WebHrDatabase(object):
         payload["updated"] = {
             "employee_id": employee_id,
             "field": field_name,
-            "value": value,
+            "where_clause": "employee_id = :employee_id",
+            "requested_value": value,
+            "database_value": value,
             "row_count": 1,
+            "saved": True,
+            "request_context": payload.get("request_context"),
         }
         payload["note"] = "Mock mode accepted the edit. Oracle mode enforces it with Deep Data Security."
+        self._log_employee_update(user, payload)
         return payload
 
     def _salary_summary_mock(self, user):
@@ -353,44 +401,194 @@ class WebHrDatabase(object):
         if not column:
             raise ValueError("Field {0} is not editable.".format(field_name))
 
-        if column in ("salary", "department_id") and value == "":
-            value = None
-        if column in ("salary", "department_id") and value is not None:
-            try:
-                value = float(value) if column == "salary" else int(value)
-            except ValueError:
-                raise ValueError("{0} must be numeric.".format(field_name))
+        value = self._normalize_employee_update_value(column, value)
 
-        current_row = self._visible_row_for_employee(user, employee_id)
-        match_column, match_value = self._update_match_predicate(current_row)
-        sql = "UPDATE hr.employees SET {0} = :value WHERE {1} = :match_value".format(column, match_column)
-        row_count = self._run_with_context(
+        where_clause = "employee_id = :employee_id"
+        sql = "UPDATE hr.employees SET {0} = :value WHERE {1}".format(column, where_clause)
+        update_result = self._run_employee_update_with_context(
             user,
-            None,
             sql,
-            fetch="rowcount",
-            params={"value": value, "match_value": match_value},
+            employee_id,
+            field_name,
+            column,
+            value,
         )
+        row_count = update_result["row_count"]
         payload = self._employees_oracle(user)
+        database_value = update_result.get("database_value")
+        saved = row_count == 1 and self._values_match(column, value, database_value)
         payload["updated"] = {
             "employee_id": employee_id,
             "field": field_name,
-            "match_column": match_column,
+            "where_clause": where_clause,
+            "requested_value": value,
+            "database_value": database_value,
             "row_count": row_count,
+            "saved": saved,
+            "authorization_before_update": update_result.get("authorization_before_update"),
+            "visible_row_before_update": update_result.get("visible_row_before_update"),
+            "request_context": update_result.get("request_context"),
         }
         if row_count == 0:
-            payload["note"] = "No rows were updated. Deep Data Security did not authorize that edit for the current end user."
+            if payload["updated"]["authorization_before_update"].get("can_update") is True:
+                payload["note"] = (
+                    "Oracle reported this visible row and field as editable, but the employee_id-keyed UPDATE "
+                    "affected zero rows. The database is likely still using stale HRAPP_EMPLOYEES_ACCESS or "
+                    "HRAPP_MANAGER_ACCESS data grants that do not authorize employee_id-keyed update predicates. "
+                    "Run ./01_configure_database_app_identity.sh and ./04_configure_policy_toggle_demo.sh again."
+                )
+            else:
+                payload["note"] = "No rows were updated. Deep Data Security did not authorize that edit for the current end user."
+        elif not saved:
+            payload["note"] = (
+                "The UPDATE reported success, but the refreshed row does not contain the requested value. "
+                "Check triggers, column normalization, and Deep Data Security policy state."
+            )
+        self._log_employee_update(user, payload)
         return payload
+
+    def _log_employee_update(self, user, payload):
+        updated = payload.get("updated") or {}
+        entry = {
+            "event": "employee_update",
+            "mode": self.mode,
+            "user": user.get("username"),
+            "employee_id": updated.get("employee_id"),
+            "field": updated.get("field"),
+            "where_clause": updated.get("where_clause"),
+            "row_count": updated.get("row_count"),
+            "saved": updated.get("saved"),
+            "note": payload.get("note"),
+            "authorization_before_update": updated.get("authorization_before_update"),
+            "visible_row_before_update": updated.get("visible_row_before_update"),
+            "request_context": updated.get("request_context"),
+        }
+        if os.getenv("WEB_HR_VERBOSE") == "1":
+            entry["requested_value"] = updated.get("requested_value")
+            entry["database_value"] = updated.get("database_value")
+
+        print("")
+        print("========================================================================")
+        print("Employee update result")
+        print("========================================================================")
+        print(json.dumps(entry, indent=2, sort_keys=True, default=str))
+        print("========================================================================")
+        print("")
+
+    def _normalize_employee_update_value(self, column, value):
+        if value is None:
+            return None
+        if column == "phone_number":
+            return str(value).strip()
+
+        text = str(value).strip().replace(",", "")
+        if column == "salary":
+            text = text.replace("$", "")
+        if text == "":
+            return None
+
+        if column == "salary":
+            try:
+                return Decimal(text)
+            except InvalidOperation:
+                raise ValueError("salary must be numeric.")
+        if column == "department_id":
+            try:
+                return int(text)
+            except ValueError:
+                raise ValueError("department_id must be numeric.")
+        return value
+
+    def _run_employee_update_with_context(self, user, sql, employee_id, field_name, column, value):
+        def operation(connection, cursor):
+            before_row = self._employee_row_for_update(cursor, employee_id)
+            if not before_row:
+                raise ValueError("Employee {0} is not visible to {1}.".format(employee_id, user["username"]))
+
+            authorization_before_update = self._update_authorization_for_row(before_row, field_name)
+            context_before_update = self._current_request_context(cursor)
+            cursor.execute(sql, {"value": value, "employee_id": employee_id})
+            row_count = cursor.rowcount
+            after_row = self._employee_row_for_update(cursor, employee_id)
+            database_value = after_row.get(column.upper()) if after_row else None
+            connection.commit()
+            return {
+                "row_count": row_count,
+                "database_value": database_value,
+                "authorization_before_update": authorization_before_update,
+                "visible_row_before_update": _employee_update_log_row(before_row),
+                "request_context": context_before_update,
+            }
+
+        return self._with_context(user, None, operation)
+
+    def _employee_row_for_update(self, cursor, employee_id):
+        cursor.execute(
+            """
+            SELECT emp.employee_id,
+                   emp.first_name,
+                   emp.last_name,
+                   emp.phone_number,
+                   emp.salary,
+                   emp.department_id,
+                   emp.manager_id,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', phone_number) AS can_update_phone_number,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) AS can_update_salary,
+                   ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', department_id) AS can_update_department_id
+              FROM hr.employees emp
+             WHERE emp.employee_id = :employee_id
+            """,
+            {"employee_id": employee_id},
+        )
+        columns = [d[0] for d in cursor.description]
+        row = cursor.fetchone()
+        return _row_to_dict(columns, row) if row else None
 
     def _visible_row_for_employee(self, user, employee_id):
         payload = self._employees_oracle(user)
-        for row in payload.get("rows", []):
-            if row.get("EMPLOYEE_ID") == employee_id:
-                return row
+        row = self._row_by_employee_id(payload.get("rows", []), employee_id)
+        if row:
+            return row
         raise ValueError("Employee {0} is not visible to {1}.".format(employee_id, user["username"]))
 
-    def _update_match_predicate(self, row):
-        return "first_name", row.get("FIRST_NAME")
+    def _update_authorization_for_row(self, row, field_name):
+        permission_fields = {
+            "phone_number": "CAN_UPDATE_PHONE_NUMBER",
+            "salary": "CAN_UPDATE_SALARY",
+            "department_id": "CAN_UPDATE_DEPARTMENT_ID",
+        }
+        permission_field = permission_fields.get(field_name)
+        raw_value = row.get(permission_field) if permission_field else None
+        return {
+            "permission_field": permission_field,
+            "raw_value": raw_value,
+            "can_update": _is_oracle_true(raw_value),
+        }
+
+    def _row_by_employee_id(self, rows, employee_id):
+        for row in rows:
+            if row.get("EMPLOYEE_ID") == employee_id:
+                return row
+        return None
+
+    def _values_match(self, column, requested, actual):
+        if requested is None:
+            return actual is None
+        if actual is None:
+            return False
+        if column == "phone_number":
+            return str(requested).strip() == str(actual).strip()
+        if column == "salary":
+            try:
+                return Decimal(str(requested)) == Decimal(str(actual))
+            except InvalidOperation:
+                return str(requested) == str(actual)
+        if column == "department_id":
+            try:
+                return int(requested) == int(actual)
+            except (TypeError, ValueError):
+                return str(requested) == str(actual)
+        return requested == actual
 
     def _audit_events_oracle(self):
         sql = """
@@ -457,6 +655,63 @@ class WebHrDatabase(object):
             "employee_count": row.get("EMPLOYEE_COUNT"),
             "note": "Oracle allowed this only because the local data role is granted to the application identity.",
         }
+
+    def _application_identity_summary(self):
+        client_id = os.getenv("WEB_HR_APP_CLIENT_ID", "")
+        return {
+            "oracle_application_identity": "WEB_HR_APP",
+            "pooled_database_user": "WEB_HR_APP_USER",
+            "mapped_to": "AZURE_CLIENT_ID={0}".format(client_id) if client_id else "AZURE_CLIENT_ID=<not set>",
+            "client_id": client_id,
+            "database_scope": os.getenv("WEB_HR_DB_SCOPE"),
+            "application_database_scope": os.getenv("WEB_HR_APP_DB_SCOPE", os.getenv("WEB_HR_DB_SCOPE")),
+            "tns_alias": self.tns_alias,
+        }
+
+    def _connection_model(self, user, request_context):
+        active_roles = []
+        if request_context:
+            active_roles = [
+                row.get("ROLE_NAME")
+                for row in request_context.get("active_data_roles", [])
+                if row.get("ROLE_NAME")
+            ]
+        return {
+            "browser_signed_in_user": user.get("username"),
+            "pooled_connection_database_user": "WEB_HR_APP_USER",
+            "oracle_application_identity": "WEB_HR_APP",
+            "end_user_security_context": user.get("username"),
+            "employee_context_id": (
+                (request_context or {}).get("identity") or {}
+            ).get("EMPLOYEE_CONTEXT_ID"),
+            "active_data_roles": active_roles,
+            "how_requests_run": (
+                "The Python app borrows a pooled WEB_HR_APP_USER connection, creates an end-user "
+                "security context from the signed-in user's database token and the application "
+                "database token, attaches that context for the request, then clears it before "
+                "returning the connection to the pool."
+            ),
+        }
+
+    def _pooled_connection_identity(self):
+        row = self._run_app_query(
+            """
+            SELECT SYS_CONTEXT('USERENV','SESSIONID') AS session_id,
+                   SYS_CONTEXT('USERENV','SERVICE_NAME') AS service_name,
+                   SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
+                   SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
+                   SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
+                   SYS_CONTEXT('USERENV','CURRENT_USER') AS current_user,
+                   SYS_CONTEXT('USERENV','SESSION_USER') AS session_user,
+                   SYS_CONTEXT('USERENV','CURRENT_SCHEMA') AS current_schema,
+                   SYS_CONTEXT('USERENV','CLIENT_IDENTIFIER') AS client_identifier
+              FROM dual
+            """,
+            fetch="one",
+        )
+        row["EXPECTED_POOL_USER"] = "WEB_HR_APP_USER"
+        row["ORACLE_APPLICATION_IDENTITY"] = "WEB_HR_APP"
+        return row
 
     def _pool_oracle(self):
         if self._pool is not None:
@@ -595,7 +850,7 @@ class WebHrDatabase(object):
             raise RuntimeError("Entra ID did not return an {0}.".format(token_name))
         return token
 
-    def _run_with_context(self, user, data_roles, sql, fetch, params=None, include_context=False):
+    def _with_context(self, user, data_roles, operation):
         import oracledb
 
         pool = self._pool_oracle()
@@ -613,23 +868,38 @@ class WebHrDatabase(object):
             connection.set_end_user_security_context(context)
             cursor = connection.cursor()
             try:
-                cursor.execute(sql, params or {})
-                if fetch == "rowcount":
-                    row_count = cursor.rowcount
-                    connection.commit()
-                    return row_count
-                columns = [d[0] for d in cursor.description]
-                if fetch == "one":
-                    row = cursor.fetchone()
-                    data = _row_to_dict(columns, row) if row else None
-                    return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
-                data = [_row_to_dict(columns, row) for row in cursor.fetchall()]
-                return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
+                return operation(connection, cursor)
+            except Exception:
+                connection.rollback()
+                raise
             finally:
                 cursor.close()
                 connection.clear_end_user_security_context()
         finally:
             pool.release(connection)
+
+    def _run_with_context(self, user, data_roles, sql, fetch, params=None, include_context=False):
+        def operation(connection, cursor):
+            cursor.execute(sql, params or {})
+            if fetch == "rowcount":
+                row_count = cursor.rowcount
+                request_context = self._current_request_context(cursor) if include_context else None
+                connection.commit()
+                if include_context:
+                    return {
+                        "row_count": row_count,
+                        "request_context": request_context,
+                    }
+                return row_count
+            columns = [d[0] for d in cursor.description]
+            if fetch == "one":
+                row = cursor.fetchone()
+                data = _row_to_dict(columns, row) if row else None
+                return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
+            data = [_row_to_dict(columns, row) for row in cursor.fetchall()]
+            return {"data": data, "request_context": self._current_request_context(cursor)} if include_context else data
+
+        return self._with_context(user, data_roles, operation)
 
     def _run_app_query(self, sql, fetch, params=None):
         pool = self._pool_oracle()
@@ -657,6 +927,7 @@ class WebHrDatabase(object):
             SELECT SYS_CONTEXT('USERENV','SESSIONID') AS session_id,
                    SYS_CONTEXT('USERENV','SERVICE_NAME') AS service_name,
                    ORA_END_USER_CONTEXT.username AS end_user_name,
+                   ORA_END_USER_CONTEXT.HR.EMP_CTX.ID AS employee_context_id,
                    SYS_CONTEXT('USERENV','AUTHENTICATED_IDENTITY') AS authenticated_identity,
                    SYS_CONTEXT('USERENV','ENTERPRISE_IDENTITY') AS enterprise_identity,
                    SYS_CONTEXT('USERENV','AUTHENTICATION_METHOD') AS auth_method,
@@ -695,6 +966,24 @@ def _row_to_dict(columns, row):
     return result
 
 
+def _is_oracle_true(value):
+    if value is True:
+        return True
+    if value in (1, "1"):
+        return True
+    return str(value).upper() == "TRUE"
+
+
+def _employee_update_log_row(row):
+    return {
+        "employee_id": row.get("EMPLOYEE_ID"),
+        "manager_id": row.get("MANAGER_ID"),
+        "can_update_phone_number": _is_oracle_true(row.get("CAN_UPDATE_PHONE_NUMBER")),
+        "can_update_salary": _is_oracle_true(row.get("CAN_UPDATE_SALARY")),
+        "can_update_department_id": _is_oracle_true(row.get("CAN_UPDATE_DEPARTMENT_ID")),
+    }
+
+
 def _preflight_summary(checks):
     counts = {"pass": 0, "warn": 0, "fail": 0}
     for check in checks:
@@ -705,7 +994,11 @@ def _preflight_summary(checks):
 
 
 def _policy_toggle_demo(enabled):
-    update_clause = "UPDATE (salary, department_id, first_name)" if enabled else "UPDATE (department_id, first_name)"
+    update_clause = (
+        "UPDATE (employee_id, salary, department_id, first_name)"
+        if enabled
+        else "UPDATE (employee_id, department_id, first_name)"
+    )
     return {
         "button_effect": "Restore Salary Edits" if enabled else "Disable Salary Edits",
         "what_changes": "The app calls a SYS definer-rights procedure installed by 04_configure_policy_toggle_demo.sh.",
@@ -715,9 +1008,9 @@ def _policy_toggle_demo(enabled):
             else "SYS.WEB_HR_DISABLE_SALARY_UPDATES"
         ),
         "deepsec_change": (
-            "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary), so manager salary cells become editable again."
+            "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(employee_id, salary), so manager salary cells become editable again."
             if enabled
-            else "Recreates HR.HRAPP_MANAGER_ACCESS without UPDATE(salary), so manager salary cells are no longer editable."
+            else "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(employee_id) but without UPDATE(salary), so manager salary cells are no longer editable."
         ),
         "data_grant_core": (
             "CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS "

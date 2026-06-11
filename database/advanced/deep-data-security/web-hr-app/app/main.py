@@ -245,6 +245,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self._send_json({"error": "invalid request", "detail": str(exc)}, HTTPStatus.BAD_REQUEST)
                 return
+            self._log_employee_update_request(user, employee_id, field_name, value)
             self._call_database(lambda: DATABASE.update_employee_field(user, employee_id, field_name, value))
             return
 
@@ -291,6 +292,26 @@ class Handler(BaseHTTPRequestHandler):
                 },
                 HTTPStatus.INTERNAL_SERVER_ERROR,
             )
+
+    def _log_employee_update_request(self, user, employee_id, field_name, value):
+        entry = {
+            "event": "employee_update_request",
+            "user": user.get("username"),
+            "roles": user.get("roles", []),
+            "employee_id": employee_id,
+            "field": field_name,
+            "client": self.client_address[0] if self.client_address else None,
+        }
+        if os.getenv("WEB_HR_VERBOSE") == "1":
+            entry["value"] = value
+
+        print("")
+        print("========================================================================")
+        print("Employee update request")
+        print("========================================================================")
+        print(json.dumps(entry, indent=2, sort_keys=True, default=str))
+        print("========================================================================")
+        print("")
 
     def _merge_debug_payload(self, payload, user):
         payload["obo_database_token"] = DATABASE.debug_tokens_for_user(user)
@@ -339,7 +360,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def _send_json(self, payload, status=HTTPStatus.OK):
-        content = json.dumps(payload, indent=2).encode("utf-8")
+        content = json.dumps(payload, indent=2, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(content)))

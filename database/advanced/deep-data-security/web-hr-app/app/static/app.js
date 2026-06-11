@@ -9,6 +9,13 @@ const disableSalaryButton = document.querySelector("#disableSalaryButton");
 const enableSalaryButton = document.querySelector("#enableSalaryButton");
 const auditButton = document.querySelector("#auditButton");
 const auditRows = document.querySelector("#auditRows");
+let lastEmployeeRows = [];
+
+const fieldLabels = {
+  phone_number: "Phone",
+  salary: "Salary",
+  department_id: "Dept",
+};
 
 employeesButton.addEventListener("click", loadEmployees);
 summaryButton.addEventListener("click", loadSummary);
@@ -122,18 +129,25 @@ function refreshAuditEventsQuietly() {
   });
 }
 
+function refreshAuditEventsAfterWrite() {
+  auditRows.innerHTML = '<tr><td colspan="7">Refreshing audit events...</td></tr>';
+  refreshAuditEventsQuietly();
+  window.setTimeout(refreshAuditEventsQuietly, 1500);
+  window.setTimeout(refreshAuditEventsQuietly, 3500);
+}
+
 async function disableSalaryEdits() {
   const payload = await postJson("/api/policy/disable-salary-updates", {});
   renderEmployees(payload.rows || []);
   raw.textContent = JSON.stringify(payload, null, 2);
-  refreshAuditEventsQuietly();
+  refreshAuditEventsAfterWrite();
 }
 
 async function enableSalaryEdits() {
   const payload = await postJson("/api/policy/enable-salary-updates", {});
   renderEmployees(payload.rows || []);
   raw.textContent = JSON.stringify(payload, null, 2);
-  refreshAuditEventsQuietly();
+  refreshAuditEventsAfterWrite();
 }
 
 async function getJson(url, outputElement = raw) {
@@ -149,6 +163,7 @@ async function getJson(url, outputElement = raw) {
 }
 
 function renderEmployees(rows) {
+  lastEmployeeRows = rows;
   if (!rows.length) {
     employeeRows.innerHTML = '<tr><td colspan="7">No visible rows.</td></tr>';
     return;
@@ -158,20 +173,16 @@ function renderEmployees(rows) {
       <td>${escapeHtml(valueFor(row, "employee_id"))}</td>
       <td>${escapeHtml(`${valueFor(row, "first_name")} ${valueFor(row, "last_name")}`.trim())}</td>
       <td>${renderEditableCell(row, "phone_number", "can_update_phone_number", "text")}</td>
-      <td>${renderEditableCell(row, "salary", "can_update_salary", "number")}</td>
+      <td>${renderEditableCell(row, "salary", "can_update_salary", "decimal")}</td>
       <td>${escapeHtml(valueFor(row, "ssn"))}</td>
-      <td>${renderEditableCell(row, "department_id", "can_update_department_id", "number")}</td>
+      <td>${renderEditableCell(row, "department_id", "can_update_department_id", "numeric")}</td>
       <td>${escapeHtml(valueFor(row, "manager_id"))}</td>
     </tr>
   `).join("");
-  employeeRows.querySelectorAll("[data-edit-field]").forEach((input) => {
-    input.addEventListener("change", saveEmployeeEdit);
-    input.addEventListener("focus", showEditAuthorizationDemo);
-    input.addEventListener("mouseenter", showEditAuthorizationDemo);
-  });
-  employeeRows.querySelectorAll("[data-attempt-field]").forEach((button) => {
-    button.addEventListener("click", attemptUnauthorizedEdit);
-    button.addEventListener("mouseenter", showAttemptAuthorizationDemo);
+  employeeRows.querySelectorAll("[data-edit-trigger]").forEach((button) => {
+    button.addEventListener("click", openEmployeeEditor);
+    button.addEventListener("focus", showEditAuthorizationDemo);
+    button.addEventListener("mouseenter", showEditAuthorizationDemo);
   });
 }
 
@@ -180,53 +191,106 @@ function valueFor(row, key) {
   return row[key] ?? row[upperKey] ?? "";
 }
 
-function renderEditableCell(row, field, permissionField, inputType) {
+function renderEditableCell(row, field, permissionField, inputMode) {
   const value = valueFor(row, field);
+  const displayValue = formatEditableValue(field, value);
+  const valueClass = field === "salary" ? "money-value" : "";
   if (!isTrue(valueFor(row, permissionField))) {
     return `
       <div class="readonly-cell">
-        <span>${escapeHtml(value)}</span>
-        <button
-          class="attempt-button"
-          type="button"
-          data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
-          data-attempt-field="${escapeHtml(field)}"
-          data-attempt-value="${escapeHtml(value)}"
-        >Try anyway</button>
+        <span class="${valueClass}">${escapeHtml(displayValue)}</span>
       </div>
     `;
   }
   return `
     <div class="editable-cell">
-      <input
-        class="cell-input"
-        type="${escapeHtml(inputType)}"
+      <span class="editable-value ${valueClass}">${escapeHtml(displayValue)}</span>
+      <button
+        class="icon-button edit-button"
+        type="button"
         data-employee-id="${escapeHtml(valueFor(row, "employee_id"))}"
+        data-edit-trigger="${escapeHtml(field)}"
         data-edit-field="${escapeHtml(field)}"
-        value="${escapeHtml(value)}"
-        aria-label="${escapeHtml(field.replace(/_/g, " "))}"
-      />
-      <span class="edit-chip">Editable</span>
+        data-input-mode="${escapeHtml(inputMode)}"
+        data-current-value="${escapeHtml(value)}"
+        aria-label="Edit ${escapeHtml(fieldLabel(field))}"
+        title="Edit ${escapeHtml(fieldLabel(field))}"
+      >${pencilIcon()}</button>
     </div>
   `;
 }
 
+function openEmployeeEditor(event) {
+  const button = event.target.closest("[data-edit-trigger]");
+  if (!button) {
+    return;
+  }
+  const cell = button.closest("[data-edit-cell], .editable-cell");
+  const field = button.dataset.editField;
+  const employeeId = button.dataset.employeeId;
+  const value = button.dataset.currentValue;
+  const inputMode = button.dataset.inputMode || "text";
+  const inputId = editInputId(employeeId, field);
+  cell.innerHTML = `
+    <form class="edit-form" data-edit-form>
+      <input
+        id="${escapeHtml(inputId)}"
+        name="${escapeHtml(field)}"
+        class="cell-input"
+        type="text"
+        inputmode="${escapeHtml(inputMode)}"
+        autocomplete="off"
+        data-employee-id="${escapeHtml(employeeId)}"
+        data-edit-field="${escapeHtml(field)}"
+        value="${escapeHtml(value)}"
+        aria-label="${escapeHtml(fieldLabel(field))}"
+      />
+      <button class="icon-button save-button" type="submit" aria-label="Save ${escapeHtml(fieldLabel(field))}" title="Save">
+        ${checkIcon()}
+      </button>
+      <button class="icon-button cancel-button" type="button" data-cancel-edit aria-label="Cancel edit" title="Cancel">
+        ${xIcon()}
+      </button>
+    </form>
+  `;
+  const form = cell.querySelector("[data-edit-form]");
+  const input = form.querySelector("[data-edit-field]");
+  form.addEventListener("submit", saveEmployeeEdit);
+  form.querySelector("[data-cancel-edit]").addEventListener("click", () => renderEmployees(lastEmployeeRows));
+  input.addEventListener("focus", showEditAuthorizationDemo);
+  input.addEventListener("mouseenter", showEditAuthorizationDemo);
+  input.focus();
+  input.select();
+  showEditAuthorizationDemo({target: input});
+}
+
 async function saveEmployeeEdit(event) {
-  const input = event.target;
-  input.disabled = true;
+  event.preventDefault();
+  const form = event.target.closest("[data-edit-form]");
+  const input = form.querySelector("[data-edit-field]");
+  form.querySelectorAll("button, input").forEach((control) => {
+    control.disabled = true;
+  });
   try {
     const payload = await postJson("/api/employees/update", {
       employee_id: input.dataset.employeeId,
       field: input.dataset.editField,
       value: input.value,
 	    });
+    verifyEmployeeSave(payload);
 	    renderEmployees(payload.rows || []);
 	    raw.textContent = JSON.stringify(payload, null, 2);
-    refreshAuditEventsQuietly();
+    refreshAuditEventsAfterWrite();
   } catch (error) {
-    raw.textContent = String(error.stack || error);
+    if (error.payload) {
+      raw.textContent = JSON.stringify(error.payload, null, 2);
+    } else {
+      raw.textContent = String(error.stack || error);
+    }
   } finally {
-    input.disabled = false;
+    form.querySelectorAll("button, input").forEach((control) => {
+      control.disabled = false;
+    });
   }
 }
 
@@ -249,18 +313,6 @@ function showEditAuthorizationDemo(event) {
   }, null, 2);
 }
 
-function showAttemptAuthorizationDemo(event) {
-  const button = event.target;
-  const field = button.dataset.attemptField;
-  raw.textContent = JSON.stringify({
-    demo: "Unauthorized edit attempt",
-    field,
-    sql_authorization_check: `ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', ${field}) AS can_update_${field}`,
-    update_path: `UPDATE hr.employees SET ${field} = :value WHERE employee_id = :employee_id`,
-    enforcement: "The UI predicts this edit is not allowed, but Try anyway still sends the UPDATE so Oracle Deep Data Security can prove enforcement."
-  }, null, 2);
-}
-
 function showPolicyToggleDemo(enabled) {
   raw.textContent = JSON.stringify({
     demo: enabled ? "Restore Salary Edits" : "Disable Salary Edits",
@@ -269,8 +321,8 @@ function showPolicyToggleDemo(enabled) {
       python_function: "WebHrDatabase._set_salary_update_policy_oracle(user, enabled)",
       database_procedure: enabled ? "SYS.WEB_HR_ENABLE_SALARY_UPDATES" : "SYS.WEB_HR_DISABLE_SALARY_UPDATES",
       deepsec_policy_change: enabled
-        ? "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary, department_id, first_name)."
-        : "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(department_id, first_name) only, removing UPDATE(salary).",
+        ? "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(employee_id, salary, department_id, first_name)."
+        : "Recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(employee_id, department_id, first_name), removing UPDATE(salary).",
       authorization_refresh: "The app reloads employees and calls ORA_CHECK_DATA_PRIVILEGE(emp, 'UPDATE', salary) again for each row.",
       enforcement: "Salary edit enforcement stays in Oracle Deep Data Security. The UI only reflects Oracle's current policy decision."
     }
@@ -302,25 +354,6 @@ function renderAuditEvents(events) {
   `).join("");
 }
 
-async function attemptUnauthorizedEdit(event) {
-  const button = event.target;
-  button.disabled = true;
-  try {
-    const payload = await postJson("/api/employees/update", {
-      employee_id: button.dataset.employeeId,
-      field: button.dataset.attemptField,
-      value: button.dataset.attemptValue,
-    });
-    renderEmployees(payload.rows || []);
-    raw.textContent = JSON.stringify(payload, null, 2);
-    refreshAuditEventsQuietly();
-  } catch (error) {
-    raw.textContent = String(error.stack || error);
-  } finally {
-    button.disabled = false;
-  }
-}
-
 async function postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
@@ -333,6 +366,18 @@ async function postJson(url, body) {
     throw new Error(payload.error || "Request failed");
   }
   return payload;
+}
+
+function verifyEmployeeSave(payload) {
+  const updated = payload.updated;
+  if (!updated) {
+    return;
+  }
+  if (updated.row_count !== 1 || updated.saved === false) {
+    const error = new Error(payload.note || "The update did not save.");
+    error.payload = payload;
+    throw error;
+  }
 }
 
 function isTrue(value) {
@@ -353,6 +398,47 @@ function formatCurrency(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(number);
+}
+
+function formatEditableValue(field, value) {
+  if (field !== "salary") {
+    return value;
+  }
+  if (value == null || value === "") {
+    return "";
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return value;
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(number);
+}
+
+function fieldLabel(field) {
+  return fieldLabels[field] || field.replace(/_/g, " ");
+}
+
+function editInputId(employeeId, field) {
+  const safeEmployeeId = String(employeeId).replace(/[^A-Za-z0-9_-]/g, "_");
+  const safeField = String(field).replace(/[^A-Za-z0-9_-]/g, "_");
+  return `employee-${safeEmployeeId}-${safeField}-input`;
+}
+
+function pencilIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16.9 3.7a2.1 2.1 0 0 1 3 3L8.5 18.1 4 19.5l1.4-4.5L16.9 3.7z"></path><path d="m15.5 5.1 3.4 3.4"></path></svg>';
+}
+
+function checkIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"></path></svg>';
+}
+
+function xIcon() {
+  return '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
 }
 
 function escapeHtml(value) {

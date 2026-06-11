@@ -65,14 +65,23 @@ touch "$LOG_FILE"
 echo "Starting Web HR App in the background..."
 echo "  Log = ${LOG_FILE}"
 
+start_line="$(wc -l < "$LOG_FILE" | tr -d '[:space:]')"
+start_line="$((start_line + 1))"
+
 {
   echo
   echo "========================================================================"
   echo "Starting Web HR App: $(date -Is)"
+  printf 'Command: ./run.sh'
+  if [ "$#" -gt 0 ]; then
+    for arg in "$@"; do
+      printf ' %q' "$arg"
+    done
+  fi
+  printf '\n'
   echo "========================================================================"
 } >>"$LOG_FILE"
 
-start_line="$(wc -l < "$LOG_FILE" | tr -d '[:space:]')"
 nohup ./run.sh "$@" >>"$LOG_FILE" 2>&1 &
 pid="$!"
 echo "$pid" > "$PID_FILE"

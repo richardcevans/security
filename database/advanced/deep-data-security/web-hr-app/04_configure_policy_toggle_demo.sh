@@ -35,6 +35,7 @@ prompt Create or replace DBA policy toggle procedures
 prompt ========================================================================
 prompt WEB_HR_DISABLE_SALARY_UPDATES recreates HR.HRAPP_MANAGER_ACCESS without UPDATE(salary).
 prompt WEB_HR_ENABLE_SALARY_UPDATES recreates HR.HRAPP_MANAGER_ACCESS with UPDATE(salary).
+prompt Both grants include UPDATE(employee_id) so web app updates can target rows by employee_id.
 
 CREATE OR REPLACE PROCEDURE sys.web_hr_disable_salary_updates
 AUTHID DEFINER
@@ -42,7 +43,7 @@ AS
 BEGIN
   EXECUTE IMMEDIATE q'[
     CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (department_id, first_name)
+      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (employee_id, department_id, first_name)
       ON hr.employees
       WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
       TO HRAPP_MANAGERS
@@ -56,7 +57,7 @@ AS
 BEGIN
   EXECUTE IMMEDIATE q'[
     CREATE OR REPLACE DATA GRANT hr.HRAPP_MANAGER_ACCESS
-      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (salary, department_id, first_name)
+      AS SELECT (ALL COLUMNS EXCEPT ssn), UPDATE (employee_id, salary, department_id, first_name)
       ON hr.employees
       WHERE manager_id = ORA_END_USER_CONTEXT.HR.EMP_CTX.ID
       TO HRAPP_MANAGERS

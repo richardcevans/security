@@ -211,7 +211,7 @@ discover_domain_url() {
 
   if [ -z "$url" ] || [ "$url" = "null" ] || [ "$url" = "None" ]; then
     echo -e "${RED}ERROR: Could not discover an active OCI IAM domain URL.${NC}" >&2
-    echo -e "${YELLOW}Export OCI_DOMAIN_URL from Console -> Identity & Security -> Domains -> Overview.${NC}" >&2
+    echo -e "${YELLOW}Export OCI_DOMAIN_URL from Console -> Identity & Security -> Domains -> Domains -> pick the one labeled Current domain.${NC}" >&2
     exit 1
   fi
 
@@ -651,7 +651,8 @@ if [ -z "${ROOT_COMP_ID:-}" ]; then
     exit 1
   fi
 
-  if [ "${OCI_COMPARTMENT,,}" = "root" ]; then
+  oci_compartment_lc=$(printf '%s' "$OCI_COMPARTMENT" | tr '[:upper:]' '[:lower:]')
+  if [ "$oci_compartment_lc" = "root" ]; then
     ROOT_COMP_ID="$TENANCY_OCID"
   elif [[ "$OCI_COMPARTMENT" == ocid1.compartment.* ]]; then
     ROOT_COMP_ID="$OCI_COMPARTMENT"

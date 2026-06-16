@@ -447,7 +447,7 @@ The following sections were moved to
 - [Oracle Database integration with Microsoft Entra ID](https://docs.oracle.com/en/database/oracle/oracle-database/26/dbseg/)
 - [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/)
 
-You may now proceed to the next lab.
+You may now [proceed to the next lab](#next).
 
 ## Acknowledgements
 

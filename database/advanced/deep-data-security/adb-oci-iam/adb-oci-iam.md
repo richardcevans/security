@@ -29,10 +29,11 @@ Estimated Time: 55 minutes
 
 ## Assumptions
 
-- You are running from OCI Cloud Shell.
-- OCI CLI is already available and authenticated by Cloud Shell.
-- SQL*Plus is available in Cloud Shell. The lab scripts use `sqlplus`; they do
-  not currently use SQLcl.
+- You are running from OCI Cloud Shell. If you run outside Cloud Shell, use Bash
+  4.x or later, OCI CLI, Python 3, and SQL*Plus.
+- OCI CLI is already available and authenticated.
+- SQL*Plus is available. The lab scripts use `sqlplus`; they do not currently
+  use SQLcl.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your OCI user can create OCI IAM domain users and groups, or reuse existing
   Marvin and Emma users and `EMPLOYEES` / `MANAGERS` groups.
@@ -97,8 +98,7 @@ Optional overrides:
 <copy>
 export DB_NAME=deepsec1
 export DB_VERSION=26ai
-export ADB_LICENSE_MODEL=BRING_YOUR_OWN_LICENSE
-export ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY
+export ADB_IS_FREE_TIER=true
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export ADB_OCI_IAM_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
@@ -112,8 +112,19 @@ export EMMA_USERNAME=emma
 `DB_DISPLAY_NAME` defaults to `DB_NAME`. Set it only if you want the OCI Console
 display name to differ from the database name.
 
-`ADB_LICENSE_MODEL` defaults to `BRING_YOUR_OWN_LICENSE`. Set
-`ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY` only when you want the Autonomous AI
+`ADB_IS_FREE_TIER` defaults to `true`. Always Free Autonomous AI Database does
+not accept the `--license-model` create option. If you need a paid BYOL database,
+set these before running `00_setup_adb.sh`:
+
+```bash
+<copy>
+export ADB_IS_FREE_TIER=false
+export ADB_LICENSE_MODEL=BRING_YOUR_OWN_LICENSE
+export ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY
+</copy>
+```
+
+Set `ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY` only when you want the Autonomous AI
 Database to receive early maintenance patches; leave it unset for the regular
 maintenance schedule.
 
@@ -182,7 +193,7 @@ Important files include:
 | `05_verify_as_marvin.sh` | Verifies manager access for Marvin |
 | `06_verify_as_emma.sh` | Verifies employee access for Emma |
 | `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
-| `06_cleanup_adb_lab.sh` | Removes lab database objects and optional OCI resources |
+| `07_cleanup_adb_lab.sh` | Removes lab database objects and optional OCI resources |
 
 ## Task 1. Create Autonomous AI Database and Download the Wallet
 
@@ -349,6 +360,12 @@ HRAPP_MANAGERS                      iam_oauth_group=MANAGERS
 Use `--headless` in OCI Cloud Shell when your browser opens on your local
 machine. You do not need NoVNC for this flow:
 
+> **Important:** This task uses two browser contexts. Keep Cloud Shell open in
+> its current browser tab. Copy the printed login URL into a separate private
+> window, incognito window, separate browser profile, or different browser. Sign
+> in there as the demo user (`marvin` or `emma`). Do not use a browser session
+> that is already signed in as the tenancy owner.
+
 ```bash
 <copy>
 ./04_get_iam_oauth_token.sh --headless
@@ -374,13 +391,22 @@ source ./.adb-oci-iam.env
 The token helper uses OAuth authorization-code with PKCE. A client secret is not
 required for SQL*Plus or for a public interactive OAuth client.
 
+Use a separate browser profile, private window, or independent browser for the
+demo user login. If the browser is already signed in to OCI as the tenancy owner
+or another account, OCI IAM may issue a code for that user instead of Marvin or
+Emma. The verification scripts reject tokens for the wrong user.
+
 In headless mode:
 
-1. Open the printed login URL in any browser where you can sign in to OCI IAM.
-2. Sign in as the target demo user.
-3. The final `localhost:8888/callback?...` page may fail to load. That is expected.
-4. Copy the entire callback URL from the browser address bar.
-5. Paste the full URL back into the Cloud Shell prompt, then press Enter.
+1. Copy the printed **LOGIN URL**.
+2. Paste it into a separate private window, incognito window, separate browser
+   profile, or different browser.
+3. Sign in as the target demo user, `marvin` or `emma`.
+4. The final `localhost:8888/callback?...` page will usually fail to load. That
+   is expected. The page load is not the success signal.
+5. Copy the entire `localhost:8888/callback?...` URL from that browser address
+   bar.
+6. Paste the full URL back into the Cloud Shell prompt, then press Enter.
 
 After login, the script writes that user's OAuth2 access token here:
 
@@ -389,6 +415,10 @@ $HOME/.oci/adb-oci-iam/token
 ```
 
 The database client reads that token through `TOKEN_AUTH=OAUTH`.
+
+The lab stores one OAuth token at a time in `$HOME/.oci/adb-oci-iam/token`. To
+verify both Marvin and Emma, repeat the token step for each user and sign in as
+that user in the separate browser session.
 
 To inspect the token contents locally:
 
@@ -415,7 +445,7 @@ For Marvin, expect `user_name` or `sub` to be `marvin`, and `group` to include
 
 ## Task 7. Verify Data Grants as Marvin
 
-Get a token and sign in as Marvin:
+Get a token and sign in as Marvin in the separate browser session:
 
 ```bash
 <copy>
@@ -460,7 +490,8 @@ sqlplus -L /@${ADB_SERVICE}
 
 ## Task 8. Verify Data Grants as Emma
 
-Clear Marvin's token, get a new token, and sign in as Emma:
+Clear Marvin's token, get a new token, and sign in as Emma in the separate
+browser session:
 
 ```bash
 <copy>
@@ -586,7 +617,7 @@ To remove the HR schema, lab roles, data roles, and data grants:
 
 ```bash
 <copy>
-./06_cleanup_adb_lab.sh
+./07_cleanup_adb_lab.sh
 </copy>
 ```
 
@@ -594,7 +625,7 @@ To skip the prompt:
 
 ```bash
 <copy>
-./06_cleanup_adb_lab.sh --DELETE
+./07_cleanup_adb_lab.sh --DELETE
 </copy>
 ```
 
@@ -602,7 +633,7 @@ To delete the Autonomous AI Database instance too:
 
 ```bash
 <copy>
-./06_cleanup_adb_lab.sh --delete-adb
+./07_cleanup_adb_lab.sh --delete-adb
 </copy>
 ```
 
@@ -611,7 +642,7 @@ the lab OAuth apps, and remove local generated wallet/env/token files:
 
 ```bash
 <copy>
-./06_cleanup_adb_lab.sh --remove-all
+./07_cleanup_adb_lab.sh --remove-all
 </copy>
 ```
 
@@ -619,7 +650,7 @@ To skip all cleanup prompts:
 
 ```bash
 <copy>
-./06_cleanup_adb_lab.sh --remove-all --DELETE
+./07_cleanup_adb_lab.sh --remove-all --DELETE
 </copy>
 ```
 

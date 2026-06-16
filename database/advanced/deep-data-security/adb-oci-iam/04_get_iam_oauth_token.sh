@@ -39,7 +39,7 @@ Optional environment:
   OCI_CLIENT_SECRET    Only needed when using a confidential OAuth client app.
 
 Options:
-  --headless     Print the login URL and prompt for the final redirected URL or code.
+  --headless     Print the login URL and prompt for the full localhost callback URL.
   -h, --help     Show this help.
 EOF
 }
@@ -290,13 +290,30 @@ else:
     print(f"Manual callback mode for redirect URI {redirect_uri}")
 print()
 
+if headless:
+    print("=" * 76)
+    print("ACTION REQUIRED: USE A SEPARATE PRIVATE BROWSER WINDOW")
+    print("=" * 76)
+    print("1. Copy the login URL below into a separate browser profile, private")
+    print("   window, incognito window, or different browser.")
+    print("2. Do not use a browser session already signed in as the tenancy owner.")
+    print("3. Sign in as the target demo user: marvin or emma.")
+    print("4. The final localhost page will usually fail to load. That is expected.")
+    print("5. Copy the entire localhost callback URL from that browser address bar")
+    print("   and paste it back here.")
+    print("=" * 76)
+    print()
+
 if open_browser:
     print("Opening browser for OCI IAM login...")
     if not webbrowser.open(auth_url, new=2):
         print("Could not open a browser automatically. Open this URL manually:")
         print(auth_url)
 else:
-    print("Open this URL in any browser where you can sign in to OCI IAM:")
+    if not headless:
+        print("Open this URL in a separate browser profile, private window, or independent browser.")
+        print("Sign in as the target demo user, not the tenancy owner or another cached OCI session.")
+    print("LOGIN URL:")
     print(auth_url)
 print()
 
@@ -312,10 +329,10 @@ if "error" in result:
 
 code = result.get("code")
 if not code:
-    print("Copy the entire final redirected URL from the browser address bar.")
+    print("Copy the entire final redirected URL from the separate browser address bar.")
     if headless:
         print("The localhost page will usually fail to load from a local browser when the script runs in Cloud Shell.")
-        print("That is expected; paste the full localhost callback URL shown in the address bar.")
+        print("That is expected. Do not troubleshoot the page load; copy the full localhost callback URL shown in the address bar.")
     for attempt in range(1, 4):
         pasted_value = prompt_from_tty("Paste the full callback URL: ")
         if pasted_value.strip():

@@ -16,7 +16,7 @@ export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 3: Create Data Roles and Data Grants                             ${NC}"
+echo -e "${GREEN}      Task 4: Create Data Roles and Data Grants                             ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}OCI_IAM_EMPLOYEE_GROUP = ${OCI_IAM_EMPLOYEE_GROUP}${NC}"
@@ -110,5 +110,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 3 completed. Next: run ./04_get_iam_oauth_token.sh${NC}"
+echo -e "${GREEN}Task 4 completed. Next: run ./verify_db_setup.sh${NC}"
 echo

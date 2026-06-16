@@ -16,6 +16,11 @@ INSTANCE_FILE="${SCRIPT_DIR}/.adb-oci-iam.instance"
 WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
 source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
+  echo "ERROR: This lab requires Bash 4.x or later." >&2
+  exit 1
+fi
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -84,6 +89,13 @@ if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
 fi
 export DB_DISPLAY_NAME
 export DB_VERSION="${DB_VERSION:-26ai}"
+export ADB_IS_FREE_TIER="${ADB_IS_FREE_TIER:-true}"
+ADB_IS_FREE_TIER=$(printf '%s' "$ADB_IS_FREE_TIER" | tr '[:upper:]' '[:lower:]')
+if [ "$ADB_IS_FREE_TIER" != "true" ] && [ "$ADB_IS_FREE_TIER" != "false" ]; then
+  echo -e "${RED}ERROR: ADB_IS_FREE_TIER must be true or false.${NC}" >&2
+  exit 1
+fi
+export ADB_IS_FREE_TIER
 export ADB_LICENSE_MODEL="${ADB_LICENSE_MODEL:-BRING_YOUR_OWN_LICENSE}"
 ADB_LICENSE_MODEL=$(printf '%s' "$ADB_LICENSE_MODEL" | tr '[:lower:]' '[:upper:]')
 if [ "$ADB_LICENSE_MODEL" != "BRING_YOUR_OWN_LICENSE" ] && [ "$ADB_LICENSE_MODEL" != "LICENSE_INCLUDED" ]; then
@@ -708,7 +720,10 @@ echo -e "${CYAN}  DB_NAME         = ${DB_NAME}${NC}"
 echo -e "${CYAN}  LAB_INSTANCE_ID = ${ADB_OCI_IAM_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  DB_DISPLAY_NAME = ${DB_DISPLAY_NAME}${NC}"
 echo -e "${CYAN}  DB_VERSION      = ${DB_VERSION}${NC}"
-echo -e "${CYAN}  LICENSE_MODEL   = ${ADB_LICENSE_MODEL}${NC}"
+echo -e "${CYAN}  IS_FREE_TIER    = ${ADB_IS_FREE_TIER}${NC}"
+if [ "$ADB_IS_FREE_TIER" = "false" ]; then
+  echo -e "${CYAN}  LICENSE_MODEL   = ${ADB_LICENSE_MODEL}${NC}"
+fi
 if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
   echo -e "${CYAN}  MAINTENANCE     = ${ADB_MAINTENANCE_SCHEDULE_TYPE}${NC}"
 fi
@@ -748,6 +763,10 @@ adb_maintenance_args=()
 if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
   adb_maintenance_args=(--maintenance-schedule-type "$ADB_MAINTENANCE_SCHEDULE_TYPE")
 fi
+adb_license_args=()
+if [ "$ADB_IS_FREE_TIER" = "false" ]; then
+  adb_license_args=(--license-model "$ADB_LICENSE_MODEL")
+fi
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
   if [ -n "$ADB_ANY_STATE" ] && [ "$ADB_ANY_STATE" != "null" ]; then
@@ -759,8 +778,8 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
     --db-version "$DB_VERSION" \
-    --is-free-tier true \
-    --license-model "$ADB_LICENSE_MODEL" \
+    --is-free-tier "$ADB_IS_FREE_TIER" \
+    "${adb_license_args[@]}" \
     "${adb_maintenance_args[@]}" \
     --admin-password '<hidden>' \
     --cpu-core-count 1 \
@@ -771,8 +790,8 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
     --db-version "$DB_VERSION" \
-    --is-free-tier true \
-    --license-model "$ADB_LICENSE_MODEL" \
+    --is-free-tier "$ADB_IS_FREE_TIER" \
+    "${adb_license_args[@]}" \
     "${adb_maintenance_args[@]}" \
     --admin-password "$ADMIN_PWD" \
     --cpu-core-count 1 \
@@ -854,6 +873,7 @@ export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
 export DB_VERSION='${DB_VERSION}'
+export ADB_IS_FREE_TIER='${ADB_IS_FREE_TIER}'
 export ADB_LICENSE_MODEL='${ADB_LICENSE_MODEL}'
 export ADB_MAINTENANCE_SCHEDULE_TYPE='${ADB_MAINTENANCE_SCHEDULE_TYPE}'
 export ADB_OCID='${ADB_OCID}'

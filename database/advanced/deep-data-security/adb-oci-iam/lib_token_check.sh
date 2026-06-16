@@ -10,7 +10,7 @@ check_oauth_token() {
 
   if [ ! -f "$token_file" ]; then
     echo "ERROR: OAuth token was not found at ${token_file}." >&2
-    echo "Run ./04_get_iam_oauth_token.sh and sign in as ${expected_user} first." >&2
+    echo "Run ./04_get_iam_oauth_token.sh --headless and sign in as ${expected_user} in a separate browser session." >&2
     return 1
   fi
 
@@ -49,7 +49,9 @@ print(f"Token groups : {', '.join(str(group) for group in groups) if groups else
 
 if subject != expected_user:
     print(f"ERROR: Token is for {subject or '(missing)'}, expected {expected_user}.", file=sys.stderr)
-    print(f"Run ./04_get_iam_oauth_token.sh and sign in as {expected_user}.", file=sys.stderr)
+    print("Remove the current token, then get a fresh token in a separate browser session.", file=sys.stderr)
+    print(f"Commands: rm -rf $HOME/.oci/adb-oci-iam && ./04_get_iam_oauth_token.sh --headless", file=sys.stderr)
+    print(f"Sign in as {expected_user}, not the tenancy owner or another cached OCI session.", file=sys.stderr)
     sys.exit(1)
 
 missing = [group for group in required_groups if group not in group_set]

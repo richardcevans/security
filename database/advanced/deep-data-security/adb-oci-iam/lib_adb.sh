@@ -1,6 +1,11 @@
 #!/bin/bash
 # Shared helpers for the ADB OCI IAM lab.
 
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
+  echo "ERROR: This lab requires Bash 4.x or later." >&2
+  exit 1
+fi
+
 require_adb_env() {
   for var in DB_NAME ADB_OCID ADB_SERVICE ADMIN_PWD WALLET_DIR TNS_ADMIN; do
     if [ -z "${!var:-}" ]; then

@@ -56,24 +56,31 @@ includes Azure CLI and is the expected place to run `az` commands in this lab.
 Set the target OCI compartment by name:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=my-compartment
+</copy>
 ```
 
 To use the root compartment:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=root
+</copy>
 ```
 
 You can also use a compartment OCID directly:
 
 ```bash
+<copy>
 export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
+</copy>
 ```
 
 Optional overrides:
 
 ```bash
+<copy>
 export DB_NAME=deepsec7abc123
 export DB_DISPLAY_NAME=deepsec7abc123
 export DB_VERSION=26ai
@@ -84,6 +91,7 @@ export DOMAIN_NAME=example.onmicrosoft.com
 export ADB_ENTRA_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
 export MARVIN_UPN=your.user@example.com
 export EMMA_UPN=emma@example.com
+</copy>
 ```
 
 By default, `MARVIN_UPN` is the signed-in Azure Cloud Shell user. The Azure
@@ -96,8 +104,10 @@ not accept the `--license-model` create option. If you need a paid database,
 set these before running `00_setup_adb_entra_id.sh`:
 
 ```bash
+<copy>
 export ADB_IS_FREE_TIER=false
 export ADB_LICENSE_MODEL=LICENSE_INCLUDED
+</copy>
 ```
 
 By default, `00_create_entra_apps_azure_cloud_shell.sh` generates a lab instance
@@ -230,7 +240,9 @@ included in the issued token and are mapped to database data roles with
 ## Task 2: Enable Entra ID on Autonomous AI Database
 
 ```bash
+<copy>
 ./01_enable_entra_id.sh
+</copy>
 ```
 
 ADB does not use a SYS connection for this. The script connects as `ADMIN` and runs
@@ -249,7 +261,9 @@ Database uses the token claims to activate mapped data roles.
 ## Task 3: Create the HR Schema
 
 ```bash
+<copy>
 ./02_create_hr_schema.sh
+</copy>
 ```
 
 The HR schema is created with `NO AUTHENTICATION`. It owns the data, but users do
@@ -258,7 +272,9 @@ not log in as `HR`.
 ## Task 4: Create Data Roles and Data Grants
 
 ```bash
+<copy>
 ./03_create_data_roles_and_grants.sh
+</copy>
 ```
 
 The script creates:
@@ -277,7 +293,9 @@ current Entra ID user to an employee ID. The setup grants
 ## Task 5: Verify the ADMIN-Side Setup
 
 ```bash
+<copy>
 ./verify_db_setup.sh
+</copy>
 ```
 
 This confirms that Entra ID is enabled, the HR rows exist, and the data roles are
@@ -286,7 +304,9 @@ mapped.
 ## Task 6: Configure the ADB Wallet for Entra Interactive Login
 
 ```bash
+<copy>
 ./04_configure_azure_interactive.sh
+</copy>
 ```
 
 This adds a new wallet alias named `hrdb_entra` using:
@@ -311,13 +331,17 @@ The login flow for the verification tasks is:
 ## Task 7: Verify Data Grants as Marvin
 
 ```bash
+<copy>
 ./05_verify_as_marvin.sh
+</copy>
 ```
 
 The script connects with:
 
 ```bash
+<copy>
 sqlplus /@hrdb_entra
+</copy>
 ```
 
 If SQL*Plus has desktop or NoVNC browser access, the Entra login should open
@@ -334,7 +358,9 @@ You should see:
 ## Task 8: Verify Data Grants as Emma
 
 ```bash
+<copy>
 ./06_verify_as_emma.sh
+</copy>
 ```
 
 Sign in as `EMMA_UPN` when prompted. If you are reusing the same browser from
@@ -353,19 +379,25 @@ You should see:
 To remove the database objects:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh
+</copy>
 ```
 
 To skip the prompt:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh --DELETE
+</copy>
 ```
 
 To delete the ADB instance too:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh --delete-adb
+</copy>
 ```
 
 This cleanup script does not delete the Entra app registrations. Reusing them is
@@ -377,13 +409,17 @@ Cloud Shell from the `adb-entra-id` directory that contains
 `.adb-entra-id.azure.env`:
 
 ```bash
+<copy>
 ./08_cleanup_entra_id.sh
+</copy>
 ```
 
 To skip the prompt:
 
 ```bash
+<copy>
 ./08_cleanup_entra_id.sh --DELETE
+</copy>
 ```
 
 ## References

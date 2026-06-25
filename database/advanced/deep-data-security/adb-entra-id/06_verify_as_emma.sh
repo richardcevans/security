@@ -25,7 +25,8 @@ echo -e "${PURPLE}Expected Entra identity:${NC} ${EMMA_UPN}"
 echo -e "${PURPLE}This should open browser-based Entra ID login when the client has GUI access.${NC}"
 echo -e "${PURPLE}In headless Oracle Cloud Shell, copy the displayed login URL or device flow if prompted.${NC}"
 echo
-echo -e "${CYAN}Executing: sqlplus /@${ALIAS_NAME}${NC}"
+echo -e "${CYAN}Executing: sqlplus -L /@${ALIAS_NAME}${NC}"
+echo -e "${PURPLE}If prompted, open the displayed URL and enter the access code.${NC}"
 echo
 
 if command -v tnsping >/dev/null 2>&1 && ! tnsping "$ALIAS_NAME" >/dev/null 2>&1; then
@@ -34,7 +35,7 @@ if command -v tnsping >/dev/null 2>&1 && ! tnsping "$ALIAS_NAME" >/dev/null 2>&1
   exit 1
 fi
 
-sqlplus -L -s "/@${ALIAS_NAME}" <<SQL
+sqlplus -L "/@${ALIAS_NAME}" <<SQL
 set pagesize 100
 set linesize 180
 set tab off

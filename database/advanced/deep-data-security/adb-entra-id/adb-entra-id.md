@@ -336,17 +336,19 @@ The login flow for the verification tasks is:
 </copy>
 ```
 
-The script connects with:
+The script connects with visible SQL*Plus output so Oracle Cloud Shell can show
+the Entra ID URL and access code:
 
 ```bash
 <copy>
-sqlplus /@hrdb_entra
+sqlplus -L /@hrdb_entra
 </copy>
 ```
 
 If SQL*Plus has desktop or NoVNC browser access, the Entra login should open
 automatically. In a headless Oracle Cloud Shell session, the Oracle client may
-print a URL or device-flow prompt. Complete that login as `MARVIN_UPN`.
+print a URL and access code. Open the URL in your local browser, enter the
+access code, and complete that login as `MARVIN_UPN`.
 
 You should see:
 

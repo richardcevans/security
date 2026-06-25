@@ -23,7 +23,7 @@ echo -e "${GREEN}===============================================================
 echo
 echo -e "${PURPLE}Expected Entra identity:${NC} ${MARVIN_UPN}"
 echo -e "${PURPLE}This should open browser-based Entra ID login when the client has GUI access.${NC}"
-echo -e "${PURPLE}In headless Cloud Shell, copy the displayed login URL or device flow if prompted.${NC}"
+echo -e "${PURPLE}In headless Oracle Cloud Shell, copy the displayed login URL or device flow if prompted.${NC}"
 echo
 echo -e "${CYAN}Executing: sqlplus /@${ALIAS_NAME}${NC}"
 echo

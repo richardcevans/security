@@ -23,9 +23,9 @@ Estimated Time: 60 minutes
 ## Introduction
 
 - Creates or reuses an Autonomous AI Database Serverless instance.
-- Downloads the ADB client wallet into Cloud Shell.
-- Creates Microsoft Entra ID database/resource and interactive client app registrations.
-- Assigns the current Azure CLI user to the Entra app roles used by the lab.
+- Downloads the ADB client wallet into Oracle Cloud Shell.
+- Creates Microsoft Entra ID database/resource and interactive client app registrations from Azure Cloud Shell.
+- Assigns the signed-in Azure Cloud Shell user to the Entra app roles used by the lab.
 - Enables Entra ID authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
 - Configures the ADB wallet with `TOKEN_AUTH=AZURE_INTERACTIVE`.
@@ -33,55 +33,23 @@ Estimated Time: 60 minutes
 
 ## Assumptions
 
-- You are running from OCI Cloud Shell.
-- OCI CLI is available and authenticated by Cloud Shell.
-- Azure CLI is installed and you have run `az login`.
+- You use Azure Cloud Shell for all Microsoft Entra ID and Azure CLI commands.
+- You use Oracle Cloud Shell for all OCI CLI, Autonomous Database, wallet, and SQL commands.
+- OCI CLI is available and authenticated by Oracle Cloud Shell.
+- Azure CLI is available in Azure Cloud Shell.
 - SQL*Plus or SQLcl is available.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your Entra user can create app registrations, service principals, app roles, scopes, and app role assignments.
 
-## Install Azure CLI
+## Use Two Cloud Shell Sessions
 
-OCI Cloud Shell may not include Azure CLI. On Oracle Linux, use Microsoft's RPM
-repository instructions:
+This lab intentionally uses two browser tabs:
 
-```bash
-OS_MAJOR=$(rpm -E %{rhel})
-case "$OS_MAJOR" in
-  8)
-    MS_REPO_RHEL_VERSION="8"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
-    ;;
-  9)
-    MS_REPO_RHEL_VERSION="9.0"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft.asc"
-    ;;
-  10)
-    MS_REPO_RHEL_VERSION="10"
-    MS_KEY_URL="https://packages.microsoft.com/keys/microsoft-2025.asc"
-    ;;
-  *)
-    echo "Unsupported Oracle Linux/RHEL-compatible major version: $OS_MAJOR"
-    exit 1
-    ;;
-esac
-sudo rpm --import "$MS_KEY_URL"
-curl -fL -o /tmp/packages-microsoft-prod.rpm "https://packages.microsoft.com/config/rhel/${MS_REPO_RHEL_VERSION}/packages-microsoft-prod.rpm"
-sudo rpm -Uvh --replacepkgs /tmp/packages-microsoft-prod.rpm
-sudo dnf clean metadata
-sudo dnf makecache --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
-sudo dnf install -y azure-cli --nobest --disablerepo='*' --enablerepo='packages-microsoft-com-prod'
-az version
-```
+- **Azure Cloud Shell** runs the Microsoft Entra ID app-registration commands.
+- **Oracle Cloud Shell** runs the OCI, Autonomous Database, wallet, and SQL commands.
 
-Then sign in:
-
-```bash
-az login
-```
-
-If Cloud Shell cannot open a browser, Azure CLI will show a device-code login
-URL and code. Complete that flow in your local browser.
+Do not install Azure CLI in Oracle Cloud Shell. Azure Cloud Shell already
+includes Azure CLI and is the expected place to run `az` commands in this lab.
 
 ## Variables
 
@@ -118,10 +86,10 @@ export MARVIN_UPN=your.user@example.com
 export EMMA_UPN=emma@example.com
 ```
 
-By default, `MARVIN_UPN` is the current `az login` user. The script assigns that
-user to the `EMPLOYEES` and `MANAGERS` app roles and creates Marvin's HR row with
-that UPN. This makes the verification step runnable without pre-creating a
-separate Marvin account.
+By default, `MARVIN_UPN` is the signed-in Azure Cloud Shell user. The Azure
+setup script assigns that user to the `EMPLOYEES` and `MANAGERS` app roles, and
+the Oracle setup creates Marvin's HR row with that UPN. This makes the
+verification step runnable without pre-creating a separate Marvin account.
 
 `ADB_IS_FREE_TIER` defaults to `true`. Always Free Autonomous AI Database does
 not accept the `--license-model` create option. If you need a paid database,
@@ -132,14 +100,15 @@ export ADB_IS_FREE_TIER=false
 export ADB_LICENSE_MODEL=LICENSE_INCLUDED
 ```
 
-By default, `00_setup_adb_entra_id.sh` generates a machine-scoped instance ID
-and saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
-DBSec-Lab identity labs reuse the same machine ID. The default `DB_NAME` is
-`deepsec7<short-machine-suffix>`, such as `deepsec7ef143e`.
+By default, `00_create_entra_apps_azure_cloud_shell.sh` generates a lab instance
+ID and writes it to `.adb-entra-id.azure.env`. Copy that file into Oracle Cloud
+Shell before running `00_setup_adb_entra_id.sh`. The default `DB_NAME` is
+`deepsec7<short-instance-suffix>`, such as `deepsec7ef143e`.
 
 ## Task 0: Download and Unzip the Lab Files
 
-Move to the Deep Data Security labs directory and download the lab archive:
+In Oracle Cloud Shell, move to the Deep Data Security labs directory and
+download the lab archive:
 
 ```bash
 <copy>
@@ -176,7 +145,8 @@ Important files include:
 
 | File | Purpose |
 | --- | --- |
-| `00_setup_adb_entra_id.sh` | Creates Entra apps, app roles, Autonomous Database, wallet, and `.adb-entra-id.env` |
+| `00_create_entra_apps_azure_cloud_shell.sh` | Runs in Azure Cloud Shell to create Entra apps, app roles, app role assignments, and `.adb-entra-id.azure.env` |
+| `00_setup_adb_entra_id.sh` | Runs in Oracle Cloud Shell to create Autonomous Database, wallet, and `.adb-entra-id.env` |
 | `01_enable_entra_id.sh` | Enables Microsoft Entra ID authentication on Autonomous Database |
 | `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
 | `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
@@ -189,12 +159,13 @@ Important files include:
 
 The script numbers are the execution order after the lab files are downloaded.
 They are not the same as the LiveLabs task numbers because Task 0 is the
-download step, and Entra cleanup is optional after the verification tasks.
+download step, Task 1 has one Azure Cloud Shell script and one Oracle Cloud
+Shell script, and Entra cleanup is optional after the verification tasks.
 
 | LiveLabs task | Script |
 | --- | --- |
 | Task 0: Download and unzip the lab files | No setup script |
-| Task 1: Create Autonomous AI Database and Entra ID apps | `00_setup_adb_entra_id.sh` |
+| Task 1: Create Entra ID apps, Autonomous AI Database, and wallet | `00_create_entra_apps_azure_cloud_shell.sh`, `00_setup_adb_entra_id.sh` |
 | Task 2: Enable Entra ID on Autonomous AI Database | `01_enable_entra_id.sh` |
 | Task 3: Create the HR schema | `02_create_hr_schema.sh` |
 | Task 4: Create data roles and data grants | `03_create_data_roles_and_grants.sh` |
@@ -204,16 +175,43 @@ download step, and Entra cleanup is optional after the verification tasks.
 | Task 8: Verify data grants as Emma | `06_verify_as_emma.sh` |
 | Cleanup after the lab | `07_cleanup_adb_lab.sh`, `08_cleanup_entra_id.sh` |
 
-## Task 1: Create Autonomous AI Database and Entra ID Apps
+## Task 1: Create Entra ID Apps, Autonomous AI Database, and Wallet
+
+In Azure Cloud Shell, download the same lab archive and run the Entra setup
+script:
 
 ```bash
+<copy>
+mkdir -vp ~/adb-entra-id-lab
+cd ~/adb-entra-id-lab
+wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
+unzip -o adb-entra-id.zip
+cd adb-entra-id
+./00_create_entra_apps_azure_cloud_shell.sh
+</copy>
+```
+
+The Azure setup script creates `.adb-entra-id.azure.env` and prints a complete
+`cat > .adb-entra-id.azure.env <<'EOF'` block.
+
+Return to Oracle Cloud Shell. In the `adb-entra-id` lab directory, paste and run
+the complete block printed by Azure Cloud Shell. This creates the Azure
+environment file that the Oracle setup script needs.
+
+Then create or reuse Autonomous AI Database and download the wallet:
+
+```bash
+<copy>
 ./00_setup_adb_entra_id.sh
+</copy>
 ```
 
 Load the generated environment file:
 
 ```bash
+<copy>
 source ./.adb-entra-id.env
+</copy>
 ```
 
 The Entra enterprise app names include the ADB name and the machine-instance
@@ -222,14 +220,18 @@ suffix:
 - `Oracle Database 26ai ADB - <DB_NAME> - <machine-instance-id>`
 - `Oracle Client Interactive ADB - <DB_NAME> - <machine-instance-id>`
 
-The setup script creates or reuses:
+The Azure Cloud Shell setup script creates or reuses:
 
-- Autonomous AI Database `deepsec7<short-machine-suffix>`
-- Database wallet `$HOME/adb_wallet/<DB_NAME>-entra`
 - Microsoft Entra database resource application
 - Microsoft Entra public interactive client application
 - Entra app roles `EMPLOYEES` and `MANAGERS`
 - Optional app role assignments for Marvin and Emma
+
+The Oracle Cloud Shell setup script creates or reuses:
+
+- Autonomous AI Database `deepsec7<short-instance-suffix>`
+- Database wallet `$HOME/adb_wallet/<DB_NAME>-entra`
+- Combined `.adb-entra-id.env` file used by the remaining Oracle Cloud Shell scripts
 
 The database resource application represents Autonomous AI Database as an OAuth
 resource. The interactive client application is the public client used by
@@ -331,8 +333,8 @@ sqlplus /@hrdb_entra
 ```
 
 If SQL*Plus has desktop or NoVNC browser access, the Entra login should open
-automatically. In a headless Cloud Shell session, the Oracle client may print a
-URL or device-flow prompt. Complete that login as `MARVIN_UPN`.
+automatically. In a headless Oracle Cloud Shell session, the Oracle client may
+print a URL or device-flow prompt. Complete that login as `MARVIN_UPN`.
 
 You should see:
 
@@ -382,7 +384,9 @@ This cleanup script does not delete the Entra app registrations. Reusing them is
 usually safer while iterating on the lab. Delete them from Entra ID when you are
 done with the environment.
 
-To delete the Entra app registrations from the command line:
+To delete the Entra app registrations from the command line, run this in Azure
+Cloud Shell from the `adb-entra-id` directory that contains
+`.adb-entra-id.azure.env`:
 
 ```bash
 ./08_cleanup_entra_id.sh
@@ -396,7 +400,7 @@ To skip the prompt:
 
 ## References
 
-- [Install Azure CLI on Linux](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux)
+- [Azure Cloud Shell overview](https://learn.microsoft.com/en-us/azure/cloud-shell/overview)
 - [Enable Microsoft Entra ID Authentication on Autonomous Database](https://docs.public.content.oci.oraclecloud.com/iaas/autonomous-database-serverless/doc/manage-users-azure-ad.html)
 - [DBMS_CLOUD_ADMIN package](https://docs.oracle.com/en/cloud/paas/autonomous-database/dedicated/adbaa/dbmscloudadmin-package.html)
 - [Oracle Net `TOKEN_AUTH` parameter](https://docs.oracle.com/en/database/oracle/oracle-database/26/netrf/local-naming-parameters-in-tns-ora-file.html)

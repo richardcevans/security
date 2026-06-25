@@ -24,9 +24,13 @@ done
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.env"
+AZURE_ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.azure.env"
 if [ -f "$ENV_FILE" ]; then
   # shellcheck source=/dev/null
   source "$ENV_FILE"
+elif [ -f "$AZURE_ENV_FILE" ]; then
+  # shellcheck source=/dev/null
+  source "$AZURE_ENV_FILE"
 fi
 
 export DB_NAME="${DB_NAME:-deepsec7}"
@@ -36,12 +40,13 @@ export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
 
 if ! command -v az >/dev/null 2>&1; then
   echo -e "${RED}ERROR: Azure CLI is not installed or not on PATH.${NC}"
+  echo "Open Azure Cloud Shell from the Azure Portal and run this script there."
   exit 1
 fi
 
 if ! az account show >/dev/null 2>&1; then
   echo -e "${RED}ERROR: Azure CLI is not logged in.${NC}"
-  echo -e "${YELLOW}Run: az login${NC}"
+  echo -e "${YELLOW}Open Azure Cloud Shell from the Azure Portal, select Bash, and sign in when prompted.${NC}"
   exit 1
 fi
 

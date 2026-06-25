@@ -11,9 +11,10 @@ Based on an OCI architecture, deployed in a few minutes with a simple internet c
 Now, you no longer need important resources on your PC (storage, CPU or memory), nor complex tools to master, making you completely autonomous to discover at your rhythm all new DB Security features.
 
 ### Components
-The architecture of this **Oracle Deep Data Security** Hands-On Lab is as following:
+The architecture of this **Oracle Deep Data Security** hands-on lab is shown
+below:
 
-  ![Oracle Deep Data Security architecture showing Microsoft Entra ID authentication and Oracle Deep Data Security per-user access](images/architecture.png)
+  ![Oracle Deep Data Security architecture showing Microsoft Entra ID authentication and Oracle Deep Data Security per-user access](images/entra-id-data-grants-architecture.png)
 
 Users authenticate with Microsoft Entra ID. The database enforces per-user access with data grants — no application filtering required.
 

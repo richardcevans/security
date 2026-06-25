@@ -24,6 +24,14 @@ export ADB_ENTRA_LAB_INSTANCE_SHORT
 export DB_NAME="${DB_NAME:-deepsec7${ADB_ENTRA_LAB_INSTANCE_SHORT}}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
 export DB_VERSION="${DB_VERSION:-26ai}"
+export ADB_IS_FREE_TIER="${ADB_IS_FREE_TIER:-true}"
+ADB_IS_FREE_TIER=$(printf '%s' "$ADB_IS_FREE_TIER" | tr '[:upper:]' '[:lower:]')
+if [ "$ADB_IS_FREE_TIER" != "true" ] && [ "$ADB_IS_FREE_TIER" != "false" ]; then
+  echo -e "${RED}ERROR: ADB_IS_FREE_TIER must be true or false.${NC}" >&2
+  exit 1
+fi
+export ADB_IS_FREE_TIER
+export ADB_LICENSE_MODEL="${ADB_LICENSE_MODEL:-LICENSE_INCLUDED}"
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}-entra}"
@@ -210,6 +218,10 @@ echo -e "${CYAN}  ROOT_COMP_ID          = ${ROOT_COMP_ID}${NC}"
 echo -e "${CYAN}  DB_NAME               = ${DB_NAME}${NC}"
 echo -e "${CYAN}  LAB_INSTANCE_ID       = ${ADB_ENTRA_LAB_INSTANCE_ID}${NC}"
 echo -e "${CYAN}  DB_VERSION            = ${DB_VERSION}${NC}"
+echo -e "${CYAN}  IS_FREE_TIER          = ${ADB_IS_FREE_TIER}${NC}"
+if [ "$ADB_IS_FREE_TIER" = "false" ]; then
+  echo -e "${CYAN}  LICENSE_MODEL         = ${ADB_LICENSE_MODEL}${NC}"
+fi
 echo -e "${CYAN}  ADB_SERVICE           = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR            = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  TENANT_ID             = ${TENANT_ID}${NC}"
@@ -229,16 +241,22 @@ ADB_OCID=$(oci db autonomous-database list \
   --query "data[?\"db-name\"=='${DB_NAME}' && \"lifecycle-state\"!='TERMINATED'].id | [0]")
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
+  adb_license_args=()
+  if [ "$ADB_IS_FREE_TIER" = "false" ]; then
+    adb_license_args=(--license-model "$ADB_LICENSE_MODEL")
+  fi
+
   oci db autonomous-database create \
     --compartment-id "$ROOT_COMP_ID" \
     --db-name "$DB_NAME" \
     --display-name "$DB_DISPLAY_NAME" \
     --admin-password "$ADMIN_PWD" \
     --db-version "$DB_VERSION" \
+    --is-free-tier "$ADB_IS_FREE_TIER" \
     --compute-model ECPU \
     --compute-count 2 \
     --data-storage-size-in-tbs 1 \
-    --license-model LICENSE_INCLUDED \
+    "${adb_license_args[@]}" \
     --wait-for-state AVAILABLE \
     >/dev/null
 
@@ -426,6 +444,8 @@ export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
 export DB_VERSION='${DB_VERSION}'
+export ADB_IS_FREE_TIER='${ADB_IS_FREE_TIER}'
+export ADB_LICENSE_MODEL='${ADB_LICENSE_MODEL}'
 export ADB_OCID='${ADB_OCID}'
 export ADB_SERVICE='${ADB_SERVICE}'
 export ADMIN_PWD='${ADMIN_PWD}'

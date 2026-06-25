@@ -1,7 +1,7 @@
-# ADB Microsoft Entra ID Deep Data Security Lab
+# Autonomous AI Database Microsoft Entra ID Deep Data Security Lab
 
-This lab builds the Deep Data Security data grants demo on Autonomous Database
-Serverless using Microsoft Entra ID authentication.
+This lab builds the Deep Data Security data grants demo on Autonomous AI
+Database Serverless 26ai using Microsoft Entra ID authentication.
 
 The database name starts with `deepsec7` by default and adds a short
 machine-instance suffix so multiple DBSec-Lab environments can share the same
@@ -11,7 +11,7 @@ OCI compartment and Entra tenant without name collisions.
 
 In this lab, you will:
 
-- Create an Autonomous Database Serverless instance for the demo.
+- Create an Autonomous AI Database Serverless instance for the demo.
 - Configure Microsoft Entra ID authentication for the database.
 - Create Deep Data Security data roles and data grants.
 - Verify end-user access through Entra-authenticated database sessions.
@@ -20,9 +20,9 @@ In this lab, you will:
 
 Estimated Time: 60 minutes
 
-## What This Lab Does
+## Introduction
 
-- Creates or reuses an ADB-S instance.
+- Creates or reuses an Autonomous AI Database Serverless instance.
 - Downloads the ADB client wallet into Cloud Shell.
 - Creates Microsoft Entra ID database/resource and interactive client app registrations.
 - Assigns the current Azure CLI user to the Entra app roles used by the lab.
@@ -37,7 +37,7 @@ Estimated Time: 60 minutes
 - OCI CLI is available and authenticated by Cloud Shell.
 - Azure CLI is installed and you have run `az login`.
 - SQL*Plus or SQLcl is available.
-- Your OCI user can create Autonomous Databases in the target compartment.
+- Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your Entra user can create app registrations, service principals, app roles, scopes, and app role assignments.
 
 ## Install Azure CLI
@@ -108,6 +108,8 @@ Optional overrides:
 ```bash
 export DB_NAME=deepsec7abc123
 export DB_DISPLAY_NAME=deepsec7abc123
+export DB_VERSION=26ai
+export ADB_IS_FREE_TIER=true
 export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export DOMAIN_NAME=example.onmicrosoft.com
@@ -121,12 +123,21 @@ user to the `EMPLOYEES` and `MANAGERS` app roles and creates Marvin's HR row wit
 that UPN. This makes the verification step runnable without pre-creating a
 separate Marvin account.
 
+`ADB_IS_FREE_TIER` defaults to `true`. Always Free Autonomous AI Database does
+not accept the `--license-model` create option. If you need a paid database,
+set these before running `00_setup_adb_entra_id.sh`:
+
+```bash
+export ADB_IS_FREE_TIER=false
+export ADB_LICENSE_MODEL=LICENSE_INCLUDED
+```
+
 By default, `00_setup_adb_entra_id.sh` generates a machine-scoped instance ID
 and saves it in `~/.dbsec-labs/instances/dbsec-lab-machine.instance`. Other
 DBSec-Lab identity labs reuse the same machine ID. The default `DB_NAME` is
 `deepsec7<short-machine-suffix>`, such as `deepsec7ef143e`.
 
-## 0. Download and Unzip the Lab Files
+## Task 0: Download and Unzip the Lab Files
 
 Move to the Deep Data Security labs directory and download the lab archive:
 
@@ -160,7 +171,40 @@ fi
 </copy>
 ```
 
-## 1. Create ADB-S, Wallet, and Entra ID Apps
+You should see the setup and verification scripts used by the remaining tasks.
+Important files include:
+
+| File | Purpose |
+| --- | --- |
+| `00_setup_adb_entra_id.sh` | Creates Entra apps, app roles, Autonomous Database, wallet, and `.adb-entra-id.env` |
+| `01_enable_entra_id.sh` | Enables Microsoft Entra ID authentication on Autonomous Database |
+| `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
+| `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
+| `04_configure_azure_interactive.sh` | Configures the wallet alias for Entra interactive login |
+| `05_verify_as_marvin.sh` | Verifies manager access for Marvin |
+| `06_verify_as_emma.sh` | Verifies employee access for Emma |
+| `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
+| `07_cleanup_adb_lab.sh` | Removes lab database objects and optional Autonomous Database resources |
+| `08_cleanup_entra_id.sh` | Removes lab-created Microsoft Entra ID applications |
+
+The script numbers are the execution order after the lab files are downloaded.
+They are not the same as the LiveLabs task numbers because Task 0 is the
+download step, and Entra cleanup is optional after the verification tasks.
+
+| LiveLabs task | Script |
+| --- | --- |
+| Task 0: Download and unzip the lab files | No setup script |
+| Task 1: Create Autonomous AI Database and Entra ID apps | `00_setup_adb_entra_id.sh` |
+| Task 2: Enable Entra ID on Autonomous AI Database | `01_enable_entra_id.sh` |
+| Task 3: Create the HR schema | `02_create_hr_schema.sh` |
+| Task 4: Create data roles and data grants | `03_create_data_roles_and_grants.sh` |
+| Task 5: Verify the ADMIN-side setup | `verify_db_setup.sh` |
+| Task 6: Configure the wallet for Entra interactive login | `04_configure_azure_interactive.sh` |
+| Task 7: Verify data grants as Marvin | `05_verify_as_marvin.sh` |
+| Task 8: Verify data grants as Emma | `06_verify_as_emma.sh` |
+| Cleanup after the lab | `07_cleanup_adb_lab.sh`, `08_cleanup_entra_id.sh` |
+
+## Task 1: Create Autonomous AI Database and Entra ID Apps
 
 ```bash
 ./00_setup_adb_entra_id.sh
@@ -178,7 +222,22 @@ suffix:
 - `Oracle Database 26ai ADB - <DB_NAME> - <machine-instance-id>`
 - `Oracle Client Interactive ADB - <DB_NAME> - <machine-instance-id>`
 
-## 2. Enable Entra ID on ADB
+The setup script creates or reuses:
+
+- Autonomous AI Database `deepsec7<short-machine-suffix>`
+- Database wallet `$HOME/adb_wallet/<DB_NAME>-entra`
+- Microsoft Entra database resource application
+- Microsoft Entra public interactive client application
+- Entra app roles `EMPLOYEES` and `MANAGERS`
+- Optional app role assignments for Marvin and Emma
+
+The database resource application represents Autonomous AI Database as an OAuth
+resource. The interactive client application is the public client used by
+SQL*Plus when it starts the browser-based Entra sign-in flow. The app roles are
+included in the issued token and are mapped to database data roles with
+`AZURE_ROLE=...`.
+
+## Task 2: Enable Entra ID on Autonomous AI Database
 
 ```bash
 ./01_enable_entra_id.sh
@@ -192,7 +251,12 @@ ADB does not use a SYS connection for this. The script connects as `ADMIN` and r
 - `application_id`
 - `application_id_uri`
 
-## 3. Create the HR Schema
+This configures Autonomous AI Database to validate Microsoft Entra ID tokens for
+the database resource application created in Task 1. Users do not type database
+passwords for Marvin or Emma. They sign in to Entra ID, and Autonomous AI
+Database uses the token claims to activate mapped data roles.
+
+## Task 3: Create the HR Schema
 
 ```bash
 ./02_create_hr_schema.sh
@@ -201,7 +265,7 @@ ADB does not use a SYS connection for this. The script connects as `ADMIN` and r
 The HR schema is created with `NO AUTHENTICATION`. It owns the data, but users do
 not log in as `HR`.
 
-## 4. Create Data Roles and Data Grants
+## Task 4: Create Data Roles and Data Grants
 
 ```bash
 ./03_create_data_roles_and_grants.sh
@@ -220,7 +284,7 @@ current Entra ID user to an employee ID. The setup grants
 `UPDATE ANY END USER CONTEXT` to `HR` so the context handler can populate
 `HR.EMP_CTX` on first read.
 
-## 5. Verify the ADMIN-Side Setup
+## Task 5: Verify the ADMIN-Side Setup
 
 ```bash
 ./verify_db_setup.sh
@@ -229,7 +293,7 @@ current Entra ID user to an employee ID. The setup grants
 This confirms that Entra ID is enabled, the HR rows exist, and the data roles are
 mapped.
 
-## 6. Configure the ADB Wallet for Entra Interactive Login
+## Task 6: Configure the ADB Wallet for Entra Interactive Login
 
 ```bash
 ./04_configure_azure_interactive.sh
@@ -244,7 +308,17 @@ AZURE_DB_APP_ID_URI=<database-resource-app-id-uri>
 TENANT_ID=<tenant-id>
 ```
 
-## 7. Verify Data Grants as Marvin
+The login flow for the verification tasks is:
+
+- SQL*Plus connects to the `hrdb_entra` wallet alias.
+- The Oracle client sees `TOKEN_AUTH=AZURE_INTERACTIVE`.
+- The Oracle client starts an Entra ID interactive login for the configured
+  client application and database resource URI.
+- Entra ID returns a token for the signed-in user.
+- Autonomous AI Database validates the token and maps Entra app-role claims to
+  data roles such as `AZURE_ROLE=EMPLOYEES`.
+
+## Task 7: Verify Data Grants as Marvin
 
 ```bash
 ./05_verify_as_marvin.sh
@@ -267,7 +341,7 @@ You should see:
 - Marvin's own HR row with SSN visible.
 - Marvin's direct reports with SSN hidden.
 
-## 8. Verify Data Grants as Emma
+## Task 8: Verify Data Grants as Emma
 
 ```bash
 ./06_verify_as_emma.sh

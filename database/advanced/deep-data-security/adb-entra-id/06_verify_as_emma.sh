@@ -14,7 +14,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/lib_adb.sh"
 require_adb_entra_env
 
-ALIAS_NAME="${ADB_ENTRA_ALIAS:-hrdb_entra}"
+CONNECT_ALIAS="${ADB_SERVICE}"
+AZURE_TOKEN_DIR="${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}"
+AZURE_TOKEN_FILE="${AZURE_TOKEN_DIR}/token"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -22,20 +24,24 @@ echo -e "${GREEN}      Task 6: Connect and Verify as Emma via Microsoft Entra ID
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${PURPLE}Expected Entra identity:${NC} ${EMMA_UPN}"
-echo -e "${PURPLE}This should open browser-based Entra ID login when the client has GUI access.${NC}"
-echo -e "${PURPLE}In headless Oracle Cloud Shell, copy the displayed login URL or device flow if prompted.${NC}"
+echo -e "${PURPLE}First run ./04_get_entra_oauth_token.sh --headless and sign in as Emma.${NC}"
+echo -e "${CYAN}TOKEN_LOCATION=${AZURE_TOKEN_DIR}${NC}"
 echo
-echo -e "${CYAN}Executing: sqlplus -L /@${ALIAS_NAME}${NC}"
-echo -e "${PURPLE}If prompted, open the displayed URL and enter the access code.${NC}"
+echo -e "${CYAN}Executing: sqlplus -L -s /@${CONNECT_ALIAS}${NC}"
 echo
 
-if command -v tnsping >/dev/null 2>&1 && ! tnsping "$ALIAS_NAME" >/dev/null 2>&1; then
-  echo -e "${RED}ERROR: TNS alias ${ALIAS_NAME} is not available.${NC}"
-  echo -e "${YELLOW}Run ./04_configure_azure_interactive.sh first.${NC}"
+if [ ! -s "$AZURE_TOKEN_FILE" ]; then
+  echo -e "${RED}ERROR: Microsoft Entra token was not found at ${AZURE_TOKEN_FILE}.${NC}"
+  echo -e "${YELLOW}Run ./04_get_entra_oauth_token.sh --headless and sign in as ${EMMA_UPN}.${NC}"
   exit 1
 fi
 
-sqlplus -L "/@${ALIAS_NAME}" <<SQL
+if command -v tnsping >/dev/null 2>&1 && ! tnsping "$CONNECT_ALIAS" >/dev/null 2>&1; then
+  echo -e "${RED}ERROR: TNS alias ${CONNECT_ALIAS} is not available.${NC}"
+  exit 1
+fi
+
+sqlplus -L -s "/@${CONNECT_ALIAS}" <<SQL
 set pagesize 100
 set linesize 180
 set tab off

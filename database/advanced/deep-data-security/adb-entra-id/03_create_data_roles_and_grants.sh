@@ -108,5 +108,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 3 completed. Next: run ./04_configure_azure_interactive.sh${NC}"
+echo -e "${GREEN}Task 3 completed. Next: run ./04_get_entra_oauth_token.sh --headless${NC}"
 echo

@@ -20,7 +20,10 @@ Users authenticate with Microsoft Entra ID. The database enforces per-user acces
 
 During this mini-lab, you'll use different resources to interact with the database:
   - SSH Terminal Client
-  - (Optionally) SQL Developer
+  - Azure Cloud Shell
+  - Web Browser
+  - Windows PowerShell
+  - SQL\*Plus Instant Client
 
 So that your experience of this workshop is the best possible, DO NOT FORGET to perform "Lab: *Initialize Environment*" to be sure that all these resources are correctly set!
 

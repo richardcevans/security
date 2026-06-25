@@ -30,6 +30,7 @@ export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
 export ENTRA_SCOPE_VALUE="${ENTRA_SCOPE_VALUE:-session:scope:connect}"
 export CREATE_APP_ROLE_ASSIGNMENTS="${CREATE_APP_ROLE_ASSIGNMENTS:-1}"
 export AZURE_CORE_ONLY_SHOW_ERRORS="${AZURE_CORE_ONLY_SHOW_ERRORS:-true}"
+AZURE_REDIRECT_URIS_JSON='["http://localhost","http://localhost:8888/callback","http://localhost:8889/callback","http://localhost:8890/callback"]'
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -225,6 +226,9 @@ if [ -z "$client_app_id" ]; then
     --display-name "$ENTRA_CLIENT_APP_NAME" \
     --sign-in-audience AzureADMyOrg \
     --public-client-redirect-uris "http://localhost" \
+    "http://localhost:8888/callback" \
+    "http://localhost:8889/callback" \
+    "http://localhost:8890/callback" \
     --is-fallback-public-client true \
     -o json)
   client_object_id=$(printf '%s' "$client_app_json" | json_get 'data["id"]')
@@ -236,11 +240,11 @@ fi
 ensure_service_principal "$client_app_id"
 
 client_patch=$(mktemp)
-DB_APP_ID="$db_app_id" SCOPE_ID="$scope_id" python3 - <<'PY' > "$client_patch"
+DB_APP_ID="$db_app_id" SCOPE_ID="$scope_id" AZURE_REDIRECT_URIS_JSON="$AZURE_REDIRECT_URIS_JSON" python3 - <<'PY' > "$client_patch"
 import json, os
 print(json.dumps({
     "isFallbackPublicClient": True,
-    "publicClient": {"redirectUris": ["http://localhost"]},
+    "publicClient": {"redirectUris": json.loads(os.environ["AZURE_REDIRECT_URIS_JSON"])},
     "requiredResourceAccess": [{
         "resourceAppId": os.environ["DB_APP_ID"],
         "resourceAccess": [{"id": os.environ["SCOPE_ID"], "type": "Scope"}],

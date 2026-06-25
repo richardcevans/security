@@ -28,7 +28,7 @@ Estimated Time: 60 minutes
 - Assigns the signed-in Azure Cloud Shell user to the Entra app roles used by the lab.
 - Enables Entra ID authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
-- Configures the ADB wallet with `TOKEN_AUTH=AZURE_INTERACTIVE`.
+- Configures SQL*Plus with `TOKEN_AUTH=OAUTH` and a local Entra access token.
 - Verifies the same SQL returns only the rows and columns authorized for the Entra user.
 
 ## Assumptions
@@ -56,24 +56,31 @@ includes Azure CLI and is the expected place to run `az` commands in this lab.
 Set the target OCI compartment by name:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=my-compartment
+</copy>
 ```
 
 To use the root compartment:
 
 ```bash
+<copy>
 export OCI_COMPARTMENT=root
+</copy>
 ```
 
 You can also use a compartment OCID directly:
 
 ```bash
+<copy>
 export ROOT_COMP_ID=ocid1.compartment.oc1..aaaa...
+</copy>
 ```
 
 Optional overrides:
 
 ```bash
+<copy>
 export DB_NAME=deepsec7abc123
 export DB_DISPLAY_NAME=deepsec7abc123
 export DB_VERSION=26ai
@@ -84,6 +91,7 @@ export DOMAIN_NAME=example.onmicrosoft.com
 export ADB_ENTRA_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
 export MARVIN_UPN=your.user@example.com
 export EMMA_UPN=emma@example.com
+</copy>
 ```
 
 By default, `MARVIN_UPN` is the signed-in Azure Cloud Shell user. The Azure
@@ -96,8 +104,10 @@ not accept the `--license-model` create option. If you need a paid database,
 set these before running `00_setup_adb_entra_id.sh`:
 
 ```bash
+<copy>
 export ADB_IS_FREE_TIER=false
 export ADB_LICENSE_MODEL=LICENSE_INCLUDED
+</copy>
 ```
 
 By default, `00_create_entra_apps_azure_cloud_shell.sh` generates a lab instance
@@ -128,18 +138,6 @@ cd adb-entra-id
 </copy>
 ```
 
-If the archive creates a nested `adb-entra-id` directory, move its contents up
-into the current lab directory:
-
-```bash
-<copy>
-if [ -d adb-entra-id ]; then
-  cp -R adb-entra-id/. .
-  rm -rf adb-entra-id
-fi
-</copy>
-```
-
 You should see the setup and verification scripts used by the remaining tasks.
 Important files include:
 
@@ -150,7 +148,8 @@ Important files include:
 | `01_enable_entra_id.sh` | Enables Microsoft Entra ID authentication on Autonomous Database |
 | `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
 | `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
-| `04_configure_azure_interactive.sh` | Configures the wallet alias for Entra interactive login |
+| `04_get_entra_oauth_token.sh` | Gets a Microsoft Entra OAuth2 token for the signed-in user |
+| `04_configure_azure_interactive.sh` | Compatibility wrapper for `04_get_entra_oauth_token.sh` |
 | `05_verify_as_marvin.sh` | Verifies manager access for Marvin |
 | `06_verify_as_emma.sh` | Verifies employee access for Emma |
 | `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
@@ -170,7 +169,7 @@ Shell script, and Entra cleanup is optional after the verification tasks.
 | Task 3: Create the HR schema | `02_create_hr_schema.sh` |
 | Task 4: Create data roles and data grants | `03_create_data_roles_and_grants.sh` |
 | Task 5: Verify the ADMIN-side setup | `verify_db_setup.sh` |
-| Task 6: Configure the wallet for Entra interactive login | `04_configure_azure_interactive.sh` |
+| Task 6: Get a Microsoft Entra OAuth2 access token | `04_get_entra_oauth_token.sh` |
 | Task 7: Verify data grants as Marvin | `05_verify_as_marvin.sh` |
 | Task 8: Verify data grants as Emma | `06_verify_as_emma.sh` |
 | Cleanup after the lab | `07_cleanup_adb_lab.sh`, `08_cleanup_entra_id.sh` |
@@ -234,15 +233,17 @@ The Oracle Cloud Shell setup script creates or reuses:
 - Combined `.adb-entra-id.env` file used by the remaining Oracle Cloud Shell scripts
 
 The database resource application represents Autonomous AI Database as an OAuth
-resource. The interactive client application is the public client used by
-SQL*Plus when it starts the browser-based Entra sign-in flow. The app roles are
-included in the issued token and are mapped to database data roles with
+resource. The interactive client application is the public client used by the
+authorization-code flow. The app roles are included in the issued token and are
+mapped to database data roles with
 `AZURE_ROLE=...`.
 
 ## Task 2: Enable Entra ID on Autonomous AI Database
 
 ```bash
+<copy>
 ./01_enable_entra_id.sh
+</copy>
 ```
 
 ADB does not use a SYS connection for this. The script connects as `ADMIN` and runs
@@ -261,7 +262,9 @@ Database uses the token claims to activate mapped data roles.
 ## Task 3: Create the HR Schema
 
 ```bash
+<copy>
 ./02_create_hr_schema.sh
+</copy>
 ```
 
 The HR schema is created with `NO AUTHENTICATION`. It owns the data, but users do
@@ -270,7 +273,9 @@ not log in as `HR`.
 ## Task 4: Create Data Roles and Data Grants
 
 ```bash
+<copy>
 ./03_create_data_roles_and_grants.sh
+</copy>
 ```
 
 The script creates:
@@ -289,52 +294,88 @@ current Entra ID user to an employee ID. The setup grants
 ## Task 5: Verify the ADMIN-Side Setup
 
 ```bash
+<copy>
 ./verify_db_setup.sh
+</copy>
 ```
 
 This confirms that Entra ID is enabled, the HR rows exist, and the data roles are
 mapped.
 
-## Task 6: Configure the ADB Wallet for Entra Interactive Login
+## Task 6: Get a Microsoft Entra OAuth2 Access Token
+
+Use `--headless` in Oracle Cloud Shell. This prints a Microsoft Entra login URL
+and prompts you to paste the final localhost callback URL.
+
+> **Important:** This task uses two browser contexts. Keep Oracle Cloud Shell
+> open in its current browser tab. Copy the printed login URL into a separate
+> private window, incognito window, separate browser profile, or different
+> browser. Sign in there as the demo user. The final
+> `localhost:8888/callback?...` page will usually fail to load. That is
+> expected. Copy the entire localhost URL from the browser address bar and paste
+> it back into Oracle Cloud Shell.
 
 ```bash
-./04_configure_azure_interactive.sh
+<copy>
+./04_get_entra_oauth_token.sh --headless
+</copy>
 ```
 
-This adds a new wallet alias named `hrdb_entra` using:
+This configures `sqlnet.ora` using:
 
 ```text
-TOKEN_AUTH=AZURE_INTERACTIVE
-CLIENT_ID=<interactive-client-app-id>
-AZURE_DB_APP_ID_URI=<database-resource-app-id-uri>
-TENANT_ID=<tenant-id>
+TOKEN_AUTH=OAUTH
+TOKEN_LOCATION=$HOME/.azure/adb-entra-id
+```
+
+Then it starts the Microsoft Entra OAuth2 authorization-code flow for the user
+you sign in as. The token helper uses the values from `.adb-entra-id.env`:
+
+```bash
+<copy>
+source ./.adb-entra-id.env
+</copy>
 ```
 
 The login flow for the verification tasks is:
 
-- SQL*Plus connects to the `hrdb_entra` wallet alias.
-- The Oracle client sees `TOKEN_AUTH=AZURE_INTERACTIVE`.
-- The Oracle client starts an Entra ID interactive login for the configured
-  client application and database resource URI.
-- Entra ID returns a token for the signed-in user.
+- The token helper prints a Microsoft Entra login URL.
+- You paste the login URL into a separate browser session and sign in as Marvin
+  or Emma.
+- The browser redirects to `http://localhost:8888/callback?...`. The page will
+  usually fail to load because the browser is outside Oracle Cloud Shell.
+- You copy the entire localhost callback URL from the browser address bar and
+  paste it back into Oracle Cloud Shell.
+- The token helper exchanges the authorization code for an access token and
+  writes it to `$HOME/.azure/adb-entra-id/token`.
+- SQL*Plus reads that token through `TOKEN_AUTH=OAUTH`.
 - Autonomous AI Database validates the token and maps Entra app-role claims to
   data roles such as `AZURE_ROLE=EMPLOYEES`.
 
 ## Task 7: Verify Data Grants as Marvin
 
 ```bash
+<copy>
 ./05_verify_as_marvin.sh
+</copy>
 ```
 
-The script connects with:
+The script connects with the token from Task 6:
 
 ```bash
-sqlplus /@hrdb_entra
+<copy>
+sqlplus -L -s /@${ADB_SERVICE}
+</copy>
 ```
 
-If SQL*Plus has desktop or NoVNC browser access, the Entra login should open
-automatically. In a headless Oracle Cloud Shell session, the Oracle client may
-print a URL or device-flow prompt. Complete that login as `MARVIN_UPN`.
+If you need a fresh Marvin token, remove the existing token and rerun Task 6:
+
+```bash
+<copy>
+rm -f ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}/token
+./04_get_entra_oauth_token.sh --headless
+</copy>
+```
 
 You should see:
 
@@ -345,13 +386,22 @@ You should see:
 
 ## Task 8: Verify Data Grants as Emma
 
+Before testing Emma, clear Marvin's token and get a fresh token as `EMMA_UPN`:
+
 ```bash
-./06_verify_as_emma.sh
+<copy>
+rm -f ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}/token
+./04_get_entra_oauth_token.sh --headless
+</copy>
 ```
 
-Sign in as `EMMA_UPN` when prompted. If you are reusing the same browser from
-the Marvin test, sign out first or use a private browser session so SQL*Plus
-receives Emma's token.
+Then verify Emma's data grants:
+
+```bash
+<copy>
+./06_verify_as_emma.sh
+</copy>
+```
 
 You should see:
 
@@ -365,37 +415,55 @@ You should see:
 To remove the database objects:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh
+</copy>
 ```
 
 To skip the prompt:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh --DELETE
+</copy>
 ```
 
 To delete the ADB instance too:
 
 ```bash
+<copy>
 ./07_cleanup_adb_lab.sh --delete-adb
+</copy>
 ```
 
 This cleanup script does not delete the Entra app registrations. Reusing them is
 usually safer while iterating on the lab. Delete them from Entra ID when you are
 done with the environment.
 
+To remove local Microsoft Entra OAuth2 tokens:
+
+```bash
+<copy>
+rm -rf ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}
+</copy>
+```
+
 To delete the Entra app registrations from the command line, run this in Azure
 Cloud Shell from the `adb-entra-id` directory that contains
 `.adb-entra-id.azure.env`:
 
 ```bash
+<copy>
 ./08_cleanup_entra_id.sh
+</copy>
 ```
 
 To skip the prompt:
 
 ```bash
+<copy>
 ./08_cleanup_entra_id.sh --DELETE
+</copy>
 ```
 
 ## References

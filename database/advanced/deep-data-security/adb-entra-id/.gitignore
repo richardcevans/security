@@ -1,0 +1,5 @@
+.adb-entra-id.env
+*.log
+*.lst
+*.zip
+wallet/

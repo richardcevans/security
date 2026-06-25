@@ -30,18 +30,14 @@ set lines 180
 whenever sqlerror exit sql.sqlcode
 
 BEGIN
-  EXECUTE IMMEDIATE q'[CREATE USER hrapp_login IDENTIFIED GLOBALLY AS 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}']';
+  EXECUTE IMMEDIATE 'DROP USER hrapp_login';
 EXCEPTION
   WHEN OTHERS THEN
-    IF SQLCODE = -1920 THEN
-      EXECUTE IMMEDIATE q'[ALTER USER hrapp_login IDENTIFIED GLOBALLY AS 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}']';
-    ELSE
+    IF SQLCODE != -1918 THEN
       RAISE;
     END IF;
 END;
 /
-
-GRANT CREATE SESSION TO hrapp_login;
 
 CREATE OR REPLACE DATA ROLE hrapp_employees
   MAPPED TO 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}';
@@ -117,13 +113,6 @@ SELECT data_role, mapped_to
   FROM dba_data_roles
  WHERE data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
  ORDER BY data_role;
-
-col username format a24
-col authentication_type format a20
-col external_name format a45
-SELECT username, authentication_type, external_name
-  FROM dba_users
- WHERE username = 'HRAPP_LOGIN';
 
 exit;
 SQL

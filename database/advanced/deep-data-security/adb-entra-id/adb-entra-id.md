@@ -343,7 +343,6 @@ not log in as `HR`.
 
 The script creates:
 
-- `HRAPP_LOGIN`, a shared global database user mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_EMPLOYEES`, mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_MANAGERS`, mapped to `AZURE_ROLE=MANAGERS`
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
@@ -355,9 +354,10 @@ current Entra ID user to an employee ID. The setup grants
 `UPDATE ANY END USER CONTEXT` to `HR` so the context handler can populate
 `HR.EMP_CTX` on first read.
 
-`HRAPP_LOGIN` is the shared schema that lets Entra users with the `EMPLOYEES`
-app role establish a database session. The Deep Data Security data roles still
-control which HR rows and columns each Entra user can read or update.
+Entra users do not connect through a shared database user in this lab.
+`DIRECT_LOGON_ROLE` lets users with mapped Deep Data Security data roles
+establish a database session, and those data roles control which HR rows and
+columns each Entra user can read or update.
 
 ## Task 5: Verify the ADMIN-Side Setup
 
@@ -585,8 +585,6 @@ source ./.adb-entra-id.env
 The verification output should show:
 
 - `identity_provider_type` is `AZURE_AD`
-- `HRAPP_LOGIN` is a global user mapped to `AZURE_ROLE=EMPLOYEES`
-- `HRAPP_LOGIN` has `CREATE SESSION`
 - `HRAPP_EMPLOYEES` maps to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_MANAGERS` maps to `AZURE_ROLE=MANAGERS`
 - `DIRECT_LOGON_ROLE` has `CREATE SESSION`

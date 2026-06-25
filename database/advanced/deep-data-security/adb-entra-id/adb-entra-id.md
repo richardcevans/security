@@ -352,6 +352,12 @@ The login flow for the verification tasks is:
 - Autonomous AI Database validates the token and maps Entra app-role claims to
   data roles such as `AZURE_ROLE=EMPLOYEES`.
 
+If Microsoft Entra returns `AADSTS50011` for
+`http://localhost:8888/callback`, rerun
+`./00_create_entra_apps_azure_cloud_shell.sh` in Azure Cloud Shell. The script
+patches the existing public client app with the localhost callback redirect
+URIs used by this token helper.
+
 ## Task 7: Verify Data Grants as Marvin
 
 ```bash

@@ -1,5 +1,6 @@
 .adb-entra-id.env
 .adb-entra-id.azure.env
+.adb-entra-id.users.env
 *.log
 *.lst
 *.zip

@@ -13,7 +13,7 @@ require_adb_entra_env
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 1: Enable Microsoft Entra ID Authentication on ADB               ${NC}"
+echo -e "${GREEN}      Task 2: Enable Microsoft Entra ID Authentication on ADB               ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}Executing as ADMIN on ${ADB_SERVICE}${NC}"
@@ -51,5 +51,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 1 completed. Next: run ./02_create_hr_schema.sh${NC}"
+echo -e "${GREEN}Task 2 completed. Next: run ./03_create_hr_schema.sh${NC}"
 echo

@@ -29,7 +29,7 @@ During this lab, you will use:
   - OCI Cloud Shell
   - OCI Console
   - Autonomous AI Database Serverless (ADB-S)
-  - SQL*Plus or SQLcl from Cloud Shell
+  - SQL*Plus from Cloud Shell
 
 ### Objectives
 This hands-on lab gives you an opportunity to configure **OCI IAM**

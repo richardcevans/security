@@ -13,6 +13,7 @@ NC='\033[0m'
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 AZURE_ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.azure.env"
+USERS_ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.users.env"
 INSTANCE_FILE="${SCRIPT_DIR}/.adb-entra-id.instance"
 source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
@@ -144,11 +145,9 @@ else
   app_id_uri="$APP_ID_URI"
 fi
 export APP_ID_URI="$app_id_uri"
-marvin_upn="${MARVIN_UPN:-$(az ad signed-in-user show --query userPrincipalName --output tsv 2>/dev/null || true)}"
-if [ -z "$marvin_upn" ]; then
-  marvin_upn="marvin@${DOMAIN_NAME}"
-fi
-export MARVIN_UPN="$marvin_upn"
+export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
+export RESET_DEMO_USER_PASSWORDS="${RESET_DEMO_USER_PASSWORDS:-0}"
+export MARVIN_UPN="${MARVIN_UPN:-marvin@${DOMAIN_NAME}}"
 export EMMA_UPN="${EMMA_UPN:-emma@${DOMAIN_NAME}}"
 
 echo -e "${PURPLE}Configuration:${NC}"
@@ -161,8 +160,131 @@ echo -e "${CYAN}  ENTRA_DB_APP_NAME     = ${ENTRA_DB_APP_NAME}${NC}"
 echo -e "${CYAN}  ENTRA_CLIENT_APP_NAME = ${ENTRA_CLIENT_APP_NAME}${NC}"
 echo -e "${CYAN}  MARVIN_UPN            = ${MARVIN_UPN}${NC}"
 echo -e "${CYAN}  EMMA_UPN              = ${EMMA_UPN}${NC}"
+echo -e "${CYAN}  CREATE_DEMO_USERS     = ${CREATE_DEMO_USERS}${NC}"
 echo
 
+generate_password() {
+  python3 - <<'PY'
+import secrets
+import string
+
+# Conservative Entra password:
+# - 24 characters
+# - includes uppercase, lowercase, digit, and symbol
+# - avoids readable policy-sensitive substrings
+chars = string.ascii_letters + string.digits + "!@#$%*-_+="
+blocked = ("password", "oracle", "admin", "marvin", "emma")
+while True:
+    password = "".join(secrets.choice(chars) for _ in range(24))
+    lower = password.lower()
+    if any(word in lower for word in blocked):
+        continue
+    if (any(c.islower() for c in password) and any(c.isupper() for c in password)
+            and any(c.isdigit() for c in password) and any(c in "!@#$%*-_+=" for c in password)):
+        print(password)
+        break
+PY
+}
+
+quote_shell() {
+  python3 - "$1" <<'PY'
+import shlex
+import sys
+print(shlex.quote(sys.argv[1]))
+PY
+}
+
+mail_nickname_from_upn() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+local = sys.argv[1].split("@", 1)[0]
+nickname = re.sub(r"[^A-Za-z0-9._-]", "_", local)
+print(nickname[:64] or "user")
+PY
+}
+
+ensure_demo_user() {
+  local upn="$1"
+  local display_name="$2"
+  local password_var="$3"
+  local created_var="$4"
+  local user_id
+  local password
+  local mail_nickname
+
+  printf -v "$created_var" '%s' "0"
+  user_id=$(az ad user show --id "$upn" --query id --output tsv 2>/dev/null || true)
+  if [ -n "$user_id" ]; then
+    echo -e "${CYAN}  User already exists: ${upn}${NC}"
+    if [ "$RESET_DEMO_USER_PASSWORDS" = "1" ]; then
+      password=$(generate_password)
+      az ad user update \
+        --id "$upn" \
+        --password "$password" \
+        --force-change-password-next-sign-in false \
+        >/dev/null
+      printf -v "$password_var" '%s' "$password"
+      echo -e "${CYAN}  Reset password for existing user: ${upn}${NC}"
+    fi
+    return
+  fi
+
+  if [ "$CREATE_DEMO_USERS" != "1" ]; then
+    echo -e "${YELLOW}  User not found and CREATE_DEMO_USERS=${CREATE_DEMO_USERS}: ${upn}${NC}"
+    return
+  fi
+
+  password=$(generate_password)
+  mail_nickname=$(mail_nickname_from_upn "$upn")
+  az ad user create \
+    --display-name "$display_name" \
+    --user-principal-name "$upn" \
+    --mail-nickname "$mail_nickname" \
+    --password "$password" \
+    --force-change-password-next-sign-in false \
+    >/dev/null
+  printf -v "$password_var" '%s' "$password"
+  printf -v "$created_var" '%s' "1"
+  echo -e "${CYAN}  Created demo user: ${upn}${NC}"
+}
+
+marvin_password=""
+emma_password=""
+marvin_user_created="0"
+emma_user_created="0"
+
+echo -e "${YELLOW}Step 0: Creating or reusing demo users...${NC}"
+ensure_demo_user "$MARVIN_UPN" "Marvin Morgan" marvin_password marvin_user_created
+ensure_demo_user "$EMMA_UPN" "Emma Baker" emma_password emma_user_created
+
+{
+  echo "# Demo Entra user credentials created or reset by this lab."
+  echo "# Keep this file in Azure Cloud Shell. Do not copy it into source control."
+  echo "export MARVIN_UPN=$(quote_shell "$MARVIN_UPN")"
+  echo "export EMMA_UPN=$(quote_shell "$EMMA_UPN")"
+  echo "export MARVIN_USER_CREATED=$(quote_shell "$marvin_user_created")"
+  echo "export EMMA_USER_CREATED=$(quote_shell "$emma_user_created")"
+  if [ -n "$marvin_password" ]; then
+    echo "export MARVIN_PASSWORD=$(quote_shell "$marvin_password")"
+  fi
+  if [ -n "$emma_password" ]; then
+    echo "export EMMA_PASSWORD=$(quote_shell "$emma_password")"
+  fi
+} > "$USERS_ENV_FILE"
+chmod 600 "$USERS_ENV_FILE"
+
+echo -e "${CYAN}  Demo user credential file: ${USERS_ENV_FILE}${NC}"
+if [ -n "$marvin_password" ] || [ -n "$emma_password" ]; then
+  echo -e "${YELLOW}  Passwords were generated or reset. To display them later in Azure Cloud Shell, run:${NC}"
+  echo -e "${YELLOW}    source ./.adb-entra-id.users.env${NC}"
+  echo -e "${YELLOW}    env | grep '_PASSWORD='${NC}"
+else
+  echo -e "${YELLOW}  No passwords were generated. Existing user passwords were left unchanged.${NC}"
+  echo -e "${YELLOW}  To reset them, run ./set_entra_user_passwords_azure_cloud_shell.sh --all${NC}"
+fi
+
+echo
 echo -e "${YELLOW}Step 1: Creating or reusing database/resource app...${NC}"
 db_app_json=$(find_app_json "$ENTRA_DB_APP_NAME")
 db_object_id=$(printf '%s' "$db_app_json" | json_get_or_empty 'data.get("id")')
@@ -256,7 +378,7 @@ rm -f "$client_patch"
 echo -e "${CYAN}  Ensured client redirect URI and API permission.${NC}"
 
 echo
-echo -e "${YELLOW}Step 3: Granting admin consent and app role assignments...${NC}"
+echo -e "${YELLOW}Step 3: Granting admin consent and Enterprise Application app role assignments...${NC}"
 if az ad app permission admin-consent --id "$client_app_id" >/dev/null 2>&1; then
   echo -e "${CYAN}  Admin consent granted.${NC}"
 else
@@ -268,17 +390,24 @@ assign_role_to_user() {
   local upn="$1"
   local role_name="$2"
   local role_id="$3"
+  local required="${4:-0}"
   local user_id
   local sp_id
   local existing
 
   user_id=$(az ad user show --id "$upn" --query id --output tsv 2>/dev/null || true)
   if [ -z "$user_id" ]; then
-    echo -e "${YELLOW}  User not found, skipping ${role_name} assignment: ${upn}${NC}"
+    if [ "$required" = "1" ]; then
+      echo -e "${RED}  ERROR: Required user not found for ${role_name} assignment: ${upn}${NC}"
+      echo -e "${YELLOW}  Set MARVIN_UPN to an existing Entra user and rerun this script.${NC}"
+      exit 1
+    fi
+    echo -e "${YELLOW}  User not found, skipping optional ${role_name} assignment: ${upn}${NC}"
     return
   fi
 
   sp_id=$(az ad sp show --id "$db_app_id" --query id --output tsv)
+  echo -e "${CYAN}  Enterprise application object id: ${sp_id}${NC}"
   existing=$(az rest --method GET \
     --uri "https://graph.microsoft.com/v1.0/users/${user_id}/appRoleAssignments" \
     --query "value[?resourceId=='${sp_id}' && appRoleId=='${role_id}'].id | [0]" \
@@ -286,6 +415,7 @@ assign_role_to_user() {
 
   if [ -n "$existing" ]; then
     echo -e "${CYAN}  Assignment already exists: ${upn} -> ${role_name}${NC}"
+    echo -e "${CYAN}  Verified assignment: ${upn} -> ${role_name}${NC}"
     return
   fi
 
@@ -304,15 +434,37 @@ PY
     --body @"$body" >/dev/null 2>&1; then
     echo -e "${CYAN}  Assigned ${upn} -> ${role_name}${NC}"
   else
-    echo -e "${YELLOW}  WARNING: Could not assign ${upn} -> ${role_name}${NC}"
+    rm -f "$body"
+    if [ "$required" = "1" ]; then
+      echo -e "${RED}  ERROR: Could not assign required role ${role_name} to ${upn}.${NC}"
+      echo -e "${YELLOW}  Assign ${upn} to ${role_name} on enterprise app ${ENTRA_DB_APP_NAME}, then rerun this script.${NC}"
+      exit 1
+    fi
+    echo -e "${YELLOW}  WARNING: Could not assign optional role ${role_name} to ${upn}${NC}"
+    return
   fi
   rm -f "$body"
+
+  existing=$(az rest --method GET \
+    --uri "https://graph.microsoft.com/v1.0/users/${user_id}/appRoleAssignments" \
+    --query "value[?resourceId=='${sp_id}' && appRoleId=='${role_id}'].id | [0]" \
+    --output tsv 2>/dev/null || true)
+  if [ -n "$existing" ]; then
+    echo -e "${CYAN}  Verified assignment: ${upn} -> ${role_name}${NC}"
+  elif [ "$required" = "1" ]; then
+    echo -e "${RED}  ERROR: Assignment verification failed: ${upn} -> ${role_name}${NC}"
+    exit 1
+  else
+    echo -e "${YELLOW}  WARNING: Could not verify optional assignment: ${upn} -> ${role_name}${NC}"
+  fi
 }
 
 if [ "$CREATE_APP_ROLE_ASSIGNMENTS" = "1" ]; then
-  assign_role_to_user "$MARVIN_UPN" "EMPLOYEES" "$employees_role_id"
-  assign_role_to_user "$MARVIN_UPN" "MANAGERS" "$managers_role_id"
-  assign_role_to_user "$EMMA_UPN" "EMPLOYEES" "$employees_role_id"
+  echo -e "${CYAN}  Ensuring Marvin assignments on enterprise app: ${ENTRA_DB_APP_NAME}${NC}"
+  assign_role_to_user "$MARVIN_UPN" "EMPLOYEES" "$employees_role_id" 1
+  assign_role_to_user "$MARVIN_UPN" "MANAGERS" "$managers_role_id" 1
+  echo -e "${CYAN}  Ensuring optional Emma assignment on enterprise app: ${ENTRA_DB_APP_NAME}${NC}"
+  assign_role_to_user "$EMMA_UPN" "EMPLOYEES" "$employees_role_id" 0
 else
   echo -e "${YELLOW}  Skipping app role assignments because CREATE_APP_ROLE_ASSIGNMENTS=${CREATE_APP_ROLE_ASSIGNMENTS}.${NC}"
 fi

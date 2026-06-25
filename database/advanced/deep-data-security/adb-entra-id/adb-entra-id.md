@@ -28,7 +28,7 @@ Estimated Time: 60 minutes
 - Assigns the signed-in Azure Cloud Shell user to the Entra app roles used by the lab.
 - Enables Entra ID authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
-- Prepares a Windows SQL*Plus client bundle that uses `TOKEN_AUTH=AZURE_INTERACTIVE`.
+- Prepares a Windows SQL\*Plus client bundle that uses `TOKEN_AUTH=AZURE_INTERACTIVE`.
 - Verifies the same SQL returns only the rows and columns authorized for the Entra user.
 
 ## Assumptions
@@ -37,7 +37,7 @@ Estimated Time: 60 minutes
 - You use Oracle Cloud Shell for all OCI CLI, Autonomous Database, wallet, and SQL commands.
 - OCI CLI is available and authenticated by Oracle Cloud Shell.
 - Azure CLI is available in Azure Cloud Shell.
-- A Windows laptop is available for the final SQL*Plus verification steps.
+- A Windows laptop is available for the final SQL\*Plus verification steps.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your Entra user can create app registrations, service principals, app roles, scopes, and app role assignments.
 
@@ -162,7 +162,7 @@ Important files include:
 | `03_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
 | `04_create_data_roles_and_grants.sh` | Creates data roles and data grants |
 | `05_verify_db_setup.sh` | Verifies the ADMIN-side database setup |
-| `06_prepare_windows_client_bundle.sh` | Builds a Windows SQL*Plus client bundle with wallet files and `AZURE_INTERACTIVE` configuration |
+| `06_prepare_windows_client_bundle.sh` | Builds a Windows SQL\*Plus client bundle with wallet files and `AZURE_INTERACTIVE` configuration |
 | `07_cleanup_adb_lab.sh` | Removes lab database objects and optional Autonomous Database resources |
 | `08_cleanup_entra_id.sh` | Removes lab-created Microsoft Entra ID applications |
 
@@ -180,7 +180,7 @@ scripts because Microsoft Entra interactive login needs a local browser. Scripts
 | Task 3: Create the HR schema | `03_create_hr_schema.sh` |
 | Task 4: Create data roles and data grants | `04_create_data_roles_and_grants.sh` |
 | Task 5: Verify the ADMIN-side setup | `05_verify_db_setup.sh` |
-| Task 6: Prepare a Windows SQL*Plus client | `06_prepare_windows_client_bundle.sh` |
+| Task 6: Prepare a Windows SQL\*Plus client | `06_prepare_windows_client_bundle.sh` |
 | Task 7: Verify data grants as Marvin | Windows PowerShell and `run-marvin.ps1` |
 | Task 8: Verify data grants as Emma | Windows PowerShell and `run-emma.ps1` |
 | Cleanup after the lab | `07_cleanup_adb_lab.sh`, `08_cleanup_entra_id.sh` |
@@ -370,11 +370,11 @@ columns each Entra user can read or update.
 This confirms that Entra ID is enabled, the HR rows exist, and the data roles are
 mapped.
 
-## Task 6: Prepare a Windows SQL*Plus Client for Entra Interactive Login
+## Task 6: Prepare a Windows SQL\*Plus Client for Entra Interactive Login
 
 Oracle Cloud Shell cannot open the local browser needed by
 `TOKEN_AUTH=AZURE_INTERACTIVE`. For the end-user verification tasks, run
-SQL*Plus on your Windows laptop so Microsoft Entra ID can open your local
+SQL\*Plus on your Windows laptop so Microsoft Entra ID can open your local
 browser.
 
 In Oracle Cloud Shell, create the Windows client bundle:
@@ -467,7 +467,7 @@ Expand-Archive .\adb-entra-id-client.zip -DestinationPath C:\temp\oracle-client 
 </copy>
 ```
 
-Verify SQL*Plus from the same PowerShell window:
+Verify SQL\*Plus from the same PowerShell window:
 
 ```powershell
 <copy>
@@ -527,11 +527,11 @@ sqlplus /@hrdb @verify-marvin.sql
 ```
 
 If `PATH` and `TNS_ADMIN` are already set in your PowerShell window, you can run
-that SQL*Plus command directly instead of using `run-marvin.ps1`. You can also
-run `sqlplus /@hrdb` first, then run `@verify-marvin.sql` from the SQL*Plus
+that SQL\*Plus command directly instead of using `run-marvin.ps1`. You can also
+run `sqlplus /@hrdb` first, then run `@verify-marvin.sql` from the SQL\*Plus
 prompt.
 
-SQL*Plus should open your local browser for Microsoft Entra ID sign-in. Sign in
+SQL\*Plus should open your local browser for Microsoft Entra ID sign-in. Sign in
 as `MARVIN_UPN`.
 
 If you need Marvin's sign-in name or password, return to Azure Cloud Shell and
@@ -572,12 +572,12 @@ sqlplus /@hrdb @verify-emma.sql
 ```
 
 If `PATH` and `TNS_ADMIN` are already set in your PowerShell window, you can run
-that SQL*Plus command directly instead of using `run-emma.ps1`. You can also
-run `sqlplus /@hrdb` first, then run `@verify-emma.sql` from the SQL*Plus
+that SQL\*Plus command directly instead of using `run-emma.ps1`. You can also
+run `sqlplus /@hrdb` first, then run `@verify-emma.sql` from the SQL\*Plus
 prompt.
 
 Sign in as `EMMA_UPN`. If your browser is still signed in as Marvin, sign out
-first or use a private browser session so SQL*Plus receives Emma's token.
+first or use a private browser session so SQL\*Plus receives Emma's token.
 
 If you need Emma's sign-in name or password, return to Azure Cloud Shell and
 run:
@@ -599,13 +599,13 @@ You should see:
 
 ## Troubleshooting
 
-### Browser Login Completes, then SQL*Plus Shows ORA-01017
+### Browser Login Completes, then SQL\*Plus Shows ORA-01017
 
-If the browser shows `Authentication complete` but SQL*Plus returns
-`ORA-01017: invalid credential or not authorized; logon denied`, SQL*Plus
+If the browser shows `Authentication complete` but SQL\*Plus returns
+`ORA-01017: invalid credential or not authorized; logon denied`, SQL\*Plus
 received a token but Autonomous Database did not authorize it for login.
 
-First close the browser tab. If SQL*Plus is waiting at `Enter user-name:`, type
+First close the browser tab. If SQL\*Plus is waiting at `Enter user-name:`, type
 `exit` or press `Ctrl+C`.
 
 In Oracle Cloud Shell, confirm the database-side setup:
@@ -648,7 +648,7 @@ If ORA-01017 still occurs, return to Azure Cloud Shell and rerun
 assigned to the `EMPLOYEES` and `MANAGERS` app roles. If the script warns that
 admin consent could not be granted automatically, grant admin consent for the
 interactive client app in the Azure Portal, then get a fresh browser login from
-SQL*Plus.
+SQL\*Plus.
 
 ## Clean Up
 

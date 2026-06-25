@@ -404,15 +404,21 @@ C:\temp\oracle-client
 
 In Oracle Cloud Shell, use **Menu** > **Download**. In **Filename**, enter:
 
+![Oracle Cloud Shell Menu Download option](./images/oci-cloud-shell-download-001.png "Oracle Cloud Shell Menu Download option")
+
 ```text
 adb-entra-id-download/adb-entra-id-client.zip
 ```
+
+![Oracle Cloud Shell Download file dialog](./images/oci-cloud-shell-download-002.png "Oracle Cloud Shell Download file dialog")
 
 When your browser prompts for a save location, save it to:
 
 ```text
 C:\temp\oracle-client\adb-entra-id-client.zip
 ```
+
+![Save ADB client bundle to C temp oracle-client](./images/oci-cloud-shell-download-003.png "Save ADB client bundle to C temp oracle-client")
 
 If Windows says `adb-entra-id-client.zip` already exists, replace it with the
 new file.
@@ -433,6 +439,18 @@ Download these two files into `C:\temp\oracle-client`:
 instantclient-basic-windows.x64-23.26.2.0.0.zip
 instantclient-sqlplus-windows.x64-23.26.2.0.0.zip
 ```
+
+![Oracle Instant Client Basic and SQL Plus packages](./images/oracle-client-download-001.png "Oracle Instant Client Basic and SQL Plus packages")
+
+When your browser prompts for a save location for the Basic package, save it to
+`C:\temp\oracle-client`.
+
+![Save Oracle Instant Client Basic package](./images/oracle-client-download-002.png "Save Oracle Instant Client Basic package")
+
+When your browser prompts for a save location for the SQL\*Plus package, save it
+to `C:\temp\oracle-client`.
+
+![Save Oracle Instant Client SQL Plus package](./images/oracle-client-download-003.png "Save Oracle Instant Client SQL Plus package")
 
 Open PowerShell and unzip both Instant Client ZIP files directly into
 `C:\temp\oracle-client`:

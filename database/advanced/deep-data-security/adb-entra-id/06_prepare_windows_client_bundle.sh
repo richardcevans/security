@@ -149,6 +149,139 @@ sed -i "/^${ALIAS_NAME}[[:space:]]*=/,/^$/d" "${BUNDLE_DIR}/tnsnames.ora"
   echo "  )"
 } >> "${BUNDLE_DIR}/tnsnames.ora"
 
+cat > "${BUNDLE_DIR}/get_session.sql" <<'EOF'
+set pagesize 100
+set linesize 180
+set tab off
+set trimspool on
+
+prompt
+prompt ========================================================================
+prompt Microsoft Entra ID Session Identity
+prompt ========================================================================
+
+col current_user format a30
+col authenticated_identity format a55
+col auth_method format a25
+
+SELECT
+  sys_context('USERENV', 'CURRENT_USER') AS current_user,
+  sys_context('USERENV', 'AUTHENTICATED_IDENTITY') AS authenticated_identity,
+  sys_context('USERENV', 'AUTHENTICATION_METHOD') AS auth_method
+FROM dual;
+
+prompt
+prompt The Entra user is shown in AUTHENTICATED_IDENTITY. Deep Data Security
+prompt activates data roles from the Entra app roles in the token, and those
+prompt data roles control which HR rows and columns are visible.
+prompt
+EOF
+
+cat > "${BUNDLE_DIR}/verify-marvin.sql" <<'EOF'
+set pagesize 100
+set linesize 180
+set tab off
+set trimspool on
+whenever sqlerror exit sql.sqlcode
+
+@get_session.sql
+
+prompt
+prompt ========================================================================
+prompt Marvin's Active Data Roles
+prompt - HRAPP_EMPLOYEES and HRAPP_MANAGERS should be active.
+prompt ========================================================================
+
+col role_name format a30
+SELECT role_name
+FROM v$end_user_data_role
+WHERE role_name IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+ORDER BY role_name;
+
+prompt
+prompt ========================================================================
+prompt Marvin's Query: same SQL, manager result set
+prompt - Marvin sees himself plus direct reports.
+prompt - SSN is visible for Marvin's own row and hidden for direct reports.
+prompt ========================================================================
+
+col first_name format a12
+col last_name format a12
+col user_name format a45
+col ssn format a15
+col phone_number format a15
+SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
+FROM hr.employees
+ORDER BY employee_id;
+
+prompt
+prompt ========================================================================
+prompt Marvin's Column Authorization
+prompt ========================================================================
+
+col first_name format a12
+col ssn_authorized format a16
+SELECT
+  first_name,
+  DECODE(ORA_IS_COLUMN_AUTHORIZED(ssn), TRUE, 'TRUE', FALSE, 'FALSE') AS ssn_authorized
+FROM hr.employees
+ORDER BY employee_id;
+
+exit;
+EOF
+
+cat > "${BUNDLE_DIR}/verify-emma.sql" <<'EOF'
+set pagesize 100
+set linesize 180
+set tab off
+set trimspool on
+whenever sqlerror exit sql.sqlcode
+
+@get_session.sql
+
+prompt
+prompt ========================================================================
+prompt Emma's Active Data Roles
+prompt - Only HRAPP_EMPLOYEES should be active.
+prompt ========================================================================
+
+col role_name format a30
+SELECT role_name
+FROM v$end_user_data_role
+WHERE role_name IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+ORDER BY role_name;
+
+prompt
+prompt ========================================================================
+prompt Emma's Query: same SQL, employee result set
+prompt - Emma sees only her own row.
+prompt ========================================================================
+
+col first_name format a12
+col last_name format a12
+col user_name format a45
+col ssn format a15
+col phone_number format a15
+SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
+FROM hr.employees
+ORDER BY employee_id;
+
+prompt
+prompt ========================================================================
+prompt Emma's Column Authorization
+prompt ========================================================================
+
+col first_name format a12
+col ssn_authorized format a16
+SELECT
+  first_name,
+  DECODE(ORA_IS_COLUMN_AUTHORIZED(ssn), TRUE, 'TRUE', FALSE, 'FALSE') AS ssn_authorized
+FROM hr.employees
+ORDER BY employee_id;
+
+exit;
+EOF
+
 cat > "${BUNDLE_DIR}/run-marvin.ps1" <<'EOF'
 $ErrorActionPreference = "Stop"
 $ClientRoot = Split-Path -Parent $PSScriptRoot
@@ -163,7 +296,12 @@ $WalletPath = ($PSScriptRoot -replace "\\", "/")
 (Get-Content $Sqlnet) -replace 'DIRECTORY\s*=\s*"[^"]*"', "DIRECTORY=`"$WalletPath`"" | Set-Content $Sqlnet
 Write-Host "TNS_ADMIN=$env:TNS_ADMIN"
 Get-Command sqlplus.exe
-sqlplus -L /@hrdb_entra
+Push-Location $PSScriptRoot
+try {
+  sqlplus -L /@hrdb_entra "@verify-marvin.sql"
+} finally {
+  Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""
   Write-Host "SQL*Plus launched Entra ID login but the database rejected the token."
@@ -186,7 +324,12 @@ $WalletPath = ($PSScriptRoot -replace "\\", "/")
 (Get-Content $Sqlnet) -replace 'DIRECTORY\s*=\s*"[^"]*"', "DIRECTORY=`"$WalletPath`"" | Set-Content $Sqlnet
 Write-Host "TNS_ADMIN=$env:TNS_ADMIN"
 Get-Command sqlplus.exe
-sqlplus -L /@hrdb_entra
+Push-Location $PSScriptRoot
+try {
+  sqlplus -L /@hrdb_entra "@verify-emma.sql"
+} finally {
+  Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""
   Write-Host "SQL*Plus launched Entra ID login but the database rejected the token."

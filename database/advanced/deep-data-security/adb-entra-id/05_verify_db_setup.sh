@@ -48,7 +48,7 @@ col authentication_type format a20
 col external_name format a45
 SELECT username, authentication_type, external_name
 FROM dba_users
-WHERE username IN ('HR', 'HRAPP_LOGIN')
+WHERE username = 'HR'
 ORDER BY username;
 
 col grantee format a24
@@ -62,7 +62,7 @@ ORDER BY grantee, granted_role;
 col privilege format a24
 SELECT grantee, privilege
 FROM dba_sys_privs
-WHERE grantee IN ('DIRECT_LOGON_ROLE', 'HRAPP_LOGIN')
+WHERE grantee = 'DIRECT_LOGON_ROLE'
   AND privilege = 'CREATE SESSION'
 ORDER BY grantee, privilege;
 

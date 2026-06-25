@@ -76,7 +76,7 @@ BEGIN
               'DROP ROLE direct_logon_role');
   run_cleanup('Dropping role EMPLOYEE_CONTEXT_ADMIN',
               'DROP ROLE employee_context_admin');
-  run_cleanup('Dropping global user HRAPP_LOGIN',
+  run_cleanup('Dropping stale preview global user HRAPP_LOGIN',
               'DROP USER hrapp_login');
   run_cleanup('Dropping end user context HR.EMP_CTX',
               'DROP END USER CONTEXT HR.EMP_CTX');

@@ -14,7 +14,7 @@ require_adb_entra_env
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Verify ADB Microsoft Entra ID Data Grants Setup                       ${NC}"
+echo -e "${GREEN}      Task 5: Verify ADB Microsoft Entra ID Data Grants Setup               ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}ADB_SERVICE = ${ADB_SERVICE}${NC}"
@@ -43,6 +43,29 @@ FROM dba_data_roles
 WHERE data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
 ORDER BY data_role;
 
+col username format a24
+col authentication_type format a20
+col external_name format a45
+SELECT username, authentication_type, external_name
+FROM dba_users
+WHERE username IN ('HR', 'HRAPP_LOGIN')
+ORDER BY username;
+
+col grantee format a24
+col granted_role format a24
+SELECT grantee, granted_role
+FROM dba_role_privs
+WHERE grantee IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+  AND granted_role = 'DIRECT_LOGON_ROLE'
+ORDER BY grantee, granted_role;
+
+col privilege format a24
+SELECT grantee, privilege
+FROM dba_sys_privs
+WHERE grantee IN ('DIRECT_LOGON_ROLE', 'HRAPP_LOGIN')
+  AND privilege = 'CREATE SESSION'
+ORDER BY grantee, privilege;
+
 col context_owner format a14
 col context_name format a20
 col handler_package format a24
@@ -63,13 +86,6 @@ FROM dba_data_grants
 WHERE grant_name IN ('HRAPP_EMPLOYEES_ACCESS', 'EMPLOYEE_CONTEXT_GRANT', 'HRAPP_MANAGER_ACCESS')
 ORDER BY grant_name, privilege;
 
-col username format a24
-col external_name format a45
-SELECT username, authentication_type, external_name
-FROM dba_users
-WHERE username = 'HR'
-ORDER BY username;
-
 exit;
 SQL
 then
@@ -78,5 +94,5 @@ then
 fi
 
 echo
-echo -e "${GREEN}Verification completed.${NC}"
+echo -e "${GREEN}Task 5 completed. Next: run ./06_prepare_windows_client_bundle.sh${NC}"
 echo

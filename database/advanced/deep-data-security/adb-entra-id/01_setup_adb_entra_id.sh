@@ -18,6 +18,10 @@ AZURE_ENV_FILE="${SCRIPT_DIR}/.adb-entra-id.azure.env"
 INSTANCE_FILE="${SCRIPT_DIR}/.adb-entra-id.instance"
 source "${SCRIPT_DIR}/lib_lab_instance.sh"
 
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+fi
 if [ -f "$AZURE_ENV_FILE" ]; then
   # shellcheck source=/dev/null
   source "$AZURE_ENV_FILE"
@@ -39,7 +43,6 @@ if [ "$ADB_IS_FREE_TIER" != "true" ] && [ "$ADB_IS_FREE_TIER" != "false" ]; then
 fi
 export ADB_IS_FREE_TIER
 export ADB_LICENSE_MODEL="${ADB_LICENSE_MODEL:-LICENSE_INCLUDED}"
-export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}-entra}"
 export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
@@ -77,6 +80,40 @@ if [ "${#missing_entra_vars[@]}" -gt 0 ]; then
   echo "Run ./00_create_entra_apps_azure_cloud_shell.sh in Azure Cloud Shell first."
   echo "Then copy the generated .adb-entra-id.azure.env file into this directory in Oracle Cloud Shell."
   exit 1
+fi
+
+generate_adb_admin_password() {
+  python3 - <<'PY'
+import secrets
+import string
+
+# Conservative ADB admin password:
+# - 20 characters, within ADB's password length range
+# - contains uppercase, lowercase, and digits
+# - uses only letters and digits to avoid shell and wallet escaping issues
+# - avoids readable policy-sensitive substrings such as admin/oracle/password
+alphabet = string.ascii_letters + string.digits
+blocked = ("admin", "oracle", "password")
+while True:
+    password = "".join(secrets.choice(alphabet) for _ in range(20))
+    lower = password.lower()
+    if any(word in lower for word in blocked):
+        continue
+    if (any(c.islower() for c in password)
+            and any(c.isupper() for c in password)
+            and any(c.isdigit() for c in password)):
+        print(password)
+        break
+PY
+}
+
+if [ -z "${ADMIN_PWD:-}" ]; then
+  ADMIN_PWD=$(generate_adb_admin_password)
+  export ADMIN_PWD
+  ADMIN_PWD_WAS_GENERATED=1
+else
+  export ADMIN_PWD
+  ADMIN_PWD_WAS_GENERATED=0
 fi
 
 read_oci_config_value() {
@@ -138,6 +175,11 @@ if [ "$ADB_IS_FREE_TIER" = "false" ]; then
 fi
 echo -e "${CYAN}  ADB_SERVICE           = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR            = ${WALLET_DIR}${NC}"
+if [ "$ADMIN_PWD_WAS_GENERATED" = "1" ]; then
+  echo -e "${CYAN}  ADMIN_PWD             = generated and saved to .adb-entra-id.env${NC}"
+else
+  echo -e "${CYAN}  ADMIN_PWD             = loaded from environment or .adb-entra-id.env${NC}"
+fi
 echo -e "${CYAN}  TENANT_ID             = ${TENANT_ID}${NC}"
 echo -e "${CYAN}  DOMAIN_NAME           = ${DOMAIN_NAME}${NC}"
 echo -e "${CYAN}  APP_ID_URI            = ${APP_ID_URI}${NC}"

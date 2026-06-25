@@ -16,7 +16,7 @@ export ENTRA_MANAGER_ROLE="${ENTRA_MANAGER_ROLE:-MANAGERS}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 3: Create Data Roles and Data Grants                             ${NC}"
+echo -e "${GREEN}      Task 4: Create Data Roles and Data Grants                             ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}ENTRA_EMPLOYEE_ROLE = ${ENTRA_EMPLOYEE_ROLE}${NC}"
@@ -28,6 +28,20 @@ set echo on
 set serveroutput on
 set lines 180
 whenever sqlerror exit sql.sqlcode
+
+BEGIN
+  EXECUTE IMMEDIATE q'[CREATE USER hrapp_login IDENTIFIED GLOBALLY AS 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}']';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      EXECUTE IMMEDIATE q'[ALTER USER hrapp_login IDENTIFIED GLOBALLY AS 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}']';
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+GRANT CREATE SESSION TO hrapp_login;
 
 CREATE OR REPLACE DATA ROLE hrapp_employees
   MAPPED TO 'AZURE_ROLE=${ENTRA_EMPLOYEE_ROLE}';
@@ -104,9 +118,16 @@ SELECT data_role, mapped_to
  WHERE data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
  ORDER BY data_role;
 
+col username format a24
+col authentication_type format a20
+col external_name format a45
+SELECT username, authentication_type, external_name
+  FROM dba_users
+ WHERE username = 'HRAPP_LOGIN';
+
 exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 3 completed. Next: run ./04_get_entra_oauth_token.sh --headless${NC}"
+echo -e "${GREEN}Task 4 completed. Next: run ./05_verify_db_setup.sh${NC}"
 echo

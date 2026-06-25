@@ -23,7 +23,7 @@ show_cmd() {
 
 require_sqlplus() {
   if ! command -v sqlplus >/dev/null 2>&1; then
-    echo "ERROR: sqlplus is not available in PATH. This lab currently requires SQL*Plus; the scripts do not use SQLcl." >&2
+    echo "ERROR: sqlplus is not available in PATH. This lab requires SQL*Plus." >&2
     exit 1
   fi
 }

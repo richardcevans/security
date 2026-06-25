@@ -43,33 +43,45 @@ confirm() {
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 7: Clean Up ADB Microsoft Entra ID Data Grants Lab               ${NC}"
+echo -e "${GREEN}      Cleanup: ADB Microsoft Entra ID Data Grants Lab                       ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 
 if confirm "This removes HR, data roles, and local lab roles."; then
   admin_sqlplus <<'SQL'
-set echo on
 set serveroutput on
 whenever sqlerror exit sql.sqlcode
 
-DROP DATA GRANT IF EXISTS hr.HRAPP_MANAGER_ACCESS;
-DROP DATA GRANT IF EXISTS hr.EMPLOYEE_CONTEXT_GRANT;
-DROP DATA GRANT IF EXISTS hr.HRAPP_EMPLOYEES_ACCESS;
-DROP DATA ROLE IF EXISTS hrapp_managers;
-DROP DATA ROLE IF EXISTS hrapp_employees;
-DROP ROLE IF EXISTS direct_logon_role;
-DROP ROLE IF EXISTS employee_context_admin;
-
+DECLARE
+  PROCEDURE run_cleanup(p_label VARCHAR2, p_sql VARCHAR2) IS
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE(p_label);
+    EXECUTE IMMEDIATE p_sql;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('  skipped: ' || SQLERRM);
+  END;
 BEGIN
-  EXECUTE IMMEDIATE 'DROP END USER CONTEXT HR.EMP_CTX';
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
-  EXECUTE IMMEDIATE 'DROP USER hr CASCADE';
-EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1918 THEN RAISE; END IF;
+  run_cleanup('Dropping data grant HR.HRAPP_MANAGER_ACCESS',
+              'DROP DATA GRANT hr.HRAPP_MANAGER_ACCESS');
+  run_cleanup('Dropping data grant HR.EMPLOYEE_CONTEXT_GRANT',
+              'DROP DATA GRANT hr.EMPLOYEE_CONTEXT_GRANT');
+  run_cleanup('Dropping data grant HR.HRAPP_EMPLOYEES_ACCESS',
+              'DROP DATA GRANT hr.HRAPP_EMPLOYEES_ACCESS');
+  run_cleanup('Dropping data role HRAPP_MANAGERS',
+              'DROP DATA ROLE hrapp_managers');
+  run_cleanup('Dropping data role HRAPP_EMPLOYEES',
+              'DROP DATA ROLE hrapp_employees');
+  run_cleanup('Dropping role DIRECT_LOGON_ROLE',
+              'DROP ROLE direct_logon_role');
+  run_cleanup('Dropping role EMPLOYEE_CONTEXT_ADMIN',
+              'DROP ROLE employee_context_admin');
+  run_cleanup('Dropping global user HRAPP_LOGIN',
+              'DROP USER hrapp_login');
+  run_cleanup('Dropping end user context HR.EMP_CTX',
+              'DROP END USER CONTEXT HR.EMP_CTX');
+  run_cleanup('Dropping user HR',
+              'DROP USER hr CASCADE');
 END;
 /
 
@@ -93,5 +105,5 @@ if [ "$DELETE_ADB" = true ]; then
 fi
 
 echo
-echo -e "${GREEN}Task 7 completed.${NC}"
+echo -e "${GREEN}Cleanup completed.${NC}"
 echo

@@ -28,7 +28,7 @@ Estimated Time: 60 minutes
 - Assigns the signed-in Azure Cloud Shell user to the Entra app roles used by the lab.
 - Enables Entra ID authentication with `DBMS_CLOUD_ADMIN` as `ADMIN`.
 - Creates the HR demo schema and Deep Data Security data grants.
-- Configures SQL*Plus with `TOKEN_AUTH=OAUTH` and a local Entra access token.
+- Prepares a Windows SQL*Plus client bundle that uses `TOKEN_AUTH=AZURE_INTERACTIVE`.
 - Verifies the same SQL returns only the rows and columns authorized for the Entra user.
 
 ## Assumptions
@@ -37,7 +37,7 @@ Estimated Time: 60 minutes
 - You use Oracle Cloud Shell for all OCI CLI, Autonomous Database, wallet, and SQL commands.
 - OCI CLI is available and authenticated by Oracle Cloud Shell.
 - Azure CLI is available in Azure Cloud Shell.
-- SQL*Plus or SQLcl is available.
+- A Windows laptop is available for the final SQL*Plus verification steps.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your Entra user can create app registrations, service principals, app roles, scopes, and app role assignments.
 
@@ -85,23 +85,35 @@ export DB_NAME=deepsec7abc123
 export DB_DISPLAY_NAME=deepsec7abc123
 export DB_VERSION=26ai
 export ADB_IS_FREE_TIER=true
-export ADMIN_PWD='Oracle123+Oracle123+'
 export WALLET_PWD='Oracle123+'
 export DOMAIN_NAME=example.onmicrosoft.com
 export ADB_ENTRA_LAB_INSTANCE_ID=dbsec-lab-148abe-ef143e
-export MARVIN_UPN=your.user@example.com
-export EMMA_UPN=emma@example.com
+export CREATE_DEMO_USERS=1
+export RESET_DEMO_USER_PASSWORDS=0
+export MARVIN_UPN=marvin@example.onmicrosoft.com
+export EMMA_UPN=emma@example.onmicrosoft.com
 </copy>
 ```
 
-By default, `MARVIN_UPN` is the signed-in Azure Cloud Shell user. The Azure
-setup script assigns that user to the `EMPLOYEES` and `MANAGERS` app roles, and
-the Oracle setup creates Marvin's HR row with that UPN. This makes the
-verification step runnable without pre-creating a separate Marvin account.
+By default, `MARVIN_UPN` is `marvin@<default-domain>` and `EMMA_UPN` is
+`emma@<default-domain>`. The Azure setup script creates those demo users if they
+do not exist, then assigns Marvin to the `EMPLOYEES` and `MANAGERS` app roles
+and Emma to the `EMPLOYEES` app role.
+
+`CREATE_DEMO_USERS` defaults to `1`. Set it to `0` only if you want to use
+existing Entra users and create them manually. `RESET_DEMO_USER_PASSWORDS`
+defaults to `0`; set it to `1` before rerunning the Azure setup script if you
+want to reset passwords for existing Marvin and Emma users.
+
+If `ADMIN_PWD` is not set, the Oracle Cloud Shell setup script generates a
+random Autonomous Database ADMIN password that conforms to ADB password rules
+and saves it in `.adb-entra-id.env`. If Marvin or Emma are created or reset, the
+Azure Cloud Shell setup saves their generated Entra passwords in
+`.adb-entra-id.users.env`.
 
 `ADB_IS_FREE_TIER` defaults to `true`. Always Free Autonomous AI Database does
 not accept the `--license-model` create option. If you need a paid database,
-set these before running `00_setup_adb_entra_id.sh`:
+set these before running `01_setup_adb_entra_id.sh`:
 
 ```bash
 <copy>
@@ -112,7 +124,7 @@ export ADB_LICENSE_MODEL=LICENSE_INCLUDED
 
 By default, `00_create_entra_apps_azure_cloud_shell.sh` generates a lab instance
 ID and writes it to `.adb-entra-id.azure.env`. Copy that file into Oracle Cloud
-Shell before running `00_setup_adb_entra_id.sh`. The default `DB_NAME` is
+Shell before running `01_setup_adb_entra_id.sh`. The default `DB_NAME` is
 `deepsec7<short-instance-suffix>`, such as `deepsec7ef143e`.
 
 ## Task 0: Download and Unzip the Lab Files
@@ -144,34 +156,33 @@ Important files include:
 | File | Purpose |
 | --- | --- |
 | `00_create_entra_apps_azure_cloud_shell.sh` | Runs in Azure Cloud Shell to create Entra apps, app roles, app role assignments, and `.adb-entra-id.azure.env` |
-| `00_setup_adb_entra_id.sh` | Runs in Oracle Cloud Shell to create Autonomous Database, wallet, and `.adb-entra-id.env` |
-| `01_enable_entra_id.sh` | Enables Microsoft Entra ID authentication on Autonomous Database |
-| `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
-| `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
-| `04_get_entra_oauth_token.sh` | Gets a Microsoft Entra OAuth2 token for the signed-in user |
-| `04_configure_azure_interactive.sh` | Compatibility wrapper for `04_get_entra_oauth_token.sh` |
-| `05_verify_as_marvin.sh` | Verifies manager access for Marvin |
-| `06_verify_as_emma.sh` | Verifies employee access for Emma |
-| `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
+| `set_entra_user_passwords_azure_cloud_shell.sh` | Optional Azure Cloud Shell helper to reset Marvin and Emma passwords |
+| `01_setup_adb_entra_id.sh` | Runs in Oracle Cloud Shell to create Autonomous Database, wallet, and `.adb-entra-id.env` |
+| `02_enable_entra_id.sh` | Enables Microsoft Entra ID authentication on Autonomous Database |
+| `03_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
+| `04_create_data_roles_and_grants.sh` | Creates data roles and data grants |
+| `05_verify_db_setup.sh` | Verifies the ADMIN-side database setup |
+| `06_prepare_windows_client_bundle.sh` | Builds a Windows SQL*Plus client bundle with wallet files and `AZURE_INTERACTIVE` configuration |
 | `07_cleanup_adb_lab.sh` | Removes lab database objects and optional Autonomous Database resources |
 | `08_cleanup_entra_id.sh` | Removes lab-created Microsoft Entra ID applications |
 
-The script numbers are the execution order after the lab files are downloaded.
-They are not the same as the LiveLabs task numbers because Task 0 is the
-download step, Task 1 has one Azure Cloud Shell script and one Oracle Cloud
-Shell script, and Entra cleanup is optional after the verification tasks.
+The numbered shell scripts are unique. Run scripts `00` through `06` in order.
+Task 0 is the download step. Task 1 uses one Azure Cloud Shell script and one
+Oracle Cloud Shell script. Tasks 7 and 8 use generated Windows PowerShell
+scripts because Microsoft Entra interactive login needs a local browser. Scripts
+`07` and `08` are optional cleanup scripts to run after Task 8.
 
 | LiveLabs task | Script |
 | --- | --- |
 | Task 0: Download and unzip the lab files | No setup script |
-| Task 1: Create Entra ID apps, Autonomous AI Database, and wallet | `00_create_entra_apps_azure_cloud_shell.sh`, `00_setup_adb_entra_id.sh` |
-| Task 2: Enable Entra ID on Autonomous AI Database | `01_enable_entra_id.sh` |
-| Task 3: Create the HR schema | `02_create_hr_schema.sh` |
-| Task 4: Create data roles and data grants | `03_create_data_roles_and_grants.sh` |
-| Task 5: Verify the ADMIN-side setup | `verify_db_setup.sh` |
-| Task 6: Get a Microsoft Entra OAuth2 access token | `04_get_entra_oauth_token.sh` |
-| Task 7: Verify data grants as Marvin | `05_verify_as_marvin.sh` |
-| Task 8: Verify data grants as Emma | `06_verify_as_emma.sh` |
+| Task 1: Create Entra ID apps, Autonomous AI Database, and wallet | `00_create_entra_apps_azure_cloud_shell.sh`, `01_setup_adb_entra_id.sh` |
+| Task 2: Enable Entra ID on Autonomous AI Database | `02_enable_entra_id.sh` |
+| Task 3: Create the HR schema | `03_create_hr_schema.sh` |
+| Task 4: Create data roles and data grants | `04_create_data_roles_and_grants.sh` |
+| Task 5: Verify the ADMIN-side setup | `05_verify_db_setup.sh` |
+| Task 6: Prepare a Windows SQL*Plus client | `06_prepare_windows_client_bundle.sh` |
+| Task 7: Verify data grants as Marvin | Windows PowerShell and `run-marvin.ps1` |
+| Task 8: Verify data grants as Emma | Windows PowerShell and `run-emma.ps1` |
 | Cleanup after the lab | `07_cleanup_adb_lab.sh`, `08_cleanup_entra_id.sh` |
 
 ## Task 1: Create Entra ID Apps, Autonomous AI Database, and Wallet
@@ -201,7 +212,7 @@ Then create or reuse Autonomous AI Database and download the wallet:
 
 ```bash
 <copy>
-./00_setup_adb_entra_id.sh
+./01_setup_adb_entra_id.sh
 </copy>
 ```
 
@@ -221,10 +232,14 @@ suffix:
 
 The Azure Cloud Shell setup script creates or reuses:
 
+- Microsoft Entra demo users `MARVIN_UPN` and `EMMA_UPN`
 - Microsoft Entra database resource application
 - Microsoft Entra public interactive client application
 - Entra app roles `EMPLOYEES` and `MANAGERS`
-- Optional app role assignments for Marvin and Emma
+- Enterprise Application app role assignments that map `MARVIN_UPN` to
+  `EMPLOYEES` and `MANAGERS`
+- Optional Enterprise Application app role assignment that maps `EMMA_UPN` to
+  `EMPLOYEES` when that user exists
 
 The Oracle Cloud Shell setup script creates or reuses:
 
@@ -238,11 +253,59 @@ authorization-code flow. The app roles are included in the issued token and are
 mapped to database data roles with
 `AZURE_ROLE=...`.
 
+Before continuing, confirm the Azure Cloud Shell output includes:
+
+```text
+Verified assignment: <MARVIN_UPN> -> EMPLOYEES
+Verified assignment: <MARVIN_UPN> -> MANAGERS
+```
+
+If the setup script creates or resets demo-user passwords, it saves them in
+Azure Cloud Shell only:
+
+```bash
+<copy>
+source ./.adb-entra-id.users.env
+env | grep '_PASSWORD='
+</copy>
+```
+
+To reset both demo-user passwords later from Azure Cloud Shell:
+
+```bash
+<copy>
+./set_entra_user_passwords_azure_cloud_shell.sh --all --generate
+</copy>
+```
+
+To reset only Emma's password:
+
+```bash
+<copy>
+./set_entra_user_passwords_azure_cloud_shell.sh --user emma --generate
+</copy>
+```
+
+Those assignments are on the Enterprise Application for the database resource
+application, not on the interactive client application. Without them, Marvin can
+complete browser sign-in but Autonomous Database will reject the token because
+the token does not contain the required app roles.
+
+The Autonomous Database ADMIN password is generated in Oracle Cloud Shell and
+stored in `.adb-entra-id.env`. To view it later in Oracle Cloud Shell:
+
+```bash
+<copy>
+source ./.adb-entra-id.env
+echo "$ADMIN_PWD"
+</copy>
+```
+
 ## Task 2: Enable Entra ID on Autonomous AI Database
 
 ```bash
 <copy>
-./01_enable_entra_id.sh
+./02_enable_entra_id.sh
 </copy>
 ```
 
@@ -263,7 +326,7 @@ Database uses the token claims to activate mapped data roles.
 
 ```bash
 <copy>
-./02_create_hr_schema.sh
+./03_create_hr_schema.sh
 </copy>
 ```
 
@@ -274,12 +337,13 @@ not log in as `HR`.
 
 ```bash
 <copy>
-./03_create_data_roles_and_grants.sh
+./04_create_data_roles_and_grants.sh
 </copy>
 ```
 
 The script creates:
 
+- `HRAPP_LOGIN`, a shared global database user mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_EMPLOYEES`, mapped to `AZURE_ROLE=EMPLOYEES`
 - `HRAPP_MANAGERS`, mapped to `AZURE_ROLE=MANAGERS`
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
@@ -291,97 +355,162 @@ current Entra ID user to an employee ID. The setup grants
 `UPDATE ANY END USER CONTEXT` to `HR` so the context handler can populate
 `HR.EMP_CTX` on first read.
 
+`HRAPP_LOGIN` is the shared schema that lets Entra users with the `EMPLOYEES`
+app role establish a database session. The Deep Data Security data roles still
+control which HR rows and columns each Entra user can read or update.
+
 ## Task 5: Verify the ADMIN-Side Setup
 
 ```bash
 <copy>
-./verify_db_setup.sh
+./05_verify_db_setup.sh
 </copy>
 ```
 
 This confirms that Entra ID is enabled, the HR rows exist, and the data roles are
 mapped.
 
-## Task 6: Get a Microsoft Entra OAuth2 Access Token
+## Task 6: Prepare a Windows SQL*Plus Client for Entra Interactive Login
 
-Use `--headless` in Oracle Cloud Shell. This prints a Microsoft Entra login URL
-and prompts you to paste the final localhost callback URL.
+Oracle Cloud Shell cannot open the local browser needed by
+`TOKEN_AUTH=AZURE_INTERACTIVE`. For the end-user verification tasks, run
+SQL*Plus on your Windows laptop so Microsoft Entra ID can open your local
+browser.
 
-> **Important:** This task uses two browser contexts. Keep Oracle Cloud Shell
-> open in its current browser tab. Copy the printed login URL into a separate
-> private window, incognito window, separate browser profile, or different
-> browser. Sign in there as the demo user. The final
-> `localhost:8888/callback?...` page will usually fail to load. That is
-> expected. Copy the entire localhost URL from the browser address bar and paste
-> it back into Oracle Cloud Shell.
+In Oracle Cloud Shell, create the Windows client bundle:
 
 ```bash
 <copy>
-./04_get_entra_oauth_token.sh --headless
+./06_prepare_windows_client_bundle.sh
 </copy>
 ```
 
-This configures `sqlnet.ora` using:
+Download `adb-entra-id-client.zip` from Oracle Cloud Shell to your Windows
+laptop and save it to `C:\temp\oracle-client`.
+
+The script also copies the ZIP to a home-relative download folder for Oracle
+Cloud Shell. If an older client bundle exists, the script overwrites it and
+creates a fresh ZIP:
 
 ```text
-TOKEN_AUTH=OAUTH
-TOKEN_LOCATION=$HOME/.azure/adb-entra-id
+adb-entra-id-download/adb-entra-id-client.zip
 ```
 
-Then it starts the Microsoft Entra OAuth2 authorization-code flow for the user
-you sign in as. The token helper uses the values from `.adb-entra-id.env`:
+On your Windows laptop, open File Explorer and create this folder:
 
-```bash
+```text
+C:\temp\oracle-client
+```
+
+In Oracle Cloud Shell, use **Menu** > **Download**. In **Filename**, enter:
+
+```text
+adb-entra-id-download/adb-entra-id-client.zip
+```
+
+When your browser prompts for a save location, save it to:
+
+```text
+C:\temp\oracle-client\adb-entra-id-client.zip
+```
+
+If Windows says `adb-entra-id-client.zip` already exists, replace it with the
+new file.
+
+Do not save `adb-entra-id-client.zip` under
+`C:\temp\oracle-client\instantclient_...\network\admin`. The generated bundle
+contains its own `network/admin` files and will be unzipped as a separate folder.
+
+Navigate to this Oracle Instant Client download page:
+
+```text
+https://www.oracle.com/database/technologies/instant-client/winx64-64-downloads.html
+```
+
+Download these two files into `C:\temp\oracle-client`:
+
+```text
+instantclient-basic-windows.x64-23.26.2.0.0.zip
+instantclient-sqlplus-windows.x64-23.26.2.0.0.zip
+```
+
+Open PowerShell and unzip both Instant Client ZIP files directly into
+`C:\temp\oracle-client`:
+
+```powershell
 <copy>
-source ./.adb-entra-id.env
+cd C:\temp\oracle-client
+Expand-Archive .\instantclient-basic-windows.x64-23.26.2.0.0.zip -DestinationPath C:\temp\oracle-client -Force
+Expand-Archive .\instantclient-sqlplus-windows.x64-23.26.2.0.0.zip -DestinationPath C:\temp\oracle-client -Force
 </copy>
 ```
 
-The login flow for the verification tasks is:
+Verify that the Instant Client folder exists:
 
-- The token helper prints a Microsoft Entra login URL.
-- You paste the login URL into a separate browser session and sign in as Marvin
-  or Emma.
-- The browser redirects to `http://localhost:8888/callback?...`. The page will
-  usually fail to load because the browser is outside Oracle Cloud Shell.
-- You copy the entire localhost callback URL from the browser address bar and
-  paste it back into Oracle Cloud Shell.
-- The token helper exchanges the authorization code for an access token and
-  writes it to `$HOME/.azure/adb-entra-id/token`.
-- SQL*Plus reads that token through `TOKEN_AUTH=OAUTH`.
-- Autonomous AI Database validates the token and maps Entra app-role claims to
-  data roles such as `AZURE_ROLE=EMPLOYEES`.
-
-If Microsoft Entra returns `AADSTS50011` for
-`http://localhost:8888/callback`, rerun
-`./00_create_entra_apps_azure_cloud_shell.sh` in Azure Cloud Shell. The script
-patches the existing public client app with the localhost callback redirect
-URIs used by this token helper.
-
-## Task 7: Verify Data Grants as Marvin
-
-```bash
+```powershell
 <copy>
-./05_verify_as_marvin.sh
+dir C:\temp\oracle-client
 </copy>
 ```
 
-The script connects with the token from Task 6:
+You should see a folder similar to:
 
-```bash
+```text
+instantclient_23_0
+```
+
+Unzip the generated ADB client bundle into `C:\temp\oracle-client`:
+
+```powershell
 <copy>
-sqlplus -L -s /@${ADB_SERVICE}
+Expand-Archive .\adb-entra-id-client.zip -DestinationPath C:\temp\oracle-client -Force
 </copy>
 ```
 
-If you need a fresh Marvin token, remove the existing token and rerun Task 6:
+Verify SQL*Plus from the same PowerShell window:
 
-```bash
+```powershell
 <copy>
-rm -f ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}/token
-./04_get_entra_oauth_token.sh --headless
+$InstantClient = Get-ChildItem C:\temp\oracle-client -Directory -Filter "instantclient_*" | Sort-Object Name -Descending | Select-Object -First 1
+$env:PATH="$($InstantClient.FullName);$env:PATH"
+$env:TNS_ADMIN="C:\temp\oracle-client\adb-entra-id-client"
+Write-Host "TNS_ADMIN=$env:TNS_ADMIN"
+Get-Command sqlplus.exe
+sqlplus -v
 </copy>
 ```
+
+`Get-Command sqlplus.exe` should show `sqlplus.exe` coming from your Instant
+Client folder, for example:
+
+```text
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Application     sqlplus.exe                                        12.2.0.0   C:\temp\oracle-client\instantclient_23_0\sqlplus.exe
+```
+
+The generated client bundle contains a `hrdb_entra` alias using:
+
+```text
+TOKEN_AUTH=AZURE_INTERACTIVE
+CLIENT_ID=<interactive-client-app-id>
+AZURE_DB_APP_ID_URI=<database-resource-app-id-uri>
+TENANT_ID=<tenant-id>
+```
+
+## Task 7: Verify Data Grants as Marvin from Windows
+
+In PowerShell on your Windows laptop, run:
+
+```powershell
+<copy>
+cd C:\temp\oracle-client\adb-entra-id-client
+.\run-marvin.ps1
+</copy>
+```
+
+SQL*Plus should open your local browser for Microsoft Entra ID sign-in. Sign in
+as `MARVIN_UPN`.
 
 You should see:
 
@@ -390,24 +519,19 @@ You should see:
 - Marvin's own HR row with SSN visible.
 - Marvin's direct reports with SSN hidden.
 
-## Task 8: Verify Data Grants as Emma
+## Task 8: Verify Data Grants as Emma from Windows
 
-Before testing Emma, clear Marvin's token and get a fresh token as `EMMA_UPN`:
+In PowerShell on your Windows laptop, run:
 
-```bash
+```powershell
 <copy>
-rm -f ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}/token
-./04_get_entra_oauth_token.sh --headless
+cd C:\temp\oracle-client\adb-entra-id-client
+.\run-emma.ps1
 </copy>
 ```
 
-Then verify Emma's data grants:
-
-```bash
-<copy>
-./06_verify_as_emma.sh
-</copy>
-```
+Sign in as `EMMA_UPN`. If your browser is still signed in as Marvin, sign out
+first or use a private browser session so SQL*Plus receives Emma's token.
 
 You should see:
 
@@ -415,6 +539,61 @@ You should see:
 - Active data roles from the `EMPLOYEES` app role.
 - Emma's own HR row only.
 - Emma can view her SSN and salary but cannot update salary.
+
+## Troubleshooting
+
+### Browser Login Completes, then SQL*Plus Shows ORA-01017
+
+If the browser shows `Authentication complete` but SQL*Plus returns
+`ORA-01017: invalid credential or not authorized; logon denied`, SQL*Plus
+received a token but Autonomous Database did not authorize it for login.
+
+First close the browser tab. If SQL*Plus is waiting at `Enter user-name:`, type
+`exit` or press `Ctrl+C`.
+
+In Oracle Cloud Shell, confirm the database-side setup:
+
+```bash
+<copy>
+source ./.adb-entra-id.env
+./05_verify_db_setup.sh
+</copy>
+```
+
+The verification output should show:
+
+- `identity_provider_type` is `AZURE_AD`
+- `HRAPP_LOGIN` is a global user mapped to `AZURE_ROLE=EMPLOYEES`
+- `HRAPP_LOGIN` has `CREATE SESSION`
+- `HRAPP_EMPLOYEES` maps to `AZURE_ROLE=EMPLOYEES`
+- `HRAPP_MANAGERS` maps to `AZURE_ROLE=MANAGERS`
+- `DIRECT_LOGON_ROLE` has `CREATE SESSION`
+- `DIRECT_LOGON_ROLE` is granted to both data roles
+
+If those checks pass, recreate the Windows client bundle and download it again:
+
+```bash
+<copy>
+./06_prepare_windows_client_bundle.sh
+</copy>
+```
+
+In Oracle Cloud Shell, use **Menu** > **Download** and enter:
+
+```text
+adb-entra-id-download/adb-entra-id-client.zip
+```
+
+Save it to `C:\temp\oracle-client`, unzip it again, and rerun
+`.\run-marvin.ps1`. The updated script prints `TNS_ADMIN` and
+`Get-Command sqlplus.exe` before connecting.
+
+If ORA-01017 still occurs, return to Azure Cloud Shell and rerun
+`./00_create_entra_apps_azure_cloud_shell.sh`. Confirm the signed-in user is
+assigned to the `EMPLOYEES` and `MANAGERS` app roles. If the script warns that
+admin consent could not be granted automatically, grant admin consent for the
+interactive client app in the Azure Portal, then get a fresh browser login from
+SQL*Plus.
 
 ## Clean Up
 
@@ -442,6 +621,14 @@ To delete the ADB instance too:
 </copy>
 ```
 
+To delete the database objects and the ADB-S instance without prompts:
+
+```bash
+<copy>
+./07_cleanup_adb_lab.sh --delete-adb --DELETE
+</copy>
+```
+
 This cleanup script does not delete the Entra app registrations. Reusing them is
 usually safer while iterating on the lab. Delete them from Entra ID when you are
 done with the environment.
@@ -454,9 +641,9 @@ rm -rf ${AZURE_TOKEN_DIR:-$HOME/.azure/adb-entra-id}
 </copy>
 ```
 
-To delete the Entra app registrations from the command line, run this in Azure
-Cloud Shell from the `adb-entra-id` directory that contains
-`.adb-entra-id.azure.env`:
+To delete the Entra app registrations, enterprise apps, app roles, and app role
+assignments from the command line, run this in Azure Cloud Shell from the
+`adb-entra-id` directory that contains `.adb-entra-id.azure.env`:
 
 ```bash
 <copy>
@@ -464,11 +651,19 @@ Cloud Shell from the `adb-entra-id` directory that contains
 </copy>
 ```
 
-To skip the prompt:
+To also delete the demo users Marvin and Emma:
 
 ```bash
 <copy>
-./08_cleanup_entra_id.sh --DELETE
+./08_cleanup_entra_id.sh --delete-users
+</copy>
+```
+
+To delete the Entra apps, app roles, assignments, and demo users without prompts:
+
+```bash
+<copy>
+./08_cleanup_entra_id.sh --all --DELETE
 </copy>
 ```
 

@@ -32,8 +32,7 @@ Estimated Time: 55 minutes
 - You are running from OCI Cloud Shell. If you run outside Cloud Shell, use Bash
   4.x or later, OCI CLI, Python 3, and SQL*Plus.
 - OCI CLI is already available and authenticated.
-- SQL*Plus is available. The lab scripts use `sqlplus`; they do not currently
-  use SQLcl.
+- SQL*Plus is available. The lab scripts use `sqlplus`.
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your OCI user can create OCI IAM domain users and groups, or reuse existing
   Marvin and Emma users and `EMPLOYEES` / `MANAGERS` groups.

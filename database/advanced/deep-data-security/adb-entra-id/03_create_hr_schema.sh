@@ -13,7 +13,7 @@ require_adb_entra_env
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
-echo -e "${GREEN}      Task 2: Create HR Schema and Employee Data                            ${NC}"
+echo -e "${GREEN}      Task 3: Create HR Schema and Employee Data                            ${NC}"
 echo -e "${GREEN}============================================================================${NC}"
 echo
 echo -e "${CYAN}DOMAIN_NAME = ${DOMAIN_NAME}${NC}"
@@ -70,5 +70,5 @@ exit;
 SQL
 
 echo
-echo -e "${GREEN}Task 2 completed. Next: run ./03_create_data_roles_and_grants.sh${NC}"
+echo -e "${GREEN}Task 3 completed. Next: run ./04_create_data_roles_and_grants.sh${NC}"
 echo

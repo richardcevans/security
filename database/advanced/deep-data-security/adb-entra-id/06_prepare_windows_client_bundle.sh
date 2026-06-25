@@ -19,7 +19,9 @@ BUNDLE_ZIP="${SCRIPT_DIR}/${BUNDLE_NAME}.zip"
 DOWNLOAD_DIR="${HOME}/adb-entra-id-download"
 DOWNLOAD_ZIP="${DOWNLOAD_DIR}/${BUNDLE_NAME}.zip"
 TNSNAMES_FILE="${TNS_ADMIN}/tnsnames.ora"
-ALIAS_NAME="${ADB_ENTRA_ALIAS:-hrdb_entra}"
+WINDOWS_ALIAS="${ADB_ENTRA_WINDOWS_ALIAS:-hrdb}"
+LEGACY_ALIAS="${ADB_ENTRA_ALIAS:-hrdb_entra}"
+WINDOWS_TNS_ADMIN="${WINDOWS_TNS_ADMIN:-C:/temp/oracle-client/${BUNDLE_NAME}}"
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -29,7 +31,8 @@ echo
 echo -e "${CYAN}TNS_ADMIN   = ${TNS_ADMIN}${NC}"
 echo -e "${CYAN}ADB_SERVICE = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}BUNDLE_ZIP  = ${BUNDLE_ZIP}${NC}"
-echo -e "${CYAN}ALIAS_NAME  = ${ALIAS_NAME}${NC}"
+echo -e "${CYAN}WINDOWS_ALIAS = ${WINDOWS_ALIAS}${NC}"
+echo -e "${CYAN}LEGACY_ALIAS  = ${LEGACY_ALIAS}${NC}"
 echo
 
 if [ ! -f "$TNSNAMES_FILE" ]; then
@@ -126,28 +129,41 @@ mkdir -p "$BUNDLE_DIR"
 cp -R "${TNS_ADMIN}/." "$BUNDLE_DIR/"
 
 cp "$TNSNAMES_FILE" "${BUNDLE_DIR}/tnsnames.ora"
-sed -i "/^${ALIAS_NAME}[[:space:]]*=/,/^$/d" "${BUNDLE_DIR}/tnsnames.ora"
+sed -i "/^${WINDOWS_ALIAS}[[:space:]]*=/,/^$/d" "${BUNDLE_DIR}/tnsnames.ora"
+sed -i "/^${LEGACY_ALIAS}[[:space:]]*=/,/^$/d" "${BUNDLE_DIR}/tnsnames.ora"
 
-{
-  echo
-  echo "${ALIAS_NAME} ="
-  echo "  (DESCRIPTION ="
-  echo "    (ADDRESS = (PROTOCOL = TCPS)(HOST = ${host})(PORT = ${port}))"
-  echo "    (SECURITY ="
-  echo "      (SSL_SERVER_DN_MATCH = YES)"
-  if [ -n "$ssl_dn" ]; then
-    echo "      (SSL_SERVER_CERT_DN = \"${ssl_dn}\")"
-  fi
-  echo "      (TOKEN_AUTH = AZURE_INTERACTIVE)"
-  echo "      (CLIENT_ID = ${CLIENT_ID})"
-  echo "      (AZURE_DB_APP_ID_URI = ${APP_ID_URI})"
-  echo "      (TENANT_ID = ${TENANT_ID})"
-  echo "    )"
-  echo "    (CONNECT_DATA ="
-  echo "      (SERVICE_NAME = ${service_name})"
-  echo "    )"
-  echo "  )"
-} >> "${BUNDLE_DIR}/tnsnames.ora"
+if [ -f "${BUNDLE_DIR}/sqlnet.ora" ]; then
+  sed -i -E "s#DIRECTORY[[:space:]]*=[[:space:]]*\"[^\"]*\"#DIRECTORY=\"${WINDOWS_TNS_ADMIN}\"#g" "${BUNDLE_DIR}/sqlnet.ora"
+fi
+
+write_entra_alias() {
+  local alias="$1"
+  {
+    echo
+    echo "${alias} ="
+    echo "  (DESCRIPTION ="
+    echo "    (ADDRESS = (PROTOCOL = TCPS)(HOST = ${host})(PORT = ${port}))"
+    echo "    (SECURITY ="
+    echo "      (SSL_SERVER_DN_MATCH = YES)"
+    if [ -n "$ssl_dn" ]; then
+      echo "      (SSL_SERVER_CERT_DN = \"${ssl_dn}\")"
+    fi
+    echo "      (TOKEN_AUTH = AZURE_INTERACTIVE)"
+    echo "      (CLIENT_ID = ${CLIENT_ID})"
+    echo "      (AZURE_DB_APP_ID_URI = ${APP_ID_URI})"
+    echo "      (TENANT_ID = ${TENANT_ID})"
+    echo "    )"
+    echo "    (CONNECT_DATA ="
+    echo "      (SERVICE_NAME = ${service_name})"
+    echo "    )"
+    echo "  )"
+  } >> "${BUNDLE_DIR}/tnsnames.ora"
+}
+
+write_entra_alias "$WINDOWS_ALIAS"
+if [ "$LEGACY_ALIAS" != "$WINDOWS_ALIAS" ]; then
+  write_entra_alias "$LEGACY_ALIAS"
+fi
 
 cat > "${BUNDLE_DIR}/get_session.sql" <<'EOF'
 set pagesize 100
@@ -298,7 +314,7 @@ Write-Host "TNS_ADMIN=$env:TNS_ADMIN"
 Get-Command sqlplus.exe
 Push-Location $PSScriptRoot
 try {
-  sqlplus -L /@hrdb_entra "@verify-marvin.sql"
+  sqlplus -L /@hrdb "@verify-marvin.sql"
 } finally {
   Pop-Location
 }
@@ -326,7 +342,7 @@ Write-Host "TNS_ADMIN=$env:TNS_ADMIN"
 Get-Command sqlplus.exe
 Push-Location $PSScriptRoot
 try {
-  sqlplus -L /@hrdb_entra "@verify-emma.sql"
+  sqlplus -L /@hrdb "@verify-emma.sql"
 } finally {
   Pop-Location
 }
@@ -348,6 +364,10 @@ ADB Microsoft Entra ID Windows client bundle
 
    cd C:\temp\oracle-client\${BUNDLE_NAME}
    .\run-marvin.ps1
+
+Or, from a PowerShell window where PATH and TNS_ADMIN are set:
+
+   sqlplus /@hrdb
 
 SQL*Plus uses TOKEN_AUTH=AZURE_INTERACTIVE and should open your local browser.
 Sign in as the expected Microsoft Entra user.

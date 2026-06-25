@@ -489,7 +489,7 @@ CommandType     Name                                               Version    So
 Application     sqlplus.exe                                        12.2.0.0   C:\temp\oracle-client\instantclient_23_0\sqlplus.exe
 ```
 
-The generated client bundle contains a `hrdb_entra` alias using:
+The generated client bundle contains a `hrdb` alias using:
 
 ```text
 TOKEN_AUTH=AZURE_INTERACTIVE
@@ -498,9 +498,18 @@ AZURE_DB_APP_ID_URI=<database-resource-app-id-uri>
 TENANT_ID=<tenant-id>
 ```
 
+The bundle also keeps `hrdb_entra` as a compatibility alias. If `PATH` and
+`TNS_ADMIN` are set in the same PowerShell window, you can connect directly:
+
+```powershell
+<copy>
+sqlplus /@hrdb
+</copy>
+```
+
 ## Task 7: Verify Data Grants as Marvin from Windows
 
-In PowerShell on your Windows laptop, run:
+In PowerShell on your Windows laptop, run the verification script:
 
 ```powershell
 <copy>
@@ -508,6 +517,19 @@ cd C:\temp\oracle-client\adb-entra-id-client
 .\run-marvin.ps1
 </copy>
 ```
+
+The script sets `PATH` and `TNS_ADMIN`, then runs:
+
+```powershell
+<copy>
+sqlplus /@hrdb @verify-marvin.sql
+</copy>
+```
+
+If `PATH` and `TNS_ADMIN` are already set in your PowerShell window, you can run
+that SQL*Plus command directly instead of using `run-marvin.ps1`. You can also
+run `sqlplus /@hrdb` first, then run `@verify-marvin.sql` from the SQL*Plus
+prompt.
 
 SQL*Plus should open your local browser for Microsoft Entra ID sign-in. Sign in
 as `MARVIN_UPN`.
@@ -532,7 +554,7 @@ You should see:
 
 ## Task 8: Verify Data Grants as Emma from Windows
 
-In PowerShell on your Windows laptop, run:
+In PowerShell on your Windows laptop, run the verification script:
 
 ```powershell
 <copy>
@@ -540,6 +562,19 @@ cd C:\temp\oracle-client\adb-entra-id-client
 .\run-emma.ps1
 </copy>
 ```
+
+The script sets `PATH` and `TNS_ADMIN`, then runs:
+
+```powershell
+<copy>
+sqlplus /@hrdb @verify-emma.sql
+</copy>
+```
+
+If `PATH` and `TNS_ADMIN` are already set in your PowerShell window, you can run
+that SQL*Plus command directly instead of using `run-emma.ps1`. You can also
+run `sqlplus /@hrdb` first, then run `@verify-emma.sql` from the SQL*Plus
+prompt.
 
 Sign in as `EMMA_UPN`. If your browser is still signed in as Marvin, sign out
 first or use a private browser session so SQL*Plus receives Emma's token.

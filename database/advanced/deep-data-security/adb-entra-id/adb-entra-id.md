@@ -128,18 +128,6 @@ cd adb-entra-id
 </copy>
 ```
 
-If the archive creates a nested `adb-entra-id` directory, move its contents up
-into the current lab directory:
-
-```bash
-<copy>
-if [ -d adb-entra-id ]; then
-  cp -R adb-entra-id/. .
-  rm -rf adb-entra-id
-fi
-</copy>
-```
-
 You should see the setup and verification scripts used by the remaining tasks.
 Important files include:
 

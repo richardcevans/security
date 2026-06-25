@@ -512,6 +512,17 @@ cd C:\temp\oracle-client\adb-entra-id-client
 SQL*Plus should open your local browser for Microsoft Entra ID sign-in. Sign in
 as `MARVIN_UPN`.
 
+If you need Marvin's sign-in name or password, return to Azure Cloud Shell and
+run:
+
+```bash
+<copy>
+source ./.adb-entra-id.users.env
+echo "MARVIN_UPN=$MARVIN_UPN"
+echo "MARVIN_PASSWORD=$MARVIN_PASSWORD"
+</copy>
+```
+
 You should see:
 
 - The authenticated Entra ID identity.
@@ -532,6 +543,17 @@ cd C:\temp\oracle-client\adb-entra-id-client
 
 Sign in as `EMMA_UPN`. If your browser is still signed in as Marvin, sign out
 first or use a private browser session so SQL*Plus receives Emma's token.
+
+If you need Emma's sign-in name or password, return to Azure Cloud Shell and
+run:
+
+```bash
+<copy>
+source ./.adb-entra-id.users.env
+echo "EMMA_UPN=$EMMA_UPN"
+echo "EMMA_PASSWORD=$EMMA_PASSWORD"
+</copy>
+```
 
 You should see:
 

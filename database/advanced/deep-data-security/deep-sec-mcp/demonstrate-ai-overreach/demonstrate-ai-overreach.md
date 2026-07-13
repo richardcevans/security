@@ -1,0 +1,52 @@
+# Lab 4: Demonstrate AI Overreach
+
+## Introduction
+
+Show what happens when an AI workflow reaches the database through an overprivileged access path. This lab creates the risk baseline that Deep Data Security will fix.
+
+Estimated Time: 15 minutes
+
+### Objectives
+
+In this lab, you will:
+
+- Run a prompt or tool call that requests sensitive data.
+- Compare AI, MCP, and direct SQL output.
+- Capture evidence of overprivileged access.
+
+### Prerequisites
+
+- Simple AI application running from Lab 2.
+- MCP tools connected from Lab 3.
+- Baseline sensitive data identified in Lab 1.
+
+## Task 1: Run the Overreach Prompt
+
+1. Ask the AI application for data that includes sensitive rows or columns.
+
+    TODO: Add the final prompt and expected output.
+
+2. Record whether the app returns data that should be limited to a smaller audience.
+
+## Task 2: Run the MCP Tool Call
+
+1. Run the equivalent MCP database tool call.
+
+    TODO: Add the final tool input and expected output.
+
+2. Record whether the MCP path exposes the same data.
+
+## Task 3: Confirm the Risk
+
+1. Run a matching direct SQL query.
+
+    TODO: Add the final SQL query.
+
+2. Summarize why a shared, overprivileged, or weakly scoped access path creates risk for AI applications.
+
+    You may now proceed to the next lab.
+
+## Acknowledgements
+
+* **Author** - Richard Evans
+* **Last Updated By/Date** - Richard Evans, July 2026

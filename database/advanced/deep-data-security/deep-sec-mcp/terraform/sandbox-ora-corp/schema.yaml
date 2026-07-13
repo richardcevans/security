@@ -1,0 +1,316 @@
+title: DeepSec MCP Oracle Corporate Sandbox
+description: Provision Oracle corporate tenancy resources for Deep Data Security with Autonomous Database and Database Tools MCP Server.
+stackDescription: Creates participant compartments, Autonomous Database instances, Object Storage buckets, least-privilege policies, and optional Database Tools MCP Servers.
+schemaVersion: 1.1.0
+version: "20260709"
+locale: "en"
+
+variableGroups:
+  - title: OCI Context
+    visible: true
+    variables:
+      - parent_compartment_ocid
+      - tenancy_ocid
+      - region
+
+  - title: Workshop Reservation
+    visible: true
+    variables:
+      - name_prefix
+      - reservation_id
+      - ttl
+
+  - title: Participant Generation
+    visible: true
+    variables:
+      - participant_count
+      - participant_prefix
+      - participant_start_number
+
+  - title: Autonomous Database
+    visible: true
+    variables:
+      - adb_admin_password
+      - adb_workload
+      - adb_is_free_tier
+      - adb_is_mtls_connection_required
+      - adb_compute_model
+      - adb_compute_count
+      - adb_data_storage_size_in_tbs
+
+  - title: Database Tools MCP Server
+    visible: true
+    variables:
+      - create_database_tools_vault_secret
+      - database_tools_vault_type
+      - database_tools_existing_password_secret_id
+      - create_database_tools_connections
+      - database_tools_connection_user_name
+      - database_tools_connection_password
+      - create_mcp_servers
+      - identity_domain_ocid
+      - enable_database_tools_policy
+      - database_tools_resource_family
+      - mcp_server_type
+      - mcp_server_storage_type
+      - mcp_server_runtime_identity
+      - mcp_access_token_expiry_in_seconds
+      - mcp_refresh_token_expiry_in_seconds
+
+  - title: Optional Policies and Tags
+    visible: true
+    variables:
+      - enable_participant_compartment_policies
+      - enable_tenancy_policies
+      - enable_generative_ai_policy
+
+variables:
+  parent_compartment_ocid:
+    type: oci:identity:compartment:id
+    required: true
+    title: Parent Compartment
+    description: Select the parent compartment where participant compartments and policies are created.
+
+  tenancy_ocid:
+    type: string
+    required: true
+    title: Tenancy OCID
+    description: OCI tenancy OCID. Resource Manager may pre-populate this value.
+
+  region:
+    type: oci:identity:region:name
+    required: true
+    title: Region
+    description: Region where the sandbox resources are deployed.
+
+  name_prefix:
+    type: string
+    required: true
+    title: Resource Name Prefix
+    description: Prefix for workshop resources.
+    default: deepsec-mcp-ora-corp
+
+  reservation_id:
+    type: string
+    required: true
+    title: Reservation ID
+    description: LiveLabs reservation or event identifier used for tags and teardown.
+    default: tbd
+
+  ttl:
+    type: string
+    required: true
+    title: Teardown Marker
+    description: Teardown target date or marker.
+    default: tbd
+
+  participant_count:
+    type: number
+    required: true
+    title: Participant Count
+    description: Number of generated participant sandboxes to create when the explicit participant map is empty.
+    default: 1
+    minimum: 1
+    maximum: 500
+
+  participant_prefix:
+    type: string
+    required: true
+    title: Participant Prefix
+    description: Prefix for generated participant keys, for example U creates U12345.
+    default: U
+
+  participant_start_number:
+    type: number
+    required: true
+    title: Participant Start Number
+    description: First number used for generated participant keys.
+    default: 12345
+    minimum: 1
+
+  adb_admin_password:
+    type: password
+    required: true
+    title: Autonomous Database Admin Password
+    description: Admin password for participant Autonomous Databases. Use a generated secret per event.
+
+  adb_workload:
+    type: enum
+    required: true
+    title: Autonomous Database Workload
+    description: OLTP corresponds to Autonomous Transaction Processing.
+    default: OLTP
+    enum:
+      - OLTP
+      - DW
+      - AJD
+      - APEX
+
+  adb_is_free_tier:
+    type: boolean
+    required: true
+    title: Use Always Free ADB Shape
+    description: Set according to the sandbox capacity model approved by LiveLabs.
+    default: false
+
+  adb_is_mtls_connection_required:
+    type: boolean
+    required: true
+    title: Require mTLS for ADB
+    description: Keep unchecked to allow TLS connections used by Database Tools.
+    default: false
+
+  adb_compute_model:
+    type: enum
+    required: true
+    title: ADB Compute Model
+    default: ECPU
+    enum:
+      - ECPU
+      - OCPU
+
+  adb_compute_count:
+    type: number
+    required: true
+    title: ADB Compute Count
+    default: 1
+    minimum: 1
+
+  adb_data_storage_size_in_tbs:
+    type: number
+    required: true
+    title: ADB Storage Size in TB
+    default: 1
+    minimum: 1
+
+  create_mcp_servers:
+    type: boolean
+    required: true
+    title: Create MCP Servers
+    description: Enable after Database Tools connections exist and connection OCIDs are supplied.
+    default: false
+
+  create_database_tools_vault_secret:
+    type: boolean
+    required: true
+    title: Create Database Tools Password Secret
+    description: Creates one Vault, key, and secret for Database Tools connection credentials.
+    default: false
+
+  database_tools_vault_type:
+    type: enum
+    required: true
+    title: Database Tools Vault Type
+    default: DEFAULT
+    enum:
+      - DEFAULT
+      - VIRTUAL_PRIVATE
+
+  database_tools_existing_password_secret_id:
+    type: string
+    required: false
+    title: Existing Database Tools Password Secret OCID
+    description: Optional existing Vault secret OCID. Leave empty when creating the password secret in this stack.
+
+  create_database_tools_connections:
+    type: boolean
+    required: true
+    title: Create Database Tools Connections
+    description: Creates one Database Tools connection per participant.
+    default: false
+
+  database_tools_connection_user_name:
+    type: string
+    required: true
+    title: Database Tools Connection User
+    description: ADMIN is acceptable for smoke tests; use a least-privilege user for production workshops.
+    default: ADMIN
+
+  database_tools_connection_password:
+    type: password
+    required: false
+    title: Database Tools Connection Password
+    description: Optional. When empty, the Autonomous Database admin password is reused for the generated Vault secret.
+
+  identity_domain_ocid:
+    type: oci:identity:domains:id
+    required: false
+    title: Identity Domain OCID
+    description: Required when creating MCP servers.
+    dependsOn:
+      compartmentId: tenancy_ocid
+
+  database_tools_resource_family:
+    type: enum
+    required: true
+    title: Database Tools Policy Resource Family
+    description: Validate the exact policy family name with LiveLabs/OCI before production use.
+    default: database-tools-family
+    enum:
+      - database-tools-family
+      - dbtools-family
+
+  enable_database_tools_policy:
+    type: boolean
+    required: true
+    title: Enable Database Tools Policy Statements
+    description: Enable only after the exact Database Tools policy resource family is confirmed for the tenancy.
+    default: false
+
+  enable_participant_compartment_policies:
+    type: boolean
+    required: true
+    title: Enable Participant Group Policies
+    description: Leave unchecked in Oracle corporate tenancies when you use existing user permissions and cannot create workshop users or groups.
+    default: false
+
+  mcp_server_type:
+    type: enum
+    required: true
+    title: MCP Server Type
+    default: DEFAULT
+    enum:
+      - DEFAULT
+    visible: create_mcp_servers
+
+  mcp_server_storage_type:
+    type: enum
+    required: true
+    title: MCP Server Storage Type
+    default: OBJECT_STORAGE
+    enum:
+      - OBJECT_STORAGE
+    visible: create_mcp_servers
+
+  mcp_server_runtime_identity:
+    type: string
+    required: false
+    title: MCP Server Runtime Identity
+    description: Optional runtime identity, for example RESOURCE_PRINCIPAL. Leave empty to use the service default.
+    visible: create_mcp_servers
+
+  mcp_access_token_expiry_in_seconds:
+    type: number
+    required: false
+    title: MCP Access Token Expiry Seconds
+    visible: create_mcp_servers
+
+  mcp_refresh_token_expiry_in_seconds:
+    type: number
+    required: false
+    title: MCP Refresh Token Expiry Seconds
+    visible: create_mcp_servers
+
+  enable_generative_ai_policy:
+    type: boolean
+    required: true
+    title: Enable Generative AI Policy
+    description: Enable if the simple AI app uses OCI Generative AI.
+    default: false
+
+  enable_tenancy_policies:
+    type: boolean
+    required: true
+    title: Enable Tenancy Scope Policies
+    description: Enable only if the Resource Manager principal can manage policies in the tenancy root compartment.
+    default: false

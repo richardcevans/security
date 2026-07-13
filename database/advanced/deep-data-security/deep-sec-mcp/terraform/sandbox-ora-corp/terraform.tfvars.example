@@ -1,0 +1,50 @@
+tenancy_ocid                  = "ocid1.tenancy.oc1..replace"
+region                        = "us-ashburn-1"
+parent_compartment_ocid       = "ocid1.compartment.oc1..replace"
+reservation_id                = "reservation-001"
+ttl                           = "2026-08-31"
+name_prefix                   = "deepsec-mcp-ora-corp"
+participant_group_name_prefix = "ll-deepsec-mcp"
+
+# Leave participants empty to generate U12345, etc.
+participant_count        = 1
+participant_prefix       = "U"
+participant_start_number = 12345
+participants             = {}
+
+adb_is_free_tier = false
+
+# Set true after Database Tools connections exist and connection OCIDs are filled in.
+create_database_tools_vault_secret = false
+database_tools_vault_type          = "DEFAULT"
+database_tools_existing_password_secret_id = null
+create_database_tools_connections  = false
+database_tools_connection_user_name = "ADMIN"
+database_tools_connection_password  = null
+
+create_mcp_servers            = false
+identity_domain_ocid          = "ocid1.domain.oc1..replace"
+enable_database_tools_policy = false
+database_tools_connection_ids = {
+  # U12345 = "ocid1.databasetoolsconnection.oc1..replace"
+  # U12346 = "ocid1.databasetoolsconnection.oc1..replace"
+}
+
+enable_tenancy_policies      = false
+enable_participant_compartment_policies = false
+enable_generative_ai_policy = false
+
+# Use a generated secret or vault integration for production.
+adb_admin_password = "ReplaceWithAStrongPassword#123"
+
+# Advanced override: uncomment if you need explicit participant names.
+# participants = {
+#   U12345 = {
+#     db_name      = "DMC12345"
+#     display_name = "deepsec-mcp-ora-corp-U12345-adb"
+#   }
+# }
+
+freeform_tags = {
+  owner = "livelabs"
+}

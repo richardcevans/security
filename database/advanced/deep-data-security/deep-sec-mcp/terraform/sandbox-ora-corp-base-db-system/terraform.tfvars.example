@@ -1,0 +1,48 @@
+tenancy_ocid            = "ocid1.tenancy.oc1..replace"
+region                  = "us-ashburn-1"
+parent_compartment_ocid = "ocid1.compartment.oc1..replace"
+reservation_id          = "reservation-001"
+ttl                     = "2026-08-31"
+name_prefix             = "deepsec-mcp-ora-corp-base-db"
+
+# Leave participants empty to generate U12345, etc.
+participant_count        = 1
+participant_prefix       = "U"
+participant_start_number = 12345
+participants             = {}
+
+base_db_system_ocid       = "ocid1.dbsystem.oc1.iad.replace"
+base_database_ocid        = "ocid1.database.oc1.iad.replace"
+base_db_connection_string = "replace-host.example.com:1521/replace-service.example.com"
+
+create_database_tools_vault_secret       = false
+database_tools_vault_type                = "DEFAULT"
+database_tools_existing_password_secret_id = null
+create_database_tools_connections        = false
+database_tools_connection_user_name      = "ADMIN"
+database_tools_connection_password       = null
+database_tools_private_endpoint_ocid     = null
+database_tools_related_resource_entity_type = "DATABASE"
+database_tools_related_resource_ocid     = null
+
+create_mcp_servers           = false
+identity_domain_ocid         = "ocid1.domain.oc1..replace"
+enable_database_tools_policy = false
+database_tools_connection_ids = {
+  # U12345 = "ocid1.databasetoolsconnection.oc1..replace"
+}
+
+enable_tenancy_policies                 = false
+enable_participant_compartment_policies = false
+enable_generative_ai_policy             = false
+
+# Advanced override: uncomment if you need explicit participant display names.
+# participants = {
+#   U12345 = {
+#     display_name = "deepsec-mcp-ora-corp-base-db-U12345"
+#   }
+# }
+
+freeform_tags = {
+  owner = "livelabs"
+}

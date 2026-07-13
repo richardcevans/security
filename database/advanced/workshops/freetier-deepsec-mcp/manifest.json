@@ -1,0 +1,58 @@
+{
+  "workshoptitle": "DB Security - Deep Data Security with Autonomous Database and MCP Server Tools",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Review the secure AI data access pattern, prerequisites, and expected outcome.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/introduction/introduction.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Get a Free Trial",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/cloud-login/pre-register-free-tier-account.md"
+    },
+    {
+      "title": "Lab 1: Explore the Environment",
+      "description": "Review the database, sample schema, sensitive data, users, and access paths.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/explore-environment/explore-environment.md"
+    },
+    {
+      "title": "Lab 2: Run the AI Application",
+      "description": "Configure and run the prebuilt simple AI application against Autonomous Database.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/run-ai-application/run-ai-application.md"
+    },
+    {
+      "title": "Lab 3: Connect MCP Server Tools",
+      "description": "Create or inspect OCI Database Tools MCP Server access and validate tool discovery.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/connect-mcp-tools/connect-mcp-tools.md"
+    },
+    {
+      "title": "Lab 4: Demonstrate AI Overreach",
+      "description": "Show how overprivileged AI and MCP access can expose sensitive data.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/demonstrate-ai-overreach/demonstrate-ai-overreach.md"
+    },
+    {
+      "title": "Lab 5: Apply and Test Deep Data Security",
+      "description": "Apply identity-aware data controls and validate least-privilege behavior across access paths.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/apply-validate-security/apply-validate-security.md"
+    },
+    {
+      "title": "Lab 6: Review Architecture, Clean Up, and Next Steps",
+      "description": "Review the secure AI access architecture, clean up resources, and plan next steps.",
+      "publisheddate": "07/09/2026",
+      "filename": "../../deep-data-security/deep-sec-mcp/review-next-steps/review-next-steps.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-freetier.md"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+    "workshoptitle": "Deep Data Security with Autonomous Database and MCP Server Tools",
+    "help": "livelabs-help-db_us@oracle.com",
+    "tutorials": [
+        {
+            "title": "Introduction",
+            "description": "Review the secure AI data access pattern, prerequisites, and expected outcome.",
+            "type": "livelabs",
+            "filename": "../../introduction/introduction.md"
+        },
+        {
+            "title": "Get Started",
+            "description": "Verify setup of the compute instance.",
+            "filename": "https://livelabs.oracle.com/cdn/common/labs/verify-compute/verify-compute-ssh-and-novnc.md"
+        },
+        {
+            "title": "Lab 1: Explore the Environment",
+            "description": "Review the database, sample schema, sensitive data, users, and access paths.",
+            "type": "livelabs",
+            "filename": "../../explore-environment/explore-environment.md"
+        },
+        {
+            "title": "Lab 2: Run the AI Application",
+            "description": "Configure and run the prebuilt simple AI application against Autonomous Database.",
+            "type": "livelabs",
+            "filename": "../../run-ai-application/run-ai-application.md"
+        },
+        {
+            "title": "Lab 3: Connect MCP Server Tools",
+            "description": "Create or inspect OCI Database Tools MCP Server access and validate tool discovery.",
+            "type": "livelabs",
+            "filename": "../../connect-mcp-tools/connect-mcp-tools.md"
+        },
+        {
+            "title": "Lab 4: Demonstrate AI Overreach",
+            "description": "Show how overprivileged AI and MCP access can expose sensitive data.",
+            "type": "livelabs",
+            "filename": "../../demonstrate-ai-overreach/demonstrate-ai-overreach.md"
+        },
+        {
+            "title": "Lab 5: Apply and Test Deep Data Security",
+            "description": "Apply identity-aware data controls and validate least-privilege behavior across access paths.",
+            "type": "livelabs",
+            "filename": "../../apply-validate-security/apply-validate-security.md"
+        },
+        {
+            "title": "Lab 6: Review Architecture, Clean Up, and Next Steps",
+            "description": "Review the secure AI access architecture, clean up resources, and plan next steps.",
+            "type": "livelabs",
+            "filename": "../../review-next-steps/review-next-steps.md"
+        },
+        {
+            "title": "Need Help?",
+            "description": "Template to link to Need Help lab at the end of workshop.",
+            "filename": "https://raw.githubusercontent.com/oracle-livelabs/common/main/labs/need-help/need-help-freetier.md"
+        }
+    ]
+}

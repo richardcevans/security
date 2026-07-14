@@ -154,8 +154,9 @@ Create a Cloud Shell working directory and download the lab archive:
 
 ```bash
 <copy>
-mkdir -vp "$HOME/dbsec-labs/deep-data-security"
-cd "$HOME/dbsec-labs/deep-data-security"
+export DBSEC_LABS="${DBSEC_LABS:-$HOME/dbsec-labs}"
+mkdir -vp "$DBSEC_LABS/deep-data-security"
+cd "$DBSEC_LABS/deep-data-security"
 wget -O adb-oci-iam.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/I8jdPFHveSlA1k1VemPIEHJuXIQtX8mq8BKi9rJbiCJ8YcxcY1pSwlSchZomVDPq/n/oradbclouducm/b/dbsec_public/o/adb-oci-iam.zip
 </copy>
 ```
@@ -185,6 +186,7 @@ Important files include:
 | --- | --- |
 | `00_setup_adb.sh` | Creates OCI IAM apps, groups, demo users, Autonomous AI Database, wallet, and `.adb-oci-iam.env` |
 | `set_oci_iam_passwords.sh` | Sets or resets passwords for Marvin and Emma |
+| `check_oci_iam_login_readiness.sh` | Read-only check of demo users, group memberships, sign-on policies, and MFA settings |
 | `01_enable_oci_iam.sh` | Enables OCI IAM authentication on Autonomous AI Database and creates `OCI_IAM_DOMAIN_DB_CRED$` |
 | `02_create_hr_schema.sh` | Creates the HR schema and sample employee rows |
 | `03_create_data_roles_and_grants.sh` | Creates data roles and data grants |
@@ -304,6 +306,26 @@ To set only Emma's password:
 
 The password is not written to `.adb-oci-iam.env`. If you forget a demo user's
 password, rerun the password helper.
+
+### Check Demo-User Login Readiness
+
+Before requesting an OAuth token, use the read-only diagnostic to confirm that
+the users are active, have the expected group memberships, and to display the
+current identity-domain sign-on policy and MFA settings:
+
+```bash
+<copy>
+./check_oci_iam_login_readiness.sh
+</copy>
+```
+
+The OCI CLI profile is only the administrator identity used to inspect the
+domain; it is not a Marvin or Emma profile. The diagnostic cannot submit either
+user's password. To perform the end-to-end test, continue with Task 6 and sign
+in as Marvin or Emma in the separate browser session. If it reports **Login
+policy denied access**, update the identity domain's sign-on-policy rule so it
+permits the user or one of the user's groups. MFA is necessary only when that
+permitted rule requires it.
 
 ## Task 2: Enable OCI IAM on Autonomous AI Database
 

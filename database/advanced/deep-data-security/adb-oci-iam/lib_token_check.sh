@@ -9,8 +9,15 @@ check_oauth_token() {
   local token_file="${token_dir}/token"
 
   if [ ! -f "$token_file" ]; then
-    echo "ERROR: OAuth token was not found at ${token_file}." >&2
-    echo "Run ./04_get_iam_oauth_token.sh --headless and sign in as ${expected_user} in a separate browser session." >&2
+    echo >&2
+    echo -e "\033[1;31m============================================================================\033[0m" >&2
+    echo -e "\033[1;31mERROR: OAUTH TOKEN WAS NOT FOUND\033[0m" >&2
+    echo -e "\033[1;31m============================================================================\033[0m" >&2
+    echo "Expected token file: ${token_file}" >&2
+    echo "Run ./04_get_iam_oauth_token.sh --headless and sign in as ${expected_user}" >&2
+    echo "in a separate private browser session." >&2
+    echo -e "\033[1;31m============================================================================\033[0m" >&2
+    echo >&2
     return 1
   fi
 
@@ -30,9 +37,24 @@ token_file = os.environ["TOKEN_FILE"]
 with open(token_file, "r", encoding="utf-8") as handle:
     token = handle.read().strip()
 
+def error_panel(title, lines):
+    red = "\033[1;31m"
+    reset = "\033[0m"
+    print(file=sys.stderr)
+    print(red + "=" * 76, file=sys.stderr)
+    print(f"ERROR: {title}", file=sys.stderr)
+    print("=" * 76, file=sys.stderr)
+    for line in lines:
+        print(line, file=sys.stderr)
+    print("=" * 76 + reset, file=sys.stderr)
+    print(file=sys.stderr)
+
 parts = token.split(".")
 if len(parts) != 3:
-    print("ERROR: Token file does not contain a JWT access token.", file=sys.stderr)
+    error_panel("TOKEN FILE IS NOT A JWT ACCESS TOKEN", [
+        f"Token file: {token_file}",
+        "Get a fresh token with ./04_get_iam_oauth_token.sh --headless.",
+    ])
     sys.exit(1)
 
 payload_raw = parts[1] + "=" * (-len(parts[1]) % 4)
@@ -48,16 +70,21 @@ print(f"Token subject: {subject or '(missing)'}")
 print(f"Token groups : {', '.join(str(group) for group in groups) if groups else '(none)'}")
 
 if subject != expected_user:
-    print(f"ERROR: Token is for {subject or '(missing)'}, expected {expected_user}.", file=sys.stderr)
-    print("Remove the current token, then get a fresh token in a separate browser session.", file=sys.stderr)
-    print(f"Commands: rm -rf $HOME/.oci/adb-oci-iam && ./04_get_iam_oauth_token.sh --headless", file=sys.stderr)
-    print(f"Sign in as {expected_user}, not the tenancy owner or another cached OCI session.", file=sys.stderr)
+    error_panel("TOKEN IS FOR THE WRONG USER", [
+        f"Token subject: {subject or '(missing)'}",
+        f"Expected user : {expected_user}",
+        "Remove the current token, then get a fresh token in a separate browser session.",
+        f"Commands: rm -rf $HOME/.oci/adb-oci-iam && ./04_get_iam_oauth_token.sh --headless",
+        f"Sign in as {expected_user}, not the tenancy owner or another cached OCI session.",
+    ])
     sys.exit(1)
 
 missing = [group for group in required_groups if group not in group_set]
 if missing:
-    print(f"ERROR: Token is missing required group(s): {', '.join(missing)}", file=sys.stderr)
-    print("Get a fresh token after confirming OCI IAM group membership.", file=sys.stderr)
+    error_panel("TOKEN IS MISSING REQUIRED GROUPS", [
+        f"Missing group(s): {', '.join(missing)}",
+        "Confirm OCI IAM group membership, then get a fresh token.",
+    ])
     sys.exit(1)
 PY
 }

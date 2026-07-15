@@ -1,0 +1,5 @@
+.deep-sec-mcp.env
+*.log
+*.lst
+*.zip
+wallet/

@@ -21,7 +21,7 @@
         },
         {
             "title": "Lab 2: Run the AI Application",
-            "description": "Configure and run the prebuilt simple AI application against Autonomous Database.",
+            "description": "Run AI-style prompts and database tool calls against Autonomous Database.",
             "type": "livelabs",
             "filename": "../../run-ai-application/run-ai-application.md"
         },

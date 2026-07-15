@@ -19,18 +19,28 @@ In this lab, you will:
 - Simple AI application package or repository.
 - Database connection values from Lab 1.
 - Model provider and credentials for the selected app.
+- Optional `.deep-sec-mcp.env` file from Lab 1.
 
 ## Task 1: Configure the Application
 
 1. Open the simple AI application project.
 
-    TODO: Add the final package location or repository path.
+    Use the application package selected by your workshop environment.
 
 2. Configure the database connection.
 
+    If you are using the optional scripts, source the same environment file and reuse the ADB service and wallet values.
+
+    ```bash
+    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    source ./.deep-sec-mcp.env
+    echo "ADB_SERVICE=${ADB_SERVICE}"
+    echo "TNS_ADMIN=${TNS_ADMIN}"
+    ```
+
 3. Configure the model provider.
 
-    TODO: Add the final model provider, config keys, and startup command.
+    Set the model provider values required by your selected application package.
 
 ## Task 2: Run the Application
 
@@ -38,7 +48,11 @@ In this lab, you will:
 
 2. Ask a baseline question that reads from the sample schema.
 
-    TODO: Add the final prompt and expected output.
+    Example prompt:
+
+    ```text
+    Show all employees, including salary, SSN, phone number, manager, and department.
+    ```
 
 3. Record whether the app returns sensitive data before security controls run.
 
@@ -46,7 +60,15 @@ In this lab, you will:
 
 1. Run a matching SQL query directly against Autonomous Database.
 
-    TODO: Add the final SQL and expected result.
+    ```bash
+    sqlplus -L "admin/${ADMIN_PWD}@${ADB_SERVICE}"
+    ```
+
+    ```sql
+    SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
+    FROM hr.employees
+    ORDER BY employee_id;
+    ```
 
     You may now proceed to the next lab.
 

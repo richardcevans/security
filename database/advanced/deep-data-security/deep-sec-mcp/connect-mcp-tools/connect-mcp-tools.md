@@ -22,6 +22,7 @@ In this lab, you will:
 - Object Storage bucket for MCP server setup.
 - MCP-capable client selected for the workshop.
 - Permission to create or inspect apps in the identity domain.
+- Optional `.deep-sec-mcp.env` file from Lab 1.
 
 ## Task 1: Review the Database Tools Connection
 
@@ -32,6 +33,12 @@ In this lab, you will:
 3. Record the connection OCID for CLI-based setup.
 
 4. Confirm that the connection uses the approved authentication method.
+
+5. If you use the optional scripts, record the value in `.deep-sec-mcp.env`.
+
+    ```bash
+    DATABASE_TOOLS_CONNECTION_ID=<database_tools_connection_ocid>
+    ```
 
 ## Task 2: Create or Inspect the MCP Server
 
@@ -61,6 +68,14 @@ In this lab, you will:
 
 5. Record the runtime identity type.
 
+6. To print the optional Terraform and OCI CLI command shapes, run:
+
+    ```bash
+    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    source ./.deep-sec-mcp.env
+    ./07_print_mcp_commands.sh
+    ```
+
 ## Task 3: Review the Identity Flow
 
 1. Confirm the MCP client is an integrated app in the identity domain.
@@ -81,7 +96,11 @@ In this lab, you will:
 
 2. Connect the client to the MCP server.
 
-    TODO: Add the final OAuth/client registration steps.
+    Use the MCP endpoint shown in the OCI Console or recorded in `.deep-sec-mcp.env`.
+
+    ```bash
+    MCP_SERVER_ENDPOINT=<mcp_server_endpoint>
+    ```
 
 3. Confirm that the client lists the database tools.
 

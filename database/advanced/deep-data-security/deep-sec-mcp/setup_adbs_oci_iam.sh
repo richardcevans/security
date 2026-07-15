@@ -118,8 +118,14 @@ if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
 fi
 export ADMIN_PWD="${ADMIN_PWD:-Oracle123+Oracle123+}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
-export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME}}"
-export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME}_low}"
+if [ -z "${WALLET_DIR:-}" ] || [ "$WALLET_DIR" = "$HOME/adb_wallet/deepsec1" ]; then
+  WALLET_DIR="$HOME/adb_wallet/${DB_NAME}"
+fi
+export WALLET_DIR
+if [ -z "${ADB_SERVICE:-}" ] || [ "$ADB_SERVICE" = "deepsec1_low" ]; then
+  ADB_SERVICE="${DB_NAME}_low"
+fi
+export ADB_SERVICE
 export OCI_IAM_EMPLOYEE_GROUP_DISPLAY_NAME="${OCI_IAM_EMPLOYEE_GROUP_DISPLAY_NAME:-deepsec-employees-${DEEPSEC_MCP_LAB_INSTANCE_SHORT}}"
 export OCI_IAM_MANAGER_GROUP_DISPLAY_NAME="${OCI_IAM_MANAGER_GROUP_DISPLAY_NAME:-deepsec-managers-${DEEPSEC_MCP_LAB_INSTANCE_SHORT}}"
 export DATA_ROLE_MAPPING_TYPE="${DATA_ROLE_MAPPING_TYPE:-IAM_GROUP_NAME}"
@@ -129,9 +135,10 @@ export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
 export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
-export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
-export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-${OCI_DOMAIN_NAME}/${OCI_IAM_EMPLOYEE_GROUP_DISPLAY_NAME}}"
-export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-${OCI_DOMAIN_NAME}/${OCI_IAM_MANAGER_GROUP_DISPLAY_NAME}}"
+if [ -z "${OCI_DOMAIN_NAME:-}" ] || [ "$OCI_DOMAIN_NAME" = "example-domain" ]; then
+  OCI_DOMAIN_NAME="Default"
+fi
+export OCI_DOMAIN_NAME
 legacy_oci_db_app_name="${DB_NAME} DeepSec MCP DB Resource"
 legacy_oci_client_app_name="${DB_NAME} DeepSec MCP Public Client"
 if [ -z "${OCI_DB_APP_NAME:-}" ] || [ "$OCI_DB_APP_NAME" = "$legacy_oci_db_app_name" ] || [ "$OCI_DB_APP_NAME" = "DeepSec MCP DB Resource" ]; then
@@ -251,6 +258,38 @@ discover_domain_url() {
   fi
 
   printf '%s' "$url"
+}
+
+discover_domain_name_from_url() {
+  local name
+  name=$(oci iam domain list \
+    --compartment-id "$TENANCY_OCID" \
+    --all \
+    "${oci_global_args[@]}" \
+    --query "data[?url=='${OCI_DOMAIN_URL}' || \"home-region-url\"=='${OCI_DOMAIN_URL}'].displayName | [0]" \
+    --raw-output 2>/dev/null || true)
+
+  if [ -n "$name" ] && [ "$name" != "null" ] && [ "$name" != "None" ]; then
+    printf '%s' "$name"
+  fi
+}
+
+refresh_data_role_group_mappings() {
+  local discovered_domain_name
+  discovered_domain_name=$(discover_domain_name_from_url)
+  if [ -n "$discovered_domain_name" ]; then
+    OCI_DOMAIN_NAME="$discovered_domain_name"
+    export OCI_DOMAIN_NAME
+  fi
+
+  if [ -z "${OCI_IAM_EMPLOYEE_GROUP:-}" ] || [ "$OCI_IAM_EMPLOYEE_GROUP" = "example-domain/deepsec-employees" ] || [[ "$OCI_IAM_EMPLOYEE_GROUP" == */deepsec-employees ]]; then
+    OCI_IAM_EMPLOYEE_GROUP="${OCI_DOMAIN_NAME}/${OCI_IAM_EMPLOYEE_GROUP_DISPLAY_NAME}"
+  fi
+  if [ -z "${OCI_IAM_MANAGER_GROUP:-}" ] || [ "$OCI_IAM_MANAGER_GROUP" = "example-domain/deepsec-managers" ] || [[ "$OCI_IAM_MANAGER_GROUP" == */deepsec-managers ]]; then
+    OCI_IAM_MANAGER_GROUP="${OCI_DOMAIN_NAME}/${OCI_IAM_MANAGER_GROUP_DISPLAY_NAME}"
+  fi
+  export OCI_IAM_EMPLOYEE_GROUP
+  export OCI_IAM_MANAGER_GROUP
 }
 
 domain_cmd() {
@@ -682,6 +721,7 @@ setup_oauth_apps() {
   normalize_redirect_uri
   OCI_DOMAIN_URL=$(discover_domain_url)
   export OCI_DOMAIN_URL
+  refresh_data_role_group_mappings
 
   echo
   echo -e "${YELLOW}Step 1: Creating or reusing OCI IAM OAuth applications...${NC}"
@@ -779,6 +819,7 @@ export ROOT_COMP_ID
 
 OCI_DOMAIN_URL=$(discover_domain_url)
 export OCI_DOMAIN_URL
+refresh_data_role_group_mappings
 MCP_IDENTITY_DOMAIN_OCID="${MCP_IDENTITY_DOMAIN_OCID:-$(oci iam domain list \
   --compartment-id "$TENANCY_OCID" \
   --all \

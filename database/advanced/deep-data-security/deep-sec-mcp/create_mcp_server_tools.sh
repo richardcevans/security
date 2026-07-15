@@ -186,31 +186,26 @@ PY
 lookup_connection_id() {
   oci_query dbtools connection list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
-    --display-name "$DATABASE_TOOLS_CONNECTION_NAME" \
     --type ORACLE_DATABASE \
     --all \
-    --query 'data[0].id' \
+    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}'].id | [0]" \
     --raw-output 2>/dev/null || true
 }
 
 lookup_mcp_server_id() {
   oci_query dbtools mcp-server list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
-    --display-name "$MCP_SERVER_NAME" \
-    --database-tools-connection-id "$DATABASE_TOOLS_CONNECTION_ID" \
     --all \
-    --query 'data[0].id' \
+    --query "data[?\"display-name\"=='${MCP_SERVER_NAME}' && \"database-tools-connection-id\"=='${DATABASE_TOOLS_CONNECTION_ID}'].id | [0]" \
     --raw-output 2>/dev/null || true
 }
 
 lookup_toolset_id() {
   oci_query dbtools mcp-toolset list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
-    --display-name "$MCP_BUILT_IN_SQL_TOOLSET_NAME" \
-    --mcp-server-id "$MCP_SERVER_ID" \
     --type BUILT_IN_SQL_TOOLS \
     --all \
-    --query 'data[0].id' \
+    --query "data[?\"display-name\"=='${MCP_BUILT_IN_SQL_TOOLSET_NAME}' && \"mcp-server-id\"=='${MCP_SERVER_ID}'].id | [0]" \
     --raw-output 2>/dev/null || true
 }
 

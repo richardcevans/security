@@ -27,7 +27,7 @@ In this lab, you will:
 
 1. Create or inspect the data roles used by the lab.
 
-    The optional scripts use OCI IAM OAuth groups and database data roles.
+    The optional scripts use OCI IAM group names and database data roles. For the Database Tools MCP path, use `IAM_GROUP_NAME` because the MCP server can pass the end-user IAM group context through its token path.
 
     ```bash
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
@@ -41,8 +41,10 @@ In this lab, you will:
 
     ```sql
     CREATE OR REPLACE DATA ROLE hrapp_employees
-      MAPPED TO 'IAM_OAUTH_GROUP=EMPLOYEES';
+      MAPPED TO 'IAM_GROUP_NAME=example-domain/deepsec-employees';
     ```
+
+    If you are testing direct SQL*Plus OAuth tokens instead of the MCP token path, set `DATA_ROLE_MAPPING_TYPE=IAM_OAUTH_GROUP` in `.deep-sec-mcp.env`.
 
 2. Grant the appropriate data access to each data role.
 

@@ -11,8 +11,15 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${SCRIPT_DIR}/lib_deepsec_mcp.sh"
 require_adb_env
 
-export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
-export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
+export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-example-domain/deepsec-employees}"
+export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-example-domain/deepsec-managers}"
+export DATA_ROLE_MAPPING_TYPE="${DATA_ROLE_MAPPING_TYPE:-IAM_GROUP_NAME}"
+DATA_ROLE_MAPPING_TYPE=$(printf '%s' "$DATA_ROLE_MAPPING_TYPE" | tr '[:lower:]' '[:upper:]')
+if [ "$DATA_ROLE_MAPPING_TYPE" != "IAM_GROUP_NAME" ] && [ "$DATA_ROLE_MAPPING_TYPE" != "IAM_OAUTH_GROUP" ]; then
+  echo "ERROR: DATA_ROLE_MAPPING_TYPE must be IAM_GROUP_NAME or IAM_OAUTH_GROUP." >&2
+  exit 1
+fi
+export DATA_ROLE_MAPPING_TYPE
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -21,6 +28,7 @@ echo -e "${GREEN}===============================================================
 echo
 echo -e "${CYAN}OCI_IAM_EMPLOYEE_GROUP = ${OCI_IAM_EMPLOYEE_GROUP}${NC}"
 echo -e "${CYAN}OCI_IAM_MANAGER_GROUP  = ${OCI_IAM_MANAGER_GROUP}${NC}"
+echo -e "${CYAN}DATA_ROLE_MAPPING_TYPE = ${DATA_ROLE_MAPPING_TYPE}${NC}"
 echo -e "${CYAN}SQL*Plus command:${NC}"
 show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
@@ -35,10 +43,10 @@ CREATE ROLE IF NOT EXISTS employee_context_admin;
 GRANT UPDATE ANY END USER CONTEXT TO hr;
 
 CREATE OR REPLACE DATA ROLE hrapp_employees
-  MAPPED TO 'IAM_OAUTH_GROUP=${OCI_IAM_EMPLOYEE_GROUP}';
+  MAPPED TO '${DATA_ROLE_MAPPING_TYPE}=${OCI_IAM_EMPLOYEE_GROUP}';
 
 CREATE OR REPLACE DATA ROLE hrapp_managers
-  MAPPED TO 'IAM_OAUTH_GROUP=${OCI_IAM_MANAGER_GROUP}';
+  MAPPED TO '${DATA_ROLE_MAPPING_TYPE}=${OCI_IAM_MANAGER_GROUP}';
 
 CREATE ROLE IF NOT EXISTS direct_logon_role;
 GRANT CREATE SESSION TO direct_logon_role;

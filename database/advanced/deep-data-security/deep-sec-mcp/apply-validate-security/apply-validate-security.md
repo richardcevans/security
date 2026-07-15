@@ -31,7 +31,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
     ./01_enable_oci_iam.sh
     ./03_create_data_roles_and_grants.sh

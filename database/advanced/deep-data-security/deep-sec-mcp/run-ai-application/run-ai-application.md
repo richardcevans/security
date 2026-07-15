@@ -27,7 +27,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
     echo "ADB_SERVICE=${ADB_SERVICE}"
     echo "TNS_ADMIN=${TNS_ADMIN}"

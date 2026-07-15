@@ -22,6 +22,29 @@ In this lab, you will:
 - SQL worksheet, SQLcl, or another approved database client.
 - Optional: OCI Cloud Shell with SQL*Plus and the OCI CLI.
 
+## Task 0: Download the Workshop Scripts
+
+1. Open OCI Cloud Shell.
+
+2. Create the shared Deep Data Security lab directory.
+
+    ```bash
+    <copy>
+    mkdir -p "$HOME/dbsec-labs/deep-data-security"
+    cd "$HOME/dbsec-labs/deep-data-security"
+    </copy>
+    ```
+
+3. Download and extract the DeepSec MCP scripts.
+
+    ```bash
+    <copy>
+    wget -O deep-sec-mcp-cloudshell.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/eoQGRJ46zRptDtmOivg2aGZCvDUvGGYxJfCGeQICgy-cfC0i1CX6NYT0iwF2vGOS/n/oradbclouducm/b/dbsec_public/o/deep-sec-mcp-cloudshell.zip
+    unzip -o deep-sec-mcp-cloudshell.zip
+    cd deep-sec-mcp
+    </copy>
+    ```
+
 ## Task 1: Confirm the Database
 
 1. Open OCI Cloud Shell or your approved lab client.
@@ -30,7 +53,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     </copy>
     ```
 

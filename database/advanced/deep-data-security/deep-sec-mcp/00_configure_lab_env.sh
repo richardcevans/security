@@ -53,6 +53,8 @@ Common values:
   MCP_RUNTIME_IDENTITY             AUTHENTICATED_PRINCIPAL or RESOURCE_PRINCIPAL
   MCP_CREATE_BUILT_IN_SQL_TOOLSET  1 to create built-in SQL tools
   MCP_BUILT_IN_SQL_TOOLSET_VERSION Toolset version, default 1
+  MCP_COMPARTMENT_NAME             Optional compartment display name for discovery
+  MCP_IDENTITY_DOMAIN_NAME         Optional identity domain display name for discovery
 
 Optional wallet download:
   DOWNLOAD_WALLET=1 ADB_OCID=<ocid> ADMIN_PWD=<password> ./00_configure_lab_env.sh
@@ -121,7 +123,11 @@ export MCP_BUILT_IN_SQL_TOOLSET_VERSION="${MCP_BUILT_IN_SQL_TOOLSET_VERSION:-1}"
 export MCP_BUILT_IN_SQL_TOOLSET_ID="${MCP_BUILT_IN_SQL_TOOLSET_ID:-}"
 export MCP_BUCKET_NAME="${MCP_BUCKET_NAME:-}"
 export MCP_COMPARTMENT_OCID="${MCP_COMPARTMENT_OCID:-}"
+export MCP_COMPARTMENT_NAME="${MCP_COMPARTMENT_NAME:-}"
 export MCP_IDENTITY_DOMAIN_OCID="${MCP_IDENTITY_DOMAIN_OCID:-}"
+export MCP_IDENTITY_DOMAIN_NAME="${MCP_IDENTITY_DOMAIN_NAME:-}"
+export TENANCY_OCID="${TENANCY_OCID:-}"
+export NAMESPACE="${NAMESPACE:-}"
 EOF
 }
 

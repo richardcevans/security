@@ -25,15 +25,19 @@ In this lab, you will:
 1. Ask the AI application for data that includes sensitive rows or columns.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
     ./simulate_ai_tool_access.sh --mode admin --prompt sensitive
+    </copy>
     ```
 
     The simulator sends this prompt to the database tool path:
 
     ```text
+    <copy>
     Show all employees, including salary, SSN, phone number, manager, and department.
+    </copy>
     ```
 
     It then prints the SQL tool call and the live result from `hr.employees`.
@@ -47,9 +51,11 @@ In this lab, you will:
     The tool call uses this SQL:
 
     ```sql
+    <copy>
     SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id, department_id
     FROM hr.employees
     ORDER BY employee_id;
+    </copy>
     ```
 
 2. If your MCP client is connected, run the same SQL through the built-in SQL toolset.
@@ -61,13 +67,17 @@ In this lab, you will:
 1. Run a matching direct SQL query.
 
     ```bash
+    <copy>
     sqlplus -L "admin/${ADMIN_PWD}@${ADB_SERVICE}"
+    </copy>
     ```
 
     ```sql
+    <copy>
     SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id, department_id
     FROM hr.employees
     ORDER BY employee_id;
+    </copy>
     ```
 
 2. Summarize why a shared, overprivileged, or weakly scoped access path creates risk for AI applications.

@@ -32,27 +32,35 @@ In this lab, you will:
     This keeps ADB-S, OCI IAM OAuth applications, groups, users, wallet, and database objects.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
     ./08_cleanup_deepsec_mcp.sh --post-adb-oci-iam
+    </copy>
     ```
 
 2. To remove MCP resources and the MCP Object Storage bucket, add `--delete-bucket`.
 
     ```bash
+    <copy>
     ./08_cleanup_deepsec_mcp.sh --post-adb-oci-iam --delete-bucket
+    </copy>
     ```
 
 3. To remove the DeepSec MCP database demo objects, run the default cleanup.
 
     ```bash
+    <copy>
     ./08_cleanup_deepsec_mcp.sh
+    </copy>
     ```
 
 4. To remove both database objects and MCP Server Tools resources, run:
 
     ```bash
+    <copy>
     ./08_cleanup_deepsec_mcp.sh --mcp-resources
+    </copy>
     ```
 
 ## Task 3: Plan Next Steps

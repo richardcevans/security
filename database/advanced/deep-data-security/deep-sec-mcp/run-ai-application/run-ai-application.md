@@ -26,10 +26,12 @@ In this lab, you will:
     If you are using the optional scripts, source the same environment file and reuse the ADB service and wallet values.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
     echo "ADB_SERVICE=${ADB_SERVICE}"
     echo "TNS_ADMIN=${TNS_ADMIN}"
+    </copy>
     ```
 
 ## Task 2: Run the Application
@@ -37,7 +39,9 @@ In this lab, you will:
 1. Run the AI prompt simulator with the overprivileged ADMIN path.
 
     ```bash
+    <copy>
     ./simulate_ai_tool_access.sh --mode admin --prompt all
+    </copy>
     ```
 
 2. Review the first prompt.
@@ -45,7 +49,9 @@ In this lab, you will:
     The simulator prints the prompt, the SQL tool call it generated, and the live database result.
 
     ```text
+    <copy>
     Show all employees, including salary, SSN, phone number, manager, and department.
+    </copy>
     ```
 
 3. Record whether the ADMIN-backed tool call returns sensitive data before security controls run.
@@ -55,13 +61,17 @@ In this lab, you will:
 1. The simulator already prints the matching SQL. You can also run the sensitive-data query directly.
 
     ```bash
+    <copy>
     sqlplus -L "admin/${ADMIN_PWD}@${ADB_SERVICE}"
+    </copy>
     ```
 
     ```sql
+    <copy>
     SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
     FROM hr.employees
     ORDER BY employee_id;
+    </copy>
     ```
 
     You may now proceed to the next lab.

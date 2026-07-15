@@ -43,8 +43,10 @@ In this lab, you will:
 3. Source the lab environment.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
+    </copy>
     ```
 
 ## Task 2: Discover OCI Inputs
@@ -52,13 +54,17 @@ In this lab, you will:
 1. If Lab 1 used `setup_adbs_oci_iam.sh`, review the generated values first.
 
     ```bash
+    <copy>
     grep -E 'ADB_OCID|DATABASE_TOOLS_CONNECTION_STRING|MCP_COMPARTMENT|MCP_IDENTITY_DOMAIN|MCP_BUCKET|MCP_SERVER' .deep-sec-mcp.env
+    </copy>
     ```
 
 2. Run discovery from Cloud Shell if you used pre-existing resources or want to refresh the generated values.
 
     ```bash
+    <copy>
     ./discover_mcp_inputs.sh
+    </copy>
     ```
 
     The discovery helper queries the tenancy for values it can determine safely:
@@ -74,15 +80,19 @@ In this lab, you will:
 3. Review `.deep-sec-mcp.env`.
 
     ```bash
+    <copy>
     grep -E 'NAMESPACE|TENANCY_OCID|MCP_COMPARTMENT|MCP_IDENTITY_DOMAIN|DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID' .deep-sec-mcp.env
+    </copy>
     ```
 
 4. If discovery reports multiple possible values, set a display-name filter and rerun discovery.
 
     ```bash
+    <copy>
     export MCP_COMPARTMENT_NAME="<compartment_display_name>"
     export MCP_IDENTITY_DOMAIN_NAME="<identity_domain_display_name>"
     ./discover_mcp_inputs.sh
+    </copy>
     ```
 
 ## Task 3: Review or Override Cloud Shell Creation Inputs
@@ -90,8 +100,10 @@ In this lab, you will:
 1. Review the values the scripts can infer.
 
     ```bash
+    <copy>
     source ./.deep-sec-mcp.env
     grep -E 'ADB_OCID|MCP_COMPARTMENT_OCID|MCP_IDENTITY_DOMAIN_OCID|MCP_BUCKET_NAME|MCP_SERVER_NAME|DATABASE_TOOLS_CONNECTION_NAME|DATABASE_TOOLS_CONNECTION_STRING|DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE|DATABASE_TOOLS_RUNTIME_IDENTITY|MCP_RUNTIME_IDENTITY' .deep-sec-mcp.env
+    </copy>
     ```
 
     If Lab 1 used `setup_adbs_oci_iam.sh`, the Cloud Shell creation helper can usually determine:
@@ -105,8 +117,10 @@ In this lab, you will:
 2. If the values are missing or you want to refresh them before creation, run discovery.
 
     ```bash
+    <copy>
     ./discover_mcp_inputs.sh
     source ./.deep-sec-mcp.env
+    </copy>
     ```
 
 3. Override only the values that are not discoverable in your tenancy.
@@ -114,7 +128,9 @@ In this lab, you will:
     For example, set a different compartment only if you do not want MCP resources created beside the database.
 
     ```bash
+    <copy>
     export MCP_COMPARTMENT_OCID="<different_compartment_ocid>"
+    </copy>
     ```
 
 4. Keep token-based MCP access for the identity-aware path.
@@ -122,30 +138,38 @@ In this lab, you will:
     The defaults are:
 
     ```bash
+    <copy>
     export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="TOKEN"
     export DATABASE_TOOLS_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
     export MCP_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
+    </copy>
     ```
 
 5. If you must use password mode for a connectivity smoke test, set a Vault secret OCID instead.
 
     ```bash
+    <copy>
     export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="PASSWORD"
     export DATABASE_TOOLS_CONNECTION_USER_NAME="WORKSHOP_USER"
     export DATABASE_TOOLS_PASSWORD_SECRET_OCID="<vault_secret_ocid>"
+    </copy>
     ```
 
 6. If Database Tools must reach a private database listener, set the Database Tools private endpoint OCID.
 
     ```bash
+    <copy>
     export DATABASE_TOOLS_PRIVATE_ENDPOINT_OCID="<database_tools_private_endpoint_ocid>"
+    </copy>
     ```
 
 7. If you want the connection associated with a known database or DB system, set the related resource values.
 
     ```bash
+    <copy>
     export DATABASE_TOOLS_RELATED_RESOURCE_TYPE="DATABASE"
     export DATABASE_TOOLS_RELATED_RESOURCE_OCID="<database_ocid>"
+    </copy>
     ```
 
 ## Task 4: Create the Database Tools MCP Resources
@@ -153,8 +177,10 @@ In this lab, you will:
 1. Run the helper script.
 
     ```bash
+    <copy>
     source ./.deep-sec-mcp.env
     ./create_mcp_server_tools.sh
+    </copy>
     ```
 
     The script creates or confirms:
@@ -167,7 +193,9 @@ In this lab, you will:
 2. Confirm that the script wrote the generated OCIDs back to `.deep-sec-mcp.env`.
 
     ```bash
+    <copy>
     grep -E 'DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID' .deep-sec-mcp.env
+    </copy>
     ```
 
 3. If the script fails during connection creation, check the most common causes.
@@ -199,6 +227,7 @@ In this lab, you will:
 5. If you use the OCI CLI directly, start from this command shape and replace each placeholder.
 
     ```bash
+    <copy>
     oci dbtools mcp-server create-mcp-server-default \
       --compartment-id <compartment_ocid> \
       --connection-id <database_tools_connection_ocid> \
@@ -206,6 +235,7 @@ In this lab, you will:
       --domain-id <identity_domain_ocid> \
       --storage '{"type":"OBJECT_STORAGE","bucket":{"namespace":"<namespace>","bucketName":"<bucket_name>"}}' \
       --runtime-identity AUTHENTICATED_PRINCIPAL
+    </copy>
     ```
 
 6. Record the runtime identity type.
@@ -215,20 +245,24 @@ In this lab, you will:
     If you use the OCI CLI directly, start from this command shape and replace each placeholder.
 
     ```bash
+    <copy>
     oci dbtools mcp-toolset create-mcp-toolset-built-in-sql-tools \
       --compartment-id <compartment_ocid> \
       --display-name <toolset_name> \
       --mcp-server-id <mcp_server_ocid> \
       --toolset-version 1 \
       --default-execution-type SYNCHRONOUS
+    </copy>
     ```
 
 8. To print the optional Terraform and OCI CLI command shapes, run:
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
     ./07_print_mcp_commands.sh
+    </copy>
     ```
 
 ## Task 6: Review the Identity Flow
@@ -254,13 +288,17 @@ In this lab, you will:
 3. Record the endpoint in `.deep-sec-mcp.env`.
 
     ```bash
+    <copy>
     export MCP_SERVER_ENDPOINT="<mcp_server_endpoint>"
+    </copy>
     ```
 
 4. Connect the client to the MCP server.
 
     ```bash
+    <copy>
     echo "$MCP_SERVER_ENDPOINT"
+    </copy>
     ```
 
 5. Confirm that the client lists the database tools.

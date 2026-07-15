@@ -55,6 +55,14 @@ show_missing() {
   echo -e "${YELLOW}needs input: ${1}${NC}"
 }
 
+normalize_discovered_value() {
+  local value="${1:-}"
+  if [ "$value" = "null" ] || [ "$value" = "None" ]; then
+    value=""
+  fi
+  printf '%s' "$value"
+}
+
 lookup_compartment_by_name() {
   oci_query iam compartment list \
     --include-root \
@@ -132,8 +140,92 @@ lookup_toolset_id() {
     --raw-output 2>/dev/null || true
 }
 
+lookup_adb_connection_string() {
+  [ -z "${ADB_OCID:-}" ] && return
+  local response
+  response=$(oci_query db autonomous-database get --autonomous-database-id "$ADB_OCID" 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  ADB_RESPONSE="$response" ADB_SERVICE_ALIAS="${ADB_SERVICE:-}" python3 - <<'PY'
+import json
+import os
+
+try:
+    raw = json.loads(os.environ.get("ADB_RESPONSE", "{}"))
+except Exception:
+    raise SystemExit(0)
+
+data = raw.get("data") or {}
+conn = data.get("connection-strings") or data.get("connectionStrings") or {}
+all_conn = conn.get("all-connection-strings") or conn.get("allConnectionStrings") or {}
+service_alias = os.environ.get("ADB_SERVICE_ALIAS", "").lower()
+service_type = service_alias.rsplit("_", 1)[-1].upper() if "_" in service_alias else "LOW"
+
+for key in (service_type, service_type.lower(), "LOW", "low"):
+    value = all_conn.get(key)
+    if value:
+        print(value)
+        raise SystemExit(0)
+
+profiles = conn.get("profiles") or []
+for profile in profiles:
+    if not isinstance(profile, dict):
+        continue
+    name = str(profile.get("display-name") or profile.get("displayName") or profile.get("value") or "").lower()
+    value = profile.get("value") or profile.get("connection-string") or profile.get("connectionString")
+    if value and (not service_alias or service_alias in name or "low" in name):
+        print(value)
+        break
+PY
+}
+
+extract_tns_descriptor() {
+  [ -z "${WALLET_DIR:-}" ] && return
+  [ -z "${ADB_SERVICE:-}" ] && return
+  [ ! -f "${WALLET_DIR}/tnsnames.ora" ] && return
+
+  TNS_FILE="${WALLET_DIR}/tnsnames.ora" SERVICE_ALIAS="${ADB_SERVICE}" python3 - <<'PY'
+import os
+import re
+
+path = os.environ["TNS_FILE"]
+alias = os.environ["SERVICE_ALIAS"].lower()
+
+try:
+    lines = open(path, encoding="utf-8").read().splitlines()
+except OSError:
+    raise SystemExit(0)
+
+capturing = False
+parts = []
+balance = 0
+
+for line in lines:
+    if not capturing:
+        match = re.match(r"\s*([A-Za-z0-9_.-]+)\s*=\s*(.*)$", line)
+        if not match or match.group(1).lower() != alias:
+            continue
+        capturing = True
+        text = match.group(2).strip()
+    else:
+        text = line.strip()
+
+    if text:
+        parts.append(text)
+        balance += text.count("(") - text.count(")")
+
+    if capturing and parts and balance <= 0:
+        break
+
+descriptor = " ".join(parts).strip()
+if descriptor:
+    print(re.sub(r"\s+", "", descriptor))
+PY
+}
+
 require_cmd oci
 require_cmd perl
+require_cmd python3
 
 DATABASE_TOOLS_CONNECTION_NAME="${DATABASE_TOOLS_CONNECTION_NAME:-deep-sec-mcp-connection}"
 MCP_SERVER_NAME="${MCP_SERVER_NAME:-deep-sec-mcp}"
@@ -148,6 +240,7 @@ echo
 if [ -z "${NAMESPACE:-}" ]; then
   NAMESPACE=$(oci_query os ns get --raw-output --query data 2>/dev/null || true)
 fi
+NAMESPACE=$(normalize_discovered_value "${NAMESPACE:-}")
 if [ -n "${NAMESPACE:-}" ] && [ "$NAMESPACE" != "null" ]; then
   show_found NAMESPACE "$NAMESPACE"
 else
@@ -161,6 +254,7 @@ if [ -z "${TENANCY_OCID:-}" ]; then
     --query "data[?contains(id, 'ocid1.tenancy')].id | [0]" \
     --raw-output 2>/dev/null || true)
 fi
+TENANCY_OCID=$(normalize_discovered_value "${TENANCY_OCID:-}")
 if [ -n "${TENANCY_OCID:-}" ] && [ "$TENANCY_OCID" != "null" ]; then
   show_found TENANCY_OCID "$TENANCY_OCID"
 else
@@ -173,6 +267,7 @@ if [ -z "${MCP_COMPARTMENT_OCID:-}" ] && [ -n "${ADB_OCID:-}" ]; then
     --query 'data."compartment-id"' \
     --raw-output 2>/dev/null || true)
 fi
+MCP_COMPARTMENT_OCID=$(normalize_discovered_value "${MCP_COMPARTMENT_OCID:-}")
 
 if [ -z "${MCP_COMPARTMENT_OCID:-}" ] && [ -n "${MCP_COMPARTMENT_NAME:-}" ]; then
   MCP_COMPARTMENT_OCID=$(lookup_compartment_by_name)
@@ -198,6 +293,7 @@ if [ -z "${MCP_IDENTITY_DOMAIN_OCID:-}" ] && [ -n "${TENANCY_OCID:-}" ] && [ "$T
     MCP_IDENTITY_DOMAIN_OCID=$(lookup_single_domain)
   fi
 fi
+MCP_IDENTITY_DOMAIN_OCID=$(normalize_discovered_value "${MCP_IDENTITY_DOMAIN_OCID:-}")
 
 if [ -n "${MCP_IDENTITY_DOMAIN_OCID:-}" ] && [ "$MCP_IDENTITY_DOMAIN_OCID" != "null" ]; then
   show_found MCP_IDENTITY_DOMAIN_OCID "$MCP_IDENTITY_DOMAIN_OCID"
@@ -242,6 +338,15 @@ fi
 
 echo
 if [ -z "${DATABASE_TOOLS_CONNECTION_STRING:-}" ]; then
+  DATABASE_TOOLS_CONNECTION_STRING=$(lookup_adb_connection_string)
+fi
+if [ -z "${DATABASE_TOOLS_CONNECTION_STRING:-}" ]; then
+  DATABASE_TOOLS_CONNECTION_STRING=$(extract_tns_descriptor)
+fi
+DATABASE_TOOLS_CONNECTION_STRING=$(normalize_discovered_value "${DATABASE_TOOLS_CONNECTION_STRING:-}")
+if [ -n "${DATABASE_TOOLS_CONNECTION_STRING:-}" ]; then
+  show_found DATABASE_TOOLS_CONNECTION_STRING "$DATABASE_TOOLS_CONNECTION_STRING"
+else
   show_missing DATABASE_TOOLS_CONNECTION_STRING
   echo "  OCI does not always expose one canonical connect string for every database shape."
   echo "  Set the Easy Connect string for the service you want Database Tools to use."

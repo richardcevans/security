@@ -19,7 +19,7 @@ In this lab, you will:
 
 - Workshop database connection string.
 - OCI identity domain for the MCP server and client.
-- Compartment where Database Tools and MCP resources can be created.
+- Compartment where Database Tools and MCP resources can be created. By default, use the same compartment as the workshop database.
 - Object Storage bucket name for MCP server setup.
 - MCP-capable client selected for the workshop.
 - Permission to create or inspect Database Tools, Object Storage, and identity-domain applications.
@@ -85,38 +85,49 @@ In this lab, you will:
     ./discover_mcp_inputs.sh
     ```
 
-## Task 3: Configure Remaining Inputs for Cloud Shell Creation
+## Task 3: Review or Override Cloud Shell Creation Inputs
 
-1. Open `.deep-sec-mcp.env`.
+1. Review the values the scripts can infer.
 
     ```bash
-    vi .deep-sec-mcp.env
+    source ./.deep-sec-mcp.env
+    grep -E 'ADB_OCID|MCP_COMPARTMENT_OCID|MCP_IDENTITY_DOMAIN_OCID|MCP_BUCKET_NAME|MCP_SERVER_NAME|DATABASE_TOOLS_CONNECTION_NAME|DATABASE_TOOLS_CONNECTION_STRING|DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE|DATABASE_TOOLS_RUNTIME_IDENTITY|MCP_RUNTIME_IDENTITY' .deep-sec-mcp.env
     ```
 
-2. Set the required MCP resource values.
+    If Lab 1 used `setup_adbs_oci_iam.sh`, the Cloud Shell creation helper can usually determine:
+
+    - `MCP_COMPARTMENT_OCID` from `ADB_OCID`, so the MCP resources are created in the same compartment as the database
+    - `MCP_IDENTITY_DOMAIN_OCID` from `OCI_DOMAIN_URL`
+    - `MCP_BUCKET_NAME`, `MCP_SERVER_NAME`, `MCP_BUILT_IN_SQL_TOOLSET_NAME`, and `DATABASE_TOOLS_CONNECTION_NAME`
+    - `DATABASE_TOOLS_CONNECTION_STRING` from the ADB metadata or wallet
+    - token-based runtime identity settings
+
+2. If the values are missing or you want to refresh them before creation, run discovery.
 
     ```bash
-    export MCP_COMPARTMENT_OCID="<compartment_ocid>"
-    export MCP_IDENTITY_DOMAIN_OCID="<identity_domain_ocid>"
-    export MCP_BUCKET_NAME="deep-sec-mcp-${USER}-mcp"
-    export MCP_SERVER_NAME="deep-sec-mcp-${USER}"
-    export MCP_BUILT_IN_SQL_TOOLSET_NAME="deep-sec-mcp-${USER}-built-in-sql-tools"
-    export MCP_BUILT_IN_SQL_TOOLSET_VERSION="1"
+    ./discover_mcp_inputs.sh
+    source ./.deep-sec-mcp.env
     ```
 
-3. Set the Database Tools connection values.
+3. Override only the values that are not discoverable in your tenancy.
 
-    For token-based MCP access:
+    For example, set a different compartment only if you do not want MCP resources created beside the database.
 
     ```bash
-    export DATABASE_TOOLS_CONNECTION_NAME="deep-sec-mcp-${USER}-connection"
-    export DATABASE_TOOLS_CONNECTION_STRING="<host>:1521/<service_name>"
+    export MCP_COMPARTMENT_OCID="<different_compartment_ocid>"
+    ```
+
+4. Keep token-based MCP access for the identity-aware path.
+
+    The defaults are:
+
+    ```bash
     export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="TOKEN"
     export DATABASE_TOOLS_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
     export MCP_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
     ```
 
-4. If you must use password mode for a connectivity smoke test, set a Vault secret OCID instead.
+5. If you must use password mode for a connectivity smoke test, set a Vault secret OCID instead.
 
     ```bash
     export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="PASSWORD"
@@ -124,13 +135,13 @@ In this lab, you will:
     export DATABASE_TOOLS_PASSWORD_SECRET_OCID="<vault_secret_ocid>"
     ```
 
-5. If Database Tools must reach a private database listener, set the Database Tools private endpoint OCID.
+6. If Database Tools must reach a private database listener, set the Database Tools private endpoint OCID.
 
     ```bash
     export DATABASE_TOOLS_PRIVATE_ENDPOINT_OCID="<database_tools_private_endpoint_ocid>"
     ```
 
-6. If you want the connection associated with a known database or DB system, set the related resource values.
+7. If you want the connection associated with a known database or DB system, set the related resource values.
 
     ```bash
     export DATABASE_TOOLS_RELATED_RESOURCE_TYPE="DATABASE"

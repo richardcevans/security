@@ -30,18 +30,22 @@ In this lab, you will:
     The optional scripts use OCI IAM group names and database data roles. For the Database Tools MCP path, use `IAM_GROUP_NAME` because the MCP server can pass the end-user IAM group context through its token path.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     source ./.deep-sec-mcp.env
     ./01_enable_oci_iam.sh
     ./03_create_data_roles_and_grants.sh
     ./verify_db_setup.sh
+    </copy>
     ```
 
     The data role mapping uses this format:
 
     ```sql
+    <copy>
     CREATE OR REPLACE DATA ROLE hrapp_employees
       MAPPED TO 'IAM_GROUP_NAME=example-domain/deepsec-employees';
+    </copy>
     ```
 
     If you are testing direct SQL*Plus OAuth tokens instead of the MCP token path, set `DATA_ROLE_MAPPING_TYPE=IAM_OAUTH_GROUP` in `.deep-sec-mcp.env`.
@@ -59,15 +63,19 @@ In this lab, you will:
     Get an OCI IAM OAuth token as the restricted employee user, then verify direct SQL behavior.
 
     ```bash
+    <copy>
     rm -rf "${OCI_TOKEN_DIR:-$HOME/.oci/deep-sec-mcp}"
     ./04_get_iam_oauth_token.sh --headless
     ./06_verify_as_employee.sh
+    </copy>
     ```
 
 2. Re-run the same AI prompt and database tool call through the current OAuth token.
 
     ```bash
+    <copy>
     ./simulate_ai_tool_access.sh --mode oauth --prompt all
+    </copy>
     ```
 
 3. Confirm that the database filters, redacts, or blocks restricted data.
@@ -81,15 +89,19 @@ In this lab, you will:
     Get an OCI IAM OAuth token as the manager user, then verify direct SQL behavior.
 
     ```bash
+    <copy>
     rm -rf "${OCI_TOKEN_DIR:-$HOME/.oci/deep-sec-mcp}"
     ./04_get_iam_oauth_token.sh --headless
     ./05_verify_as_manager.sh
+    </copy>
     ```
 
 2. Re-run the same AI prompt and database tool call through the current OAuth token.
 
     ```bash
+    <copy>
     ./simulate_ai_tool_access.sh --mode oauth --prompt all
+    </copy>
     ```
 
 3. Confirm that permitted data still appears.

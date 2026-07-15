@@ -29,7 +29,9 @@ In this lab, you will:
 2. Change to the workshop script directory.
 
     ```bash
+    <copy>
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    </copy>
     ```
 
 3. Choose how you want to prepare the database and OCI IAM values.
@@ -37,8 +39,10 @@ In this lab, you will:
     For a Free Tier or self-contained ADB-S run, create or reuse ADB-S and OCI IAM resources from Cloud Shell:
 
     ```bash
+    <copy>
     ./setup_adbs_oci_iam.sh <compartment-name-or-ocid>
     source ./.deep-sec-mcp.env
+    </copy>
     ```
 
     The script creates or reuses:
@@ -53,8 +57,10 @@ In this lab, you will:
     If you use pre-provisioned resources instead, create the optional script environment file.
 
     ```bash
+    <copy>
     ./00_configure_lab_env.sh
     source ./.deep-sec-mcp.env
+    </copy>
     ```
 
 4. Edit `.deep-sec-mcp.env` and set any values not supplied by Terraform, Resource Manager, your workshop reservation, or `setup_adbs_oci_iam.sh`.
@@ -62,18 +68,22 @@ In this lab, you will:
     Required database values:
 
     ```bash
+    <copy>
     DB_NAME
     ADB_SERVICE
     ADMIN_PWD
     WALLET_DIR
     TNS_ADMIN
+    </copy>
     ```
 
 5. If the wallet was not preloaded or created by `setup_adbs_oci_iam.sh`, download it after setting `ADB_OCID`.
 
     ```bash
+    <copy>
     DOWNLOAD_WALLET=1 ./00_configure_lab_env.sh
     source ./.deep-sec-mcp.env
+    </copy>
     ```
 
 6. Record the database service name and connection method used by the simple app and MCP server.
@@ -83,7 +93,9 @@ In this lab, you will:
 1. Create or refresh the sample HR schema.
 
     ```bash
+    <copy>
     ./02_create_hr_schema.sh
+    </copy>
     ```
 
 2. Identify the sensitive rows or columns that should not be visible to every user.
@@ -91,7 +103,9 @@ In this lab, you will:
 3. Verify the current database setup.
 
     ```bash
+    <copy>
     ./verify_db_setup.sh
+    </copy>
     ```
 
 ## Task 3: Review Access Paths
@@ -103,11 +117,13 @@ In this lab, you will:
     The optional scripts use these OCI IAM test users and groups:
 
     ```bash
+    <copy>
     MARVIN_USERNAME=marvin
     EMMA_USERNAME=emma
     OCI_IAM_EMPLOYEE_GROUP=Default/deepsec-employees
     OCI_IAM_MANAGER_GROUP=Default/deepsec-managers
     DATA_ROLE_MAPPING_TYPE=IAM_GROUP_NAME
+    </copy>
     ```
 
     You may now proceed to the next lab.

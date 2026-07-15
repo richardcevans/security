@@ -44,7 +44,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
     </copy>
     ```
@@ -259,7 +259,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
     ./07_print_mcp_commands.sh
     </copy>

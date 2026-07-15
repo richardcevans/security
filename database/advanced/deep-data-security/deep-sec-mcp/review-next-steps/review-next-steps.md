@@ -33,7 +33,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
     ./08_cleanup_deepsec_mcp.sh --post-adb-oci-iam
     </copy>

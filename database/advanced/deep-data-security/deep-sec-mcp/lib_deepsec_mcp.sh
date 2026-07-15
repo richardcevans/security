@@ -9,7 +9,9 @@ fi
 require_adb_env() {
   for var in DB_NAME ADB_SERVICE ADMIN_PWD WALLET_DIR TNS_ADMIN; do
     if [ -z "${!var:-}" ]; then
-      echo "ERROR: ${var} is not set. Run ./00_configure_lab_env.sh and source ./.deep-sec-mcp.env first." >&2
+      echo "ERROR: ${var} is not set." >&2
+      echo "For the automated ADB-S path, run ./setup_adbs_oci_iam.sh <compartment-name-or-ocid> and source ./.deep-sec-mcp.env." >&2
+      echo "For a manually configured database, edit .deep-sec-mcp.env and set DB_NAME, ADB_SERVICE, ADMIN_PWD, WALLET_DIR, and TNS_ADMIN." >&2
       exit 1
     fi
   done
@@ -51,12 +53,22 @@ require_wallet_files() {
   fi
 
   if [ "$missing" = true ]; then
-    echo "ERROR: The ADB wallet is incomplete. Re-run DOWNLOAD_WALLET=1 ./00_configure_lab_env.sh or install the wallet manually." >&2
+    echo "ERROR: The ADB wallet is incomplete." >&2
+    echo "For the automated ADB-S path, rerun ./setup_adbs_oci_iam.sh <compartment-name-or-ocid> and source ./.deep-sec-mcp.env." >&2
+    echo "For a manually configured database, rerun DOWNLOAD_WALLET=1 ./00_configure_lab_env.sh or install the wallet manually." >&2
+    exit 1
+  fi
+
+  if ! grep -qi "^[[:space:]]*${ADB_SERVICE}[[:space:]]*=" "${TNS_ADMIN}/tnsnames.ora" 2>/dev/null; then
+    echo "ERROR: ${TNS_ADMIN}/tnsnames.ora does not contain the service alias ${ADB_SERVICE}." >&2
+    echo "This usually means .deep-sec-mcp.env contains placeholder or stale values." >&2
+    echo "For the automated ADB-S path, rerun ./setup_adbs_oci_iam.sh <compartment-name-or-ocid> and source ./.deep-sec-mcp.env." >&2
     exit 1
   fi
 }
 
 admin_sqlplus() {
   require_sqlplus
+  require_wallet_files
   sqlplus -L -s "admin/${ADMIN_PWD}@${ADB_SERVICE}"
 }

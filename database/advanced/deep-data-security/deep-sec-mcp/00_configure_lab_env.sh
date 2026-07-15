@@ -1,7 +1,7 @@
 #!/bin/bash
 # Create the local environment file used by the optional DeepSec MCP scripts.
-# This script does not create OCI resources. Use Terraform or the OCI Console
-# first, then put the resulting values here.
+# This script does not create OCI resources. For the automated ADB-S path, run
+# setup_adbs_oci_iam.sh instead so the env file contains real database values.
 
 set -euo pipefail
 
@@ -78,12 +78,12 @@ write_env() {
 # DeepSec MCP optional command environment.
 # Source with: source ./.deep-sec-mcp.env
 
-export DB_NAME="${DB_NAME:-deepsec1}"
+export DB_NAME="${DB_NAME:-}"
 export ADB_OCID="${ADB_OCID:-}"
-export ADB_SERVICE="${ADB_SERVICE:-${DB_NAME:-deepsec1}_low}"
+export ADB_SERVICE="${ADB_SERVICE:-}"
 export ADMIN_PWD="${ADMIN_PWD:-}"
-export WALLET_DIR="${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME:-deepsec1}}"
-export TNS_ADMIN="${TNS_ADMIN:-${WALLET_DIR:-$HOME/adb_wallet/${DB_NAME:-deepsec1}}}"
+export WALLET_DIR="${WALLET_DIR:-}"
+export TNS_ADMIN="${TNS_ADMIN:-${WALLET_DIR:-}}"
 export WALLET_PWD="${WALLET_PWD:-Oracle123+}"
 
 export OCI_DOMAIN_URL="${OCI_DOMAIN_URL:-}"
@@ -140,6 +140,10 @@ download_wallet() {
     echo -e "${RED}ERROR: ADB_OCID is required when DOWNLOAD_WALLET=1.${NC}" >&2
     exit 1
   fi
+  if [ -z "${DB_NAME:-}" ]; then
+    echo -e "${RED}ERROR: DB_NAME is required when DOWNLOAD_WALLET=1.${NC}" >&2
+    exit 1
+  fi
 
   if ! command -v oci >/dev/null 2>&1; then
     echo -e "${RED}ERROR: OCI CLI is required to download the wallet.${NC}" >&2
@@ -181,6 +185,11 @@ write_env
 echo -e "${GREEN}Created ${ENV_FILE}${NC}"
 echo
 echo -e "${YELLOW}Next:${NC}"
-echo "  source ./.deep-sec-mcp.env"
-echo "  ./02_create_hr_schema.sh"
+echo "  For the automated ADB-S path:"
+echo "    ./setup_adbs_oci_iam.sh <compartment-name-or-ocid>"
+echo "    source ./.deep-sec-mcp.env"
+echo "    ./02_create_hr_schema.sh"
+echo
+echo "  For an existing manually configured database, edit .deep-sec-mcp.env first"
+echo "  and set DB_NAME, ADB_SERVICE, ADMIN_PWD, WALLET_DIR, and TNS_ADMIN."
 echo

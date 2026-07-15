@@ -282,6 +282,42 @@ find_domain_app_id() {
     'data.resources[0].id'
 }
 
+find_domain_app_id_by_scope() {
+  local response
+  response=$(domain_cmd apps list --all --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  APPS_RESPONSE="$response" APP_SCOPE="$OCI_SCOPE" APP_AUDIENCE="$OCI_DB_AUDIENCE" python3 - <<'PY'
+import json
+import os
+
+try:
+    raw = json.loads(os.environ.get("APPS_RESPONSE", "{}"))
+except Exception:
+    raise SystemExit(0)
+
+scope = os.environ.get("APP_SCOPE")
+audience = os.environ.get("APP_AUDIENCE")
+data = raw.get("data") or {}
+apps = data.get("Resources") or data.get("resources") or data.get("items") or []
+
+for app in apps:
+    scopes = app.get("scopes") or []
+    has_scope = any(
+        item.get("fqs") == scope
+        or item.get("value") == scope
+        or (audience and item.get("value") and f"{audience}{item.get('value')}" == scope)
+        for item in scopes
+        if isinstance(item, dict)
+    )
+    if has_scope:
+        app_id = app.get("id")
+        if app_id:
+            print(app_id)
+            break
+PY
+}
+
 find_domain_group_id() {
   local name="$1"
   first_query \
@@ -400,11 +436,19 @@ PY
 
 create_or_reuse_db_resource_app() {
   local app_id
+  local created_app=0
   local generated_secret
   app_id=$(find_domain_app_id "$OCI_DB_APP_NAME")
   if [ -n "$app_id" ]; then
     echo -e "${CYAN}  Reusing DB resource app ${OCI_DB_APP_NAME}: ${app_id}${NC}" >&2
   else
+    app_id=$(find_domain_app_id_by_scope)
+    if [ -n "$app_id" ]; then
+      echo -e "${CYAN}  Reusing DB resource app with scope ${OCI_SCOPE}: ${app_id}${NC}" >&2
+    fi
+  fi
+
+  if [ -z "$app_id" ]; then
     generated_secret=$(generate_secret)
     echo -e "${CYAN}  Creating DB resource app ${OCI_DB_APP_NAME}:${NC}" >&2
     show_cmd oci identity-domains app create \
@@ -412,7 +456,7 @@ create_or_reuse_db_resource_app() {
       --display-name "$OCI_DB_APP_NAME" \
       --audience "$OCI_DB_AUDIENCE" \
       --scopes "[{\"value\":\"${OCI_DB_SCOPE_VALUE}\"}]" >&2
-    app_id=$(domain_cmd app create \
+    if app_id=$(domain_cmd app create \
       --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
       --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
       --display-name "$OCI_DB_APP_NAME" \
@@ -428,10 +472,29 @@ create_or_reuse_db_resource_app() {
       --bypass-consent true \
       --attribute-sets all \
       --query 'data.id' \
-      --raw-output)
-    OCI_DB_CLIENT_SECRET="$generated_secret"
-    echo -e "${CYAN}  Created DB resource app: ${app_id}${NC}" >&2
+      --raw-output); then
+      created_app=1
+    else
+      app_id=$(find_domain_app_id_by_scope)
+      if [ -n "$app_id" ]; then
+        echo -e "${CYAN}  Reusing DB resource app that already owns scope ${OCI_SCOPE}: ${app_id}${NC}" >&2
+      else
+        echo -e "${RED}ERROR: Could not create or find a DB resource app for scope ${OCI_SCOPE}.${NC}" >&2
+        exit 1
+      fi
+    fi
+
+    if [ -z "$app_id" ] || [ "$app_id" = "null" ] || [ "$app_id" = "None" ]; then
+      echo -e "${RED}ERROR: OCI IAM did not return an id for the DB resource app.${NC}" >&2
+      echo -e "${YELLOW}  Scope: ${OCI_SCOPE}${NC}" >&2
+      exit 1
+    fi
+    if [ "$created_app" = "1" ]; then
+      OCI_DB_CLIENT_SECRET="$generated_secret"
+      echo -e "${CYAN}  Created DB resource app: ${app_id}${NC}" >&2
+    fi
   fi
+
   printf '%s' "$app_id"
 }
 

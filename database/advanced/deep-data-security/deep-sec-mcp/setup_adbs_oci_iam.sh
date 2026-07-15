@@ -83,7 +83,10 @@ export DEEPSEC_MCP_LAB_INSTANCE_ID
 DEEPSEC_MCP_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$DEEPSEC_MCP_LAB_INSTANCE_ID" 6)
 export DEEPSEC_MCP_LAB_INSTANCE_SHORT
 
-export DB_NAME="${DB_NAME:-deepsec1${DEEPSEC_MCP_LAB_INSTANCE_SHORT}}"
+if [ -z "${DB_NAME:-}" ] || [ "$DB_NAME" = "deepsec1" ]; then
+  DB_NAME="deepsec1${DEEPSEC_MCP_LAB_INSTANCE_SHORT}"
+fi
+export DB_NAME
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
 if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
   DB_DISPLAY_NAME="$DB_NAME"

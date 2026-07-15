@@ -36,6 +36,7 @@ Common values:
   OCI_CLIENT_ID                    OAuth public/confidential client id
   OCI_CLIENT_SECRET                Optional OAuth client secret
   OCI_SCOPE                        Database OAuth scope
+  DATA_ROLE_MAPPING_TYPE           IAM_GROUP_NAME for MCP/PoP token path or IAM_OAUTH_GROUP for direct OAuth SQL
   OCI_IAM_EMPLOYEE_GROUP           Employee group name
   OCI_IAM_MANAGER_GROUP            Manager group name
   MARVIN_USERNAME                  Manager test user
@@ -84,8 +85,9 @@ export OCI_SCOPE="${OCI_SCOPE:-}"
 export OCI_REDIRECT_URI="${OCI_REDIRECT_URI:-http://localhost:8888/callback}"
 export OCI_TOKEN_DIR="${OCI_TOKEN_DIR:-$HOME/.oci/deep-sec-mcp}"
 
-export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-EMPLOYEES}"
-export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-MANAGERS}"
+export DATA_ROLE_MAPPING_TYPE="${DATA_ROLE_MAPPING_TYPE:-IAM_GROUP_NAME}"
+export OCI_IAM_EMPLOYEE_GROUP="${OCI_IAM_EMPLOYEE_GROUP:-example-domain/deepsec-employees}"
+export OCI_IAM_MANAGER_GROUP="${OCI_IAM_MANAGER_GROUP:-example-domain/deepsec-managers}"
 export OCI_USERNAME_DOMAIN="${OCI_USERNAME_DOMAIN:-}"
 export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"

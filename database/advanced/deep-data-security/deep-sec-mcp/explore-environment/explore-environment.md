@@ -32,14 +32,32 @@ In this lab, you will:
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
     ```
 
-3. Create the optional script environment file.
+3. Choose how you want to prepare the database and OCI IAM values.
+
+    For a Free Tier or self-contained ADB-S run, create or reuse ADB-S and OCI IAM resources from Cloud Shell:
+
+    ```bash
+    ./setup_adbs_oci_iam.sh <compartment-name-or-ocid>
+    source ./.deep-sec-mcp.env
+    ```
+
+    The script creates or reuses:
+
+    - Autonomous Database Serverless
+    - OCI IAM OAuth database resource application
+    - OCI IAM OAuth public client application
+    - OCI IAM groups and optional demo users
+    - ADB wallet
+    - MCP setup defaults for Database Tools
+
+    If you use pre-provisioned resources instead, create the optional script environment file.
 
     ```bash
     ./00_configure_lab_env.sh
     source ./.deep-sec-mcp.env
     ```
 
-4. Edit `.deep-sec-mcp.env` and set the values supplied by Terraform, Resource Manager, or your workshop reservation.
+4. Edit `.deep-sec-mcp.env` and set any values not supplied by Terraform, Resource Manager, your workshop reservation, or `setup_adbs_oci_iam.sh`.
 
     Required database values:
 
@@ -51,7 +69,7 @@ In this lab, you will:
     TNS_ADMIN
     ```
 
-5. If the wallet was not preloaded, download it after setting `ADB_OCID`.
+5. If the wallet was not preloaded or created by `setup_adbs_oci_iam.sh`, download it after setting `ADB_OCID`.
 
     ```bash
     DOWNLOAD_WALLET=1 ./00_configure_lab_env.sh
@@ -87,8 +105,9 @@ In this lab, you will:
     ```bash
     MARVIN_USERNAME=marvin
     EMMA_USERNAME=emma
-    OCI_IAM_EMPLOYEE_GROUP=EMPLOYEES
-    OCI_IAM_MANAGER_GROUP=MANAGERS
+    OCI_IAM_EMPLOYEE_GROUP=Default/deepsec-employees
+    OCI_IAM_MANAGER_GROUP=Default/deepsec-managers
+    DATA_ROLE_MAPPING_TYPE=IAM_GROUP_NAME
     ```
 
     You may now proceed to the next lab.

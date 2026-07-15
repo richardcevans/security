@@ -32,12 +32,22 @@ Terraform packages are available under:
 Use Terraform or Resource Manager when you want to pre-create compartments,
 ADB, buckets, Database Tools connections, and MCP servers.
 
+To create or reuse ADB-S, OCI IAM OAuth apps, groups, demo users, and wallet
+from Cloud Shell, run:
+
+  ./setup_adbs_oci_iam.sh <compartment-name-or-ocid>
+  source ./.deep-sec-mcp.env
+
 For a manual OCI CLI MCP server creation, collect these values:
 
   MCP_COMPARTMENT_OCID       = ${MCP_COMPARTMENT_OCID:-<compartment_ocid>}
   DATABASE_TOOLS_CONNECTION_ID = ${DATABASE_TOOLS_CONNECTION_ID:-<database_tools_connection_ocid>}
   MCP_IDENTITY_DOMAIN_OCID   = ${MCP_IDENTITY_DOMAIN_OCID:-<identity_domain_ocid>}
   MCP_BUCKET_NAME            = ${MCP_BUCKET_NAME:-<bucket_name>}
+
+To discover OCI inputs from the tenancy, run:
+
+  ./discover_mcp_inputs.sh
 
 To create the Object Storage bucket, Database Tools connection, MCP server,
 and built-in SQL toolset from .deep-sec-mcp.env, run:

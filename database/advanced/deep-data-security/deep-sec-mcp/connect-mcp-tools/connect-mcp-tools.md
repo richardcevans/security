@@ -31,6 +31,7 @@ In this lab, you will:
 
     Use one of these paths:
 
+    - **ADB-S bootstrap:** if Lab 1 used `setup_adbs_oci_iam.sh`, most Database Tools and MCP input values are already in `.deep-sec-mcp.env`.
     - **Existing resources:** use a Database Tools connection and MCP server that were already created for you.
     - **Cloud Shell script:** create the bucket, Database Tools connection, MCP server, and built-in SQL toolset from `.deep-sec-mcp.env`.
     - **Terraform or Resource Manager:** use the Terraform package under `terraform/` to create as much of the sandbox as your tenancy allows.
@@ -46,7 +47,45 @@ In this lab, you will:
     source ./.deep-sec-mcp.env
     ```
 
-## Task 2: Configure Inputs for Cloud Shell Creation
+## Task 2: Discover OCI Inputs
+
+1. If Lab 1 used `setup_adbs_oci_iam.sh`, review the generated values first.
+
+    ```bash
+    grep -E 'ADB_OCID|DATABASE_TOOLS_CONNECTION_STRING|MCP_COMPARTMENT|MCP_IDENTITY_DOMAIN|MCP_BUCKET|MCP_SERVER' .deep-sec-mcp.env
+    ```
+
+2. Run discovery from Cloud Shell if you used pre-existing resources or want to refresh the generated values.
+
+    ```bash
+    ./discover_mcp_inputs.sh
+    ```
+
+    The discovery helper queries the tenancy for values it can determine safely:
+
+    - Object Storage namespace
+    - tenancy OCID
+    - compartment OCID, when `ADB_OCID` or `MCP_COMPARTMENT_NAME` is available
+    - identity domain OCID, when `OCI_DOMAIN_URL`, `MCP_IDENTITY_DOMAIN_NAME`, or a single active domain is available
+    - existing Database Tools connection by display name
+    - existing MCP server by display name
+    - existing built-in SQL toolset by display name
+
+3. Review `.deep-sec-mcp.env`.
+
+    ```bash
+    grep -E 'NAMESPACE|TENANCY_OCID|MCP_COMPARTMENT|MCP_IDENTITY_DOMAIN|DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID' .deep-sec-mcp.env
+    ```
+
+4. If discovery reports multiple possible values, set a display-name filter and rerun discovery.
+
+    ```bash
+    export MCP_COMPARTMENT_NAME="<compartment_display_name>"
+    export MCP_IDENTITY_DOMAIN_NAME="<identity_domain_display_name>"
+    ./discover_mcp_inputs.sh
+    ```
+
+## Task 3: Configure Remaining Inputs for Cloud Shell Creation
 
 1. Open `.deep-sec-mcp.env`.
 
@@ -98,7 +137,7 @@ In this lab, you will:
     export DATABASE_TOOLS_RELATED_RESOURCE_OCID="<database_ocid>"
     ```
 
-## Task 3: Create the Database Tools MCP Resources
+## Task 4: Create the Database Tools MCP Resources
 
 1. Run the helper script.
 
@@ -128,7 +167,7 @@ In this lab, you will:
     - Password mode was selected but the Vault secret OCID was not supplied.
     - The built-in SQL toolset version is different in your region. Set `MCP_BUILT_IN_SQL_TOOLSET_VERSION` to the supported version and rerun the script.
 
-## Task 4: Create or Inspect the MCP Server in the Console
+## Task 5: Create or Inspect the MCP Server in the Console
 
 1. Open **Developer Services**, then **Database Tools**.
 
@@ -181,7 +220,7 @@ In this lab, you will:
     ./07_print_mcp_commands.sh
     ```
 
-## Task 5: Review the Identity Flow
+## Task 6: Review the Identity Flow
 
 1. Confirm the MCP client is an integrated app in the identity domain.
 
@@ -195,7 +234,7 @@ In this lab, you will:
 
 4. Confirm that the data-role mapping in Lab 5 uses `IAM_GROUP_NAME` for the MCP token path.
 
-## Task 6: Connect the MCP Client
+## Task 7: Connect the MCP Client
 
 1. Register or configure the MCP client.
 

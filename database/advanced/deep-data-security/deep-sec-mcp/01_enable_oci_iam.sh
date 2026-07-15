@@ -24,7 +24,7 @@ require_wallet_files
 for var in OCI_DB_APP_ID OCI_DOMAIN_URL OCI_DB_CLIENT_ID OCI_DB_CLIENT_SECRET; do
   if [ -z "${!var:-}" ]; then
     echo -e "${RED}ERROR: ${var} is not set.${NC}"
-    echo -e "${YELLOW}Run ./00_setup_adb.sh, source ./.deep-sec-mcp.env, then rerun this script.${NC}"
+    echo -e "${YELLOW}Run ./setup_adbs_oci_iam.sh or ./00_configure_lab_env.sh, source ./.deep-sec-mcp.env, then rerun this script.${NC}"
     exit 1
   fi
 done

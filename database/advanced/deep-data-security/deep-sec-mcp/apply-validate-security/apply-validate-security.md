@@ -50,22 +50,7 @@ In this lab, you will:
 
     The script creates an employee grant and a manager grant over `hr.employees`.
 
-3. If the AI application uses an application identity, create or inspect that identity.
-
-    ```sql
-    CREATE APPLICATION IDENTITY hcm_app
-      MAPPED TO 'IAM_OAUTH_CLIENT_ID=<client_id>';
-    ```
-
-    TODO: Replace `hcm_app` and `<client_id>` with the final app identity values.
-
-4. Grant only the required data roles to the application identity.
-
-    ```sql
-    GRANT DATA ROLE employee_data_role TO hcm_app;
-    ```
-
-5. Confirm the rule state before testing.
+3. Confirm the rule state before testing.
 
 ## Task 2: Validate Restricted Access
 
@@ -79,9 +64,15 @@ In this lab, you will:
     ./06_verify_as_employee.sh
     ```
 
-2. Re-run the AI app prompt, MCP tool call, direct SQL query, and analytics check.
+2. Re-run the same AI prompt and database tool call through the current OAuth token.
+
+    ```bash
+    ./simulate_ai_tool_access.sh --mode oauth --prompt all
+    ```
 
 3. Confirm that the database filters, redacts, or blocks restricted data.
+
+    Emma should see her own employee row through the sensitive-data prompt. She should not see Marvin's direct reports or unrelated employee rows.
 
 ## Task 3: Validate Privileged Access
 
@@ -95,9 +86,15 @@ In this lab, you will:
     ./05_verify_as_manager.sh
     ```
 
-2. Re-run the same checks.
+2. Re-run the same AI prompt and database tool call through the current OAuth token.
+
+    ```bash
+    ./simulate_ai_tool_access.sh --mode oauth --prompt all
+    ```
 
 3. Confirm that permitted data still appears.
+
+    Marvin should see himself and his direct reports. The same prompt and SQL tool call now returns a manager-appropriate result set.
 
 ## Task 4: Complete the Results Matrix
 
@@ -105,14 +102,14 @@ In this lab, you will:
 
     | Access Path | Identity Context | Restricted Result | Privileged Result |
     | --- | --- | --- | --- |
-    | AI application | TODO | TODO | TODO |
-    | MCP tool call | TODO | TODO | TODO |
-    | Direct SQL | TODO | TODO | TODO |
-    | Analytics or reporting | TODO | TODO | TODO |
+    | AI application | OCI IAM end user | Emma sees only her own row | Marvin sees himself and direct reports |
+    | MCP tool call | OCI IAM end user | Same database-filtered result | Same manager-filtered result |
+    | Direct SQL | OCI IAM end user | Same database-filtered result | Same manager-filtered result |
+    | Analytics or reporting | OCI IAM end user | Same database-filtered result | Same manager-filtered result |
 
 2. Explain which database rule produced each difference.
 
-    TODO: Replace this placeholder with the final policy explanation.
+    `HRAPP_EMPLOYEES_ACCESS` allows employees to see their own row. `HRAPP_MANAGER_ACCESS` allows managers to see direct reports, but excludes SSN for those report rows. The same SQL returns different results because the database evaluates data grants from the active end-user data roles.
 
     You may now proceed to the next lab.
 

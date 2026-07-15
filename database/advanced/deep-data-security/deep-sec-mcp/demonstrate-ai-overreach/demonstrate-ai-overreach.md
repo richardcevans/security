@@ -16,7 +16,7 @@ In this lab, you will:
 
 ### Prerequisites
 
-- Simple AI application running from Lab 2.
+- AI prompt simulator running from Lab 2.
 - MCP tools connected from Lab 3.
 - Baseline sensitive data identified in Lab 1.
 
@@ -24,23 +24,51 @@ In this lab, you will:
 
 1. Ask the AI application for data that includes sensitive rows or columns.
 
-    TODO: Add the final prompt and expected output.
+    ```bash
+    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    source ./.deep-sec-mcp.env
+    ./simulate_ai_tool_access.sh --mode admin --prompt sensitive
+    ```
+
+    The simulator sends this prompt to the database tool path:
+
+    ```text
+    Show all employees, including salary, SSN, phone number, manager, and department.
+    ```
+
+    It then prints the SQL tool call and the live result from `hr.employees`.
 
 2. Record whether the app returns data that should be limited to a smaller audience.
 
 ## Task 2: Run the MCP Tool Call
 
-1. Run the equivalent MCP database tool call.
+1. Review the equivalent database tool call printed by the simulator.
 
-    TODO: Add the final tool input and expected output.
+    The tool call uses this SQL:
 
-2. Record whether the MCP path exposes the same data.
+    ```sql
+    SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id, department_id
+    FROM hr.employees
+    ORDER BY employee_id;
+    ```
+
+2. If your MCP client is connected, run the same SQL through the built-in SQL toolset.
+
+3. Record whether the MCP path exposes the same data.
 
 ## Task 3: Confirm the Risk
 
 1. Run a matching direct SQL query.
 
-    TODO: Add the final SQL query.
+    ```bash
+    sqlplus -L "admin/${ADMIN_PWD}@${ADB_SERVICE}"
+    ```
+
+    ```sql
+    SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id, department_id
+    FROM hr.employees
+    ORDER BY employee_id;
+    ```
 
 2. Summarize why a shared, overprivileged, or weakly scoped access path creates risk for AI applications.
 

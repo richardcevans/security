@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Configure and run a simple AI application that connects to Autonomous Database. The app is prebuilt so you can focus on secure data access.
+Configure and run a simple AI prompt simulator that connects to Autonomous Database. The simulator maps prompts to database tool calls so you can focus on secure data access.
 
 Estimated Time: 15 minutes
 
@@ -10,24 +10,18 @@ Estimated Time: 15 minutes
 
 In this lab, you will:
 
-- Configure the simple AI application.
-- Run the app against Autonomous Database.
+- Configure the simple AI prompt simulator.
+- Run prompt-driven database tool calls against Autonomous Database.
 - Capture the baseline data returned before you add MCP tools and security controls.
 
 ### Prerequisites
 
-- Simple AI application package or repository.
 - Database connection values from Lab 1.
-- Model provider and credentials for the selected app.
 - Optional `.deep-sec-mcp.env` file from Lab 1.
 
 ## Task 1: Configure the Application
 
-1. Open the simple AI application project.
-
-    Use the application package selected by your workshop environment.
-
-2. Configure the database connection.
+1. Configure the database connection.
 
     If you are using the optional scripts, source the same environment file and reuse the ADB service and wallet values.
 
@@ -38,27 +32,27 @@ In this lab, you will:
     echo "TNS_ADMIN=${TNS_ADMIN}"
     ```
 
-3. Configure the model provider.
-
-    Set the model provider values required by your selected application package.
-
 ## Task 2: Run the Application
 
-1. Start the AI application.
+1. Run the AI prompt simulator with the overprivileged ADMIN path.
 
-2. Ask a baseline question that reads from the sample schema.
+    ```bash
+    ./simulate_ai_tool_access.sh --mode admin --prompt all
+    ```
 
-    Example prompt:
+2. Review the first prompt.
+
+    The simulator prints the prompt, the SQL tool call it generated, and the live database result.
 
     ```text
     Show all employees, including salary, SSN, phone number, manager, and department.
     ```
 
-3. Record whether the app returns sensitive data before security controls run.
+3. Record whether the ADMIN-backed tool call returns sensitive data before security controls run.
 
 ## Task 3: Compare with Direct SQL
 
-1. Run a matching SQL query directly against Autonomous Database.
+1. The simulator already prints the matching SQL. You can also run the sensitive-data query directly.
 
     ```bash
     sqlplus -L "admin/${ADMIN_PWD}@${ADB_SERVICE}"

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Create or inspect an OCI Database Tools MCP Server for the workshop database. Connect a client and find the database tools.
+Create or inspect OCI Database Tools MCP Server resources for the workshop database. You can use existing resources, create them with the OCI Console, or create them from Cloud Shell with the optional lab script.
 
 Estimated Time: 25 minutes
 
@@ -11,40 +11,130 @@ Estimated Time: 25 minutes
 In this lab, you will:
 
 - Review the Database Tools connection.
-- Create or inspect the MCP server.
+- Create or inspect the Object Storage bucket, Database Tools connection, MCP server, and built-in SQL toolset.
 - Connect an OAuth-enabled MCP client.
 - Record the user flow for later security tests.
 
 ### Prerequisites
 
-- Database Tools connection for the workshop database.
+- Workshop database connection string.
 - OCI identity domain for the MCP server and client.
-- Object Storage bucket for MCP server setup.
+- Compartment where Database Tools and MCP resources can be created.
+- Object Storage bucket name for MCP server setup.
 - MCP-capable client selected for the workshop.
-- Permission to create or inspect apps in the identity domain.
+- Permission to create or inspect Database Tools, Object Storage, and identity-domain applications.
 - Optional `.deep-sec-mcp.env` file from Lab 1.
 
-## Task 1: Review the Database Tools Connection
+## Task 1: Choose the Setup Method
 
-1. Open OCI Database Tools.
+1. Choose how you will provide the Database Tools MCP resources.
 
-2. Confirm the connection for the workshop database.
+    Use one of these paths:
 
-3. Record the connection OCID for CLI-based setup.
+    - **Existing resources:** use a Database Tools connection and MCP server that were already created for you.
+    - **Cloud Shell script:** create the bucket, Database Tools connection, MCP server, and built-in SQL toolset from `.deep-sec-mcp.env`.
+    - **Terraform or Resource Manager:** use the Terraform package under `terraform/` to create as much of the sandbox as your tenancy allows.
 
-4. Confirm that the connection uses the approved authentication method.
+2. For this lab, prefer token-based Database Tools access when you are testing MCP end-user identity.
 
-5. If you use the optional scripts, record the value in `.deep-sec-mcp.env`.
+    Token mode lets the MCP path use the authenticated user's identity. Password mode is useful for early connectivity smoke tests, but it does not prove end-user least privilege by itself.
+
+3. Source the lab environment.
 
     ```bash
-    DATABASE_TOOLS_CONNECTION_ID=<database_tools_connection_ocid>
+    cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
+    source ./.deep-sec-mcp.env
     ```
 
-## Task 2: Create or Inspect the MCP Server
+## Task 2: Configure Inputs for Cloud Shell Creation
 
-1. Open Model Context Protocol Servers in OCI Database Tools.
+1. Open `.deep-sec-mcp.env`.
 
-2. Create or inspect the MCP server for this workshop.
+    ```bash
+    vi .deep-sec-mcp.env
+    ```
+
+2. Set the required MCP resource values.
+
+    ```bash
+    export MCP_COMPARTMENT_OCID="<compartment_ocid>"
+    export MCP_IDENTITY_DOMAIN_OCID="<identity_domain_ocid>"
+    export MCP_BUCKET_NAME="deep-sec-mcp-${USER}-mcp"
+    export MCP_SERVER_NAME="deep-sec-mcp-${USER}"
+    export MCP_BUILT_IN_SQL_TOOLSET_NAME="deep-sec-mcp-${USER}-built-in-sql-tools"
+    export MCP_BUILT_IN_SQL_TOOLSET_VERSION="1"
+    ```
+
+3. Set the Database Tools connection values.
+
+    For token-based MCP access:
+
+    ```bash
+    export DATABASE_TOOLS_CONNECTION_NAME="deep-sec-mcp-${USER}-connection"
+    export DATABASE_TOOLS_CONNECTION_STRING="<host>:1521/<service_name>"
+    export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="TOKEN"
+    export DATABASE_TOOLS_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
+    export MCP_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
+    ```
+
+4. If you must use password mode for a connectivity smoke test, set a Vault secret OCID instead.
+
+    ```bash
+    export DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="PASSWORD"
+    export DATABASE_TOOLS_CONNECTION_USER_NAME="WORKSHOP_USER"
+    export DATABASE_TOOLS_PASSWORD_SECRET_OCID="<vault_secret_ocid>"
+    ```
+
+5. If Database Tools must reach a private database listener, set the Database Tools private endpoint OCID.
+
+    ```bash
+    export DATABASE_TOOLS_PRIVATE_ENDPOINT_OCID="<database_tools_private_endpoint_ocid>"
+    ```
+
+6. If you want the connection associated with a known database or DB system, set the related resource values.
+
+    ```bash
+    export DATABASE_TOOLS_RELATED_RESOURCE_TYPE="DATABASE"
+    export DATABASE_TOOLS_RELATED_RESOURCE_OCID="<database_ocid>"
+    ```
+
+## Task 3: Create the Database Tools MCP Resources
+
+1. Run the helper script.
+
+    ```bash
+    source ./.deep-sec-mcp.env
+    ./create_mcp_server_tools.sh
+    ```
+
+    The script creates or confirms:
+
+    - Object Storage bucket
+    - Database Tools connection
+    - Database Tools MCP server
+    - built-in SQL MCP toolset
+
+2. Confirm that the script wrote the generated OCIDs back to `.deep-sec-mcp.env`.
+
+    ```bash
+    grep -E 'DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID' .deep-sec-mcp.env
+    ```
+
+3. If the script fails during connection creation, check the most common causes.
+
+    - The compartment policy does not allow Database Tools or Object Storage creation.
+    - The identity domain OCID is not in the same tenancy context.
+    - The database listener is private and no Database Tools private endpoint was supplied.
+    - Password mode was selected but the Vault secret OCID was not supplied.
+    - The built-in SQL toolset version is different in your region. Set `MCP_BUILT_IN_SQL_TOOLSET_VERSION` to the supported version and rerun the script.
+
+## Task 4: Create or Inspect the MCP Server in the Console
+
+1. Open **Developer Services**, then **Database Tools**.
+
+2. Open **Model Context Protocol Servers**.
+
+3. Create or inspect the MCP server for this workshop.
 
     The public OCI Database Tools documentation lists the required values:
 
@@ -54,21 +144,36 @@ In this lab, you will:
     - Object Storage bucket
     - runtime identity
 
-3. Confirm the compartment, domain, connection, bucket, and runtime identity.
+4. Confirm the compartment, domain, connection, bucket, and runtime identity.
 
-4. If you use the OCI CLI, start from this command shape and replace each placeholder.
+5. If you use the OCI CLI directly, start from this command shape and replace each placeholder.
 
     ```bash
     oci dbtools mcp-server create-mcp-server-default \
       --compartment-id <compartment_ocid> \
       --connection-id <database_tools_connection_ocid> \
       --display-name <mcp_server_name> \
-      --domain-id <identity_domain_ocid>
+      --domain-id <identity_domain_ocid> \
+      --storage '{"type":"OBJECT_STORAGE","bucket":{"namespace":"<namespace>","bucketName":"<bucket_name>"}}' \
+      --runtime-identity AUTHENTICATED_PRINCIPAL
     ```
 
-5. Record the runtime identity type.
+6. Record the runtime identity type.
 
-6. To print the optional Terraform and OCI CLI command shapes, run:
+7. Create or inspect the built-in SQL toolset for the MCP server.
+
+    If you use the OCI CLI directly, start from this command shape and replace each placeholder.
+
+    ```bash
+    oci dbtools mcp-toolset create-mcp-toolset-built-in-sql-tools \
+      --compartment-id <compartment_ocid> \
+      --display-name <toolset_name> \
+      --mcp-server-id <mcp_server_ocid> \
+      --toolset-version 1 \
+      --default-execution-type SYNCHRONOUS
+    ```
+
+8. To print the optional Terraform and OCI CLI command shapes, run:
 
     ```bash
     cd ~/security/database/advanced/deep-data-security/deep-sec-mcp
@@ -76,7 +181,7 @@ In this lab, you will:
     ./07_print_mcp_commands.sh
     ```
 
-## Task 3: Review the Identity Flow
+## Task 5: Review the Identity Flow
 
 1. Confirm the MCP client is an integrated app in the identity domain.
 
@@ -88,23 +193,29 @@ In this lab, you will:
     - The MCP server exchanges that context through OCI identity services.
     - The database receives access in the end-user context.
 
-    TODO: Replace this flow with the exact token and client setup steps.
+4. Confirm that the data-role mapping in Lab 5 uses `IAM_GROUP_NAME` for the MCP token path.
 
-## Task 4: Connect the MCP Client
+## Task 6: Connect the MCP Client
 
 1. Register or configure the MCP client.
 
-2. Connect the client to the MCP server.
+2. Open the MCP server details page and copy the endpoint URL.
 
-    Use the MCP endpoint shown in the OCI Console or recorded in `.deep-sec-mcp.env`.
+3. Record the endpoint in `.deep-sec-mcp.env`.
 
     ```bash
-    MCP_SERVER_ENDPOINT=<mcp_server_endpoint>
+    export MCP_SERVER_ENDPOINT="<mcp_server_endpoint>"
     ```
 
-3. Confirm that the client lists the database tools.
+4. Connect the client to the MCP server.
 
-4. Record the tool names and inputs for the next lab.
+    ```bash
+    echo "$MCP_SERVER_ENDPOINT"
+    ```
+
+5. Confirm that the client lists the database tools.
+
+6. Record the tool names and inputs for the next lab.
 
     You may now proceed to the next lab.
 

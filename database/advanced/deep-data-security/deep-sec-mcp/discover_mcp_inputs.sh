@@ -123,7 +123,7 @@ lookup_connection_id() {
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
-    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE'].id | [0]" \
+    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
     --raw-output 2>/dev/null || true
 }
 
@@ -134,6 +134,26 @@ get_connection_state() {
   oci_query dbtools connection get \
     --connection-id "$connection_id" \
     --query 'data."lifecycle-state"' \
+    --raw-output 2>/dev/null || true
+}
+
+get_connection_authentication_type() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."authentication-type"' \
+    --raw-output 2>/dev/null || true
+}
+
+get_connection_runtime_identity() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."runtime-identity"' \
     --raw-output 2>/dev/null || true
 }
 
@@ -242,8 +262,29 @@ require_cmd perl
 require_cmd python3
 
 DATABASE_TOOLS_CONNECTION_NAME="${DATABASE_TOOLS_CONNECTION_NAME:-deep-sec-mcp-connection}"
+DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE:-TOKEN}"
+DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE=$(printf '%s' "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" | tr '[:lower:]' '[:upper:]')
+if [ "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" = "TOKEN" ]; then
+  DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"
+  MCP_RUNTIME_IDENTITY="${MCP_RUNTIME_IDENTITY:-AUTHENTICATED_PRINCIPAL}"
+else
+  DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-AUTHENTICATED_PRINCIPAL}"
+  MCP_RUNTIME_IDENTITY="${MCP_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"
+fi
 MCP_SERVER_NAME="${MCP_SERVER_NAME:-deep-sec-mcp}"
 MCP_BUILT_IN_SQL_TOOLSET_NAME="${MCP_BUILT_IN_SQL_TOOLSET_NAME:-deep-sec-mcp-built-in-sql-tools}"
+
+if [ "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" = "TOKEN" ]; then
+  if [ "$MCP_RUNTIME_IDENTITY" != "AUTHENTICATED_PRINCIPAL" ]; then
+    MCP_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
+    show_found MCP_RUNTIME_IDENTITY "$MCP_RUNTIME_IDENTITY"
+  fi
+
+  if [ "$DATABASE_TOOLS_RUNTIME_IDENTITY" != "RESOURCE_PRINCIPAL" ]; then
+    DATABASE_TOOLS_RUNTIME_IDENTITY="RESOURCE_PRINCIPAL"
+    show_found DATABASE_TOOLS_RUNTIME_IDENTITY "$DATABASE_TOOLS_RUNTIME_IDENTITY"
+  fi
+fi
 
 echo
 echo -e "${GREEN}============================================================================${NC}"
@@ -322,6 +363,14 @@ if [ -n "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
     echo -e "${YELLOW}ignoring DATABASE_TOOLS_CONNECTION_ID=${DATABASE_TOOLS_CONNECTION_ID}; lifecycle state is ${DATABASE_TOOLS_CONNECTION_STATE:-unknown}${NC}"
     clear_env_key DATABASE_TOOLS_CONNECTION_ID
     DATABASE_TOOLS_CONNECTION_ID=""
+  else
+    DATABASE_TOOLS_CONNECTION_AUTH=$(normalize_discovered_value "$(get_connection_authentication_type "$DATABASE_TOOLS_CONNECTION_ID")")
+    DATABASE_TOOLS_CONNECTION_RUNTIME=$(normalize_discovered_value "$(get_connection_runtime_identity "$DATABASE_TOOLS_CONNECTION_ID")")
+    if [ "$DATABASE_TOOLS_CONNECTION_AUTH" != "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" ] || [ "$DATABASE_TOOLS_CONNECTION_RUNTIME" != "$DATABASE_TOOLS_RUNTIME_IDENTITY" ]; then
+      echo -e "${YELLOW}ignoring DATABASE_TOOLS_CONNECTION_ID=${DATABASE_TOOLS_CONNECTION_ID}; auth/runtime is ${DATABASE_TOOLS_CONNECTION_AUTH:-unknown}/${DATABASE_TOOLS_CONNECTION_RUNTIME:-unknown}${NC}"
+      clear_env_key DATABASE_TOOLS_CONNECTION_ID
+      DATABASE_TOOLS_CONNECTION_ID=""
+    fi
   fi
 fi
 

@@ -83,7 +83,7 @@ In this lab, you will:
     </copy>
     ```
 
-    The expected values for this lab are `DATABASE_TOOLS_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL` and `MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL`.
+    The expected values for token-based access in this lab are `DATABASE_TOOLS_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL` and `MCP_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL`.
 
 3. If a Database Tools connection was created but the script did not find it, run discovery and reload the environment.
 

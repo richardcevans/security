@@ -4,6 +4,8 @@
 
 Create the OCI Database Tools resources used by the MCP server path. This lab uses the workshop scripts to create or confirm the Object Storage bucket, Database Tools connection, MCP server, and built-in SQL toolset. You then review the resources in the OCI Console.
 
+In this workshop, "MCP Server Tools" means the OCI Database Tools MCP resources created for the lab: an Object Storage bucket, a Database Tools connection, a Database Tools MCP server, and a built-in SQL toolset.
+
 Estimated Time: 20 minutes
 
 ### Objectives
@@ -106,10 +108,80 @@ In this lab, you will:
 
     - the Database Tools connection from this lab
     - the Object Storage bucket from this lab
-    - authenticated principal runtime identity
+    - resource principal runtime identity for the MCP server
+    - authenticated principal runtime identity for the Database Tools connection
     - the built-in SQL toolset
 
-## Task 4: Review the MCP Client Boundary
+## Task 4: Validate MCP Resource State from Cloud Shell
+
+1. Return to Cloud Shell and source the lab environment.
+
+    ```bash
+    <copy>
+    cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
+    source ./.deep-sec-mcp.env
+    </copy>
+    ```
+
+2. Confirm the Object Storage bucket exists.
+
+    ```bash
+    <copy>
+    oci os bucket get \
+      --namespace-name "$NAMESPACE" \
+      --bucket-name "$MCP_BUCKET_NAME" \
+      --query 'data.name' \
+      --raw-output
+    </copy>
+    ```
+
+3. Confirm the Database Tools connection, MCP server, and built-in SQL toolset OCIDs are loaded.
+
+    ```bash
+    <copy>
+    env | grep -E '^(DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID|DATABASE_TOOLS_RUNTIME_IDENTITY|MCP_RUNTIME_IDENTITY)=' | sort
+    </copy>
+    ```
+
+4. Confirm that the Database Tools connection is available.
+
+    ```bash
+    <copy>
+    oci dbtools connection list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --type ORACLE_DATABASE \
+      --all \
+      --query "data[?id=='${DATABASE_TOOLS_CONNECTION_ID}'].\"lifecycle-state\" | [0]" \
+      --raw-output
+    </copy>
+    ```
+
+5. Confirm that the MCP server is available.
+
+    ```bash
+    <copy>
+    oci dbtools mcp-server list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --all \
+      --query "data[?id=='${MCP_SERVER_ID}'].\"lifecycle-state\" | [0]" \
+      --raw-output
+    </copy>
+    ```
+
+6. Confirm that the built-in SQL toolset is available.
+
+    ```bash
+    <copy>
+    oci dbtools mcp-toolset list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --type BUILT_IN_SQL_TOOLS \
+      --all \
+      --query "data[?id=='${MCP_BUILT_IN_SQL_TOOLSET_ID}'].\"lifecycle-state\" | [0]" \
+      --raw-output
+    </copy>
+    ```
+
+## Task 5: Review the MCP Client Boundary
 
 1. Use the OCI Console to create, inspect, and validate Database Tools and MCP resources.
 

@@ -42,7 +42,7 @@ In this lab, you will:
     </copy>
     ```
 
-    For Object Storage-backed MCP servers, `MCP_RUNTIME_IDENTITY` must be `RESOURCE_PRINCIPAL`, or the referenced Database Tools connection runtime identity must be `RESOURCE_PRINCIPAL`. This lab uses a token-based Database Tools connection and `MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL`.
+    For token-based Database Tools access, this lab uses `DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE=TOKEN`, `DATABASE_TOOLS_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL`, and `MCP_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL`. This pairing lets the MCP server use authenticated-principal user context while the referenced Database Tools connection satisfies the Object Storage runtime identity requirement.
 
 3. If any required value is missing, refresh the generated values and reload the environment.
 
@@ -108,8 +108,8 @@ In this lab, you will:
 
     - the Database Tools connection from this lab
     - the Object Storage bucket from this lab
-    - resource principal runtime identity for the MCP server
-    - authenticated principal runtime identity for the Database Tools connection
+    - authenticated principal runtime identity for the MCP server
+    - resource principal runtime identity for the Database Tools connection
     - the built-in SQL toolset
 
 ## Task 4: Validate MCP Resource State from Cloud Shell

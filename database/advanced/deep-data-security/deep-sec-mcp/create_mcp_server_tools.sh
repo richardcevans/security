@@ -195,7 +195,7 @@ lookup_connection_id() {
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
-    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE'].id | [0]" \
+    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
     --raw-output 2>/dev/null || true
 }
 
@@ -206,6 +206,26 @@ get_connection_state() {
   oci_query dbtools connection get \
     --connection-id "$connection_id" \
     --query 'data."lifecycle-state"' \
+    --raw-output 2>/dev/null || true
+}
+
+get_connection_authentication_type() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."authentication-type"' \
+    --raw-output 2>/dev/null || true
+}
+
+get_connection_runtime_identity() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."runtime-identity"' \
     --raw-output 2>/dev/null || true
 }
 
@@ -233,21 +253,37 @@ wait_for_connection_active() {
 validate_existing_connection_id() {
   local connection_id="$1"
   local state=""
+  local authentication_type=""
+  local runtime_identity=""
 
   [ -z "$connection_id" ] && return 1
   state=$(get_connection_state "$connection_id")
   state=$(normalize_discovered_value "$state")
 
-  if [ "$state" = "ACTIVE" ]; then
-    return 0
-  fi
-
   if [ -z "$state" ]; then
     echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; state could not be read.${NC}"
-  else
-    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; lifecycle state is ${state}.${NC}"
+    return 1
   fi
-  return 1
+
+  if [ "$state" != "ACTIVE" ]; then
+    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; lifecycle state is ${state}.${NC}"
+    return 1
+  fi
+
+  authentication_type=$(normalize_discovered_value "$(get_connection_authentication_type "$connection_id")")
+  runtime_identity=$(normalize_discovered_value "$(get_connection_runtime_identity "$connection_id")")
+
+  if [ "$authentication_type" != "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" ]; then
+    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; authentication type is ${authentication_type:-unknown}, expected ${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}.${NC}"
+    return 1
+  fi
+
+  if [ "$runtime_identity" != "$DATABASE_TOOLS_RUNTIME_IDENTITY" ]; then
+    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; runtime identity is ${runtime_identity:-unknown}, expected ${DATABASE_TOOLS_RUNTIME_IDENTITY}.${NC}"
+    return 1
+  fi
+
+  return 0
 }
 
 lookup_mcp_server_id() {
@@ -304,9 +340,14 @@ resource_suffix="${DEEPSEC_MCP_LAB_INSTANCE_SHORT:-${USER:-user}}"
 DATABASE_TOOLS_CONNECTION_NAME="${DATABASE_TOOLS_CONNECTION_NAME:-deep-sec-mcp-${resource_suffix}-connection}"
 DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE:-TOKEN}"
 DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE=$(printf '%s' "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" | tr '[:lower:]' '[:upper:]')
-DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-AUTHENTICATED_PRINCIPAL}"
 MCP_SERVER_NAME="${MCP_SERVER_NAME:-deep-sec-mcp-${resource_suffix}}"
-MCP_RUNTIME_IDENTITY="${MCP_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"
+if [ "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" = "TOKEN" ]; then
+  DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"
+  MCP_RUNTIME_IDENTITY="${MCP_RUNTIME_IDENTITY:-AUTHENTICATED_PRINCIPAL}"
+else
+  DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-AUTHENTICATED_PRINCIPAL}"
+  MCP_RUNTIME_IDENTITY="${MCP_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"
+fi
 MCP_CREATE_BUILT_IN_SQL_TOOLSET="${MCP_CREATE_BUILT_IN_SQL_TOOLSET:-1}"
 MCP_BUILT_IN_SQL_TOOLSET_NAME="${MCP_BUILT_IN_SQL_TOOLSET_NAME:-deep-sec-mcp-${resource_suffix}-built-in-sql-tools}"
 MCP_BUILT_IN_SQL_TOOLSET_VERSION="${MCP_BUILT_IN_SQL_TOOLSET_VERSION:-1}"
@@ -362,7 +403,21 @@ append_or_replace_env DATABASE_TOOLS_RUNTIME_IDENTITY "$DATABASE_TOOLS_RUNTIME_I
 append_or_replace_env MCP_RUNTIME_IDENTITY "$MCP_RUNTIME_IDENTITY"
 append_or_replace_env DATABASE_TOOLS_CONNECTION_STRING "${DATABASE_TOOLS_CONNECTION_STRING:-}"
 
-if [ "$DATABASE_TOOLS_RUNTIME_IDENTITY" = "AUTHENTICATED_PRINCIPAL" ] && [ "$MCP_RUNTIME_IDENTITY" = "AUTHENTICATED_PRINCIPAL" ]; then
+if [ "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" = "TOKEN" ]; then
+  if [ "$MCP_RUNTIME_IDENTITY" != "AUTHENTICATED_PRINCIPAL" ]; then
+    echo -e "${YELLOW}TOKEN-based Database Tools connections require MCP_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL.${NC}"
+    echo -e "${YELLOW}Setting MCP_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL for this lab.${NC}"
+    MCP_RUNTIME_IDENTITY="AUTHENTICATED_PRINCIPAL"
+    append_or_replace_env MCP_RUNTIME_IDENTITY "$MCP_RUNTIME_IDENTITY"
+  fi
+
+  if [ "$DATABASE_TOOLS_RUNTIME_IDENTITY" != "RESOURCE_PRINCIPAL" ]; then
+    echo -e "${YELLOW}Object Storage-backed MCP servers need RESOURCE_PRINCIPAL on the referenced TOKEN connection.${NC}"
+    echo -e "${YELLOW}Setting DATABASE_TOOLS_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL for this lab.${NC}"
+    DATABASE_TOOLS_RUNTIME_IDENTITY="RESOURCE_PRINCIPAL"
+    append_or_replace_env DATABASE_TOOLS_RUNTIME_IDENTITY "$DATABASE_TOOLS_RUNTIME_IDENTITY"
+  fi
+elif [ "$DATABASE_TOOLS_RUNTIME_IDENTITY" = "AUTHENTICATED_PRINCIPAL" ] && [ "$MCP_RUNTIME_IDENTITY" = "AUTHENTICATED_PRINCIPAL" ]; then
   echo -e "${YELLOW}Object Storage-backed MCP servers require the MCP server or referenced connection runtime identity to be RESOURCE_PRINCIPAL.${NC}"
   echo -e "${YELLOW}Setting MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL for this lab.${NC}"
   MCP_RUNTIME_IDENTITY="RESOURCE_PRINCIPAL"

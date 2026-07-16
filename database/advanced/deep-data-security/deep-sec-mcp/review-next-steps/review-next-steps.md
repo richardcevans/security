@@ -27,7 +27,7 @@ In this lab, you will:
 
 ## Task 2: Clean Up Resources
 
-1. To return to a state similar to the end of the `adb-oci-iam` lab, remove only the DeepSec MCP-specific Database Tools resources.
+1. For most workshop runs, remove only the DeepSec MCP-specific Database Tools resources.
 
     This keeps ADB-S, OCI IAM OAuth applications, groups, users, wallet, and database objects.
 
@@ -63,7 +63,52 @@ In this lab, you will:
     </copy>
     ```
 
-## Task 3: Plan Next Steps
+## Task 3: Troubleshoot Common Issues
+
+1. If SQL*Plus returns `ORA-12154`, confirm the wallet and service variables are loaded.
+
+    ```bash
+    <copy>
+    source ./.deep-sec-mcp.env
+    env | grep -E '^(ADB_SERVICE|TNS_ADMIN|WALLET_DIR|DB_NAME)=' | sort
+    ./verify_db_setup.sh
+    </copy>
+    ```
+
+2. If MCP server creation fails with a runtime identity error, confirm the MCP server uses resource principal.
+
+    ```bash
+    <copy>
+    env | grep -E '^(DATABASE_TOOLS_RUNTIME_IDENTITY|MCP_RUNTIME_IDENTITY)=' | sort
+    </copy>
+    ```
+
+    The expected values for this lab are `DATABASE_TOOLS_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL` and `MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL`.
+
+3. If a Database Tools connection was created but the script did not find it, run discovery and reload the environment.
+
+    ```bash
+    <copy>
+    ./discover_mcp_inputs.sh
+    source ./.deep-sec-mcp.env
+    env | grep -E '^(DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID)=' | sort
+    </copy>
+    ```
+
+4. If `.deep-sec-mcp.env` is missing, recreate it from the lab scripts.
+
+    ```bash
+    <copy>
+    ./00_configure_lab_env.sh
+    source ./.deep-sec-mcp.env
+    </copy>
+    ```
+
+5. If an OCI command fails with an authentication error, refresh your Cloud Shell session or rerun the OCI login flow used by your tenancy.
+
+6. If an OCI command fails with an authorization error, confirm your compartment policy allows the required Object Storage and Database Tools operations.
+
+## Task 4: Plan Next Steps
 
 1. Identify which customer AI workflows use shared, broad, or weakly scoped database access.
 

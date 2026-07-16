@@ -22,7 +22,13 @@ In this lab, you will:
 
 ## Task 1: Run the Overreach Prompt
 
-1. Ask the AI application for data that includes sensitive rows or columns.
+1. Review the prompt that creates the overreach baseline.
+
+    | Prompt | Access Path | Expected Before Controls |
+    | --- | --- | --- |
+    | Show all employees, including salary, SSN, phone number, manager, and department. | ADMIN-backed prompt-to-tool call | Full sensitive result set |
+
+2. Ask the AI application for data that includes sensitive rows or columns.
 
     ```bash
     <copy>
@@ -42,7 +48,7 @@ In this lab, you will:
 
     It then prints the SQL tool call and the live result from `hr.employees`.
 
-2. Record whether the app returns data that should be limited to a smaller audience.
+3. Record whether the app returns data that should be limited to a smaller audience.
 
 ## Task 2: Run the MCP Tool Call
 

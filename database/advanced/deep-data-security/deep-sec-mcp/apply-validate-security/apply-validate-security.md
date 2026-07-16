@@ -110,7 +110,15 @@ In this lab, you will:
 
 ## Task 4: Complete the Results Matrix
 
-1. Record the expected and actual result for each path.
+1. Compare the prompts against the expected results.
+
+    | Prompt | Identity Context | Expected Result After Controls |
+    | --- | --- | --- |
+    | Show my employee profile. | Employee | Employee sees only their own row |
+    | Show my direct reports. | Manager | Manager sees self and direct reports |
+    | Show salary and SSN. | Employee or manager | Sensitive values follow the active data grants |
+
+2. Record the expected and actual result for each path.
 
     | Access Path | Identity Context | Restricted Result | Privileged Result |
     | --- | --- | --- | --- |
@@ -119,7 +127,7 @@ In this lab, you will:
     | Direct SQL | OCI IAM end user | Same database-filtered result | Same manager-filtered result |
     | Analytics or reporting | OCI IAM end user | Same database-filtered result | Same manager-filtered result |
 
-2. Explain which database rule produced each difference.
+3. Explain which database rule produced each difference.
 
     `HRAPP_EMPLOYEES_ACCESS` allows employees to see their own row. `HRAPP_MANAGER_ACCESS` allows managers to see direct reports, but excludes SSN for those report rows. The same SQL returns different results because the database evaluates data grants from the active end-user data roles.
 

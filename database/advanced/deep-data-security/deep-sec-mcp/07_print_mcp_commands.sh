@@ -58,7 +58,7 @@ For token-based MCP access, use:
 
   DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE=TOKEN
   DATABASE_TOOLS_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL
-  MCP_RUNTIME_IDENTITY=AUTHENTICATED_PRINCIPAL
+  MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL
   MCP_CREATE_BUILT_IN_SQL_TOOLSET=1
   MCP_BUILT_IN_SQL_TOOLSET_VERSION=1
 
@@ -70,7 +70,7 @@ Command shape:
     --display-name "deep-sec-mcp" \\
     --domain-id "${MCP_IDENTITY_DOMAIN_OCID:-<identity_domain_ocid>}" \\
     --storage '{"type":"OBJECT_STORAGE","bucket":{"namespace":"<namespace>","bucketName":"<bucket_name>"}}' \\
-    --runtime-identity AUTHENTICATED_PRINCIPAL
+    --runtime-identity RESOURCE_PRINCIPAL
 
 Built-in SQL toolset command shape:
 

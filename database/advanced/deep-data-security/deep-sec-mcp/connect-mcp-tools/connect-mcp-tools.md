@@ -123,58 +123,22 @@ In this lab, you will:
     </copy>
     ```
 
-2. Confirm the Object Storage bucket exists.
+2. Run the MCP resource verification script.
 
     ```bash
     <copy>
-    oci os bucket get \
-      --namespace-name "$NAMESPACE" \
-      --bucket-name "$MCP_BUCKET_NAME" \
-      --query 'data.name' \
-      --raw-output
+    ./verify_mcp_resources.sh
     </copy>
     ```
 
-3. Confirm the Database Tools connection, MCP server, and built-in SQL toolset OCIDs are loaded.
+3. Confirm the script reports `PASS` for:
 
-    ```bash
-    <copy>
-    env | grep -E '^(DATABASE_TOOLS_CONNECTION_ID|MCP_SERVER_ID|MCP_BUILT_IN_SQL_TOOLSET_ID|DATABASE_TOOLS_RUNTIME_IDENTITY|MCP_RUNTIME_IDENTITY)=' | sort
-    </copy>
-    ```
-
-4. Confirm that the Database Tools connection is available.
-
-    ```bash
-    <copy>
-    oci dbtools connection get \
-      --connection-id "$DATABASE_TOOLS_CONNECTION_ID" \
-      --query 'data."lifecycle-state"' \
-      --raw-output
-    </copy>
-    ```
-
-5. Confirm that the MCP server is available.
-
-    ```bash
-    <copy>
-    oci dbtools mcp-server get \
-      --mcp-server-id "$MCP_SERVER_ID" \
-      --query 'data."lifecycle-state"' \
-      --raw-output
-    </copy>
-    ```
-
-6. Confirm that the built-in SQL toolset is available.
-
-    ```bash
-    <copy>
-    oci dbtools mcp-toolset get \
-      --mcp-toolset-id "$MCP_BUILT_IN_SQL_TOOLSET_ID" \
-      --query 'data."lifecycle-state"' \
-      --raw-output
-    </copy>
-    ```
+    - Object Storage bucket
+    - Database Tools connection
+    - Database Tools connection runtime identity
+    - MCP server
+    - MCP server runtime identity
+    - built-in SQL MCP toolset
 
 ## Task 5: Review the MCP Client Boundary
 

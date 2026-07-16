@@ -40,6 +40,7 @@ Use the same prompt set before and after the security controls are applied.
 - Run AI-style prompts that map to database tool calls against Autonomous Database.
 - Connect MCP server tools and demonstrate AI overreach.
 - Apply and validate least-privilege access with Deep Data Security.
+- Optionally connect VS Code and Cline as an external MCP client.
 
 Estimated Workshop Time: 110 minutes
 

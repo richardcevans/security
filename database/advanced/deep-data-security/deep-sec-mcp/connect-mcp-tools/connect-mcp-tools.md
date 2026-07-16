@@ -147,11 +147,9 @@ In this lab, you will:
 
     ```bash
     <copy>
-    oci dbtools connection list \
-      --compartment-id "$MCP_COMPARTMENT_OCID" \
-      --type ORACLE_DATABASE \
-      --all \
-      --query "data[?id=='${DATABASE_TOOLS_CONNECTION_ID}'].\"lifecycle-state\" | [0]" \
+    oci dbtools connection get \
+      --connection-id "$DATABASE_TOOLS_CONNECTION_ID" \
+      --query 'data."lifecycle-state"' \
       --raw-output
     </copy>
     ```
@@ -160,10 +158,9 @@ In this lab, you will:
 
     ```bash
     <copy>
-    oci dbtools mcp-server list \
-      --compartment-id "$MCP_COMPARTMENT_OCID" \
-      --all \
-      --query "data[?id=='${MCP_SERVER_ID}'].\"lifecycle-state\" | [0]" \
+    oci dbtools mcp-server get \
+      --mcp-server-id "$MCP_SERVER_ID" \
+      --query 'data."lifecycle-state"' \
       --raw-output
     </copy>
     ```
@@ -172,11 +169,9 @@ In this lab, you will:
 
     ```bash
     <copy>
-    oci dbtools mcp-toolset list \
-      --compartment-id "$MCP_COMPARTMENT_OCID" \
-      --type BUILT_IN_SQL_TOOLS \
-      --all \
-      --query "data[?id=='${MCP_BUILT_IN_SQL_TOOLSET_ID}'].\"lifecycle-state\" | [0]" \
+    oci dbtools mcp-toolset get \
+      --mcp-toolset-id "$MCP_BUILT_IN_SQL_TOOLSET_ID" \
+      --query 'data."lifecycle-state"' \
       --raw-output
     </copy>
     ```

@@ -40,6 +40,8 @@ In this lab, you will:
     </copy>
     ```
 
+    For Object Storage-backed MCP servers, `MCP_RUNTIME_IDENTITY` must be `RESOURCE_PRINCIPAL`, or the referenced Database Tools connection runtime identity must be `RESOURCE_PRINCIPAL`. This lab uses a token-based Database Tools connection and `MCP_RUNTIME_IDENTITY=RESOURCE_PRINCIPAL`.
+
 3. If any required value is missing, refresh the generated values and reload the environment.
 
     ```bash

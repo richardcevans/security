@@ -10,7 +10,7 @@ Estimated Time: 10 minutes
 
 In this lab, you will:
 
-- Complete the first outcome.
+- Download the workshop script bundle.
 - Confirm database connectivity.
 - Review the sample schema and sensitive data.
 - Identify the users, roles, groups, and application paths used in later labs.
@@ -45,11 +45,9 @@ In this lab, you will:
     </copy>
     ```
 
-## Task 1: Confirm the Database
+## Task 1: Create or Confirm the Database
 
-1. Open OCI Cloud Shell or your approved lab client.
-
-2. Change to the workshop script directory.
+1. Change to the workshop script directory.
 
     ```bash
     <copy>
@@ -57,9 +55,7 @@ In this lab, you will:
     </copy>
     ```
 
-3. Choose how you want to prepare the database and OCI IAM values.
-
-    For a Free Tier or self-contained ADB-S run, create or reuse ADB-S and OCI IAM resources from Cloud Shell:
+2. Create or reuse the ADB-S and OCI IAM resources from Cloud Shell.
 
     ```bash
     <copy>
@@ -77,39 +73,23 @@ In this lab, you will:
     - ADB wallet
     - MCP setup defaults for Database Tools
 
-    If you use pre-provisioned resources instead, create the optional script environment file.
+3. Confirm the database and identity values loaded into your current shell.
+
+    ```bash
+    <copy>
+    env | grep -E '^(DB_NAME|ADB_OCID|ADB_SERVICE|TNS_ADMIN|WALLET_DIR|OCI_DOMAIN_URL|OCI_CLIENT_APP|OCI_SCOPE)=' | sort
+    </copy>
+    ```
+
+4. If you use pre-provisioned resources instead of the setup script, create the script environment file and then confirm the loaded values.
 
     ```bash
     <copy>
     ./00_configure_lab_env.sh
     source ./.deep-sec-mcp.env
+    env | grep -E '^(DB_NAME|ADB_OCID|ADB_SERVICE|TNS_ADMIN|WALLET_DIR|OCI_DOMAIN_URL|OCI_CLIENT_APP|OCI_SCOPE)=' | sort
     </copy>
     ```
-
-4. Edit `.deep-sec-mcp.env` and set any values not supplied by Terraform, Resource Manager, your workshop reservation, or `setup_adbs_oci_iam.sh`.
-
-    Required database values:
-
-    ```bash
-    <copy>
-    DB_NAME
-    ADB_SERVICE
-    ADMIN_PWD
-    WALLET_DIR
-    TNS_ADMIN
-    </copy>
-    ```
-
-5. If the wallet was not preloaded or created by `setup_adbs_oci_iam.sh`, download it after setting `ADB_OCID`.
-
-    ```bash
-    <copy>
-    DOWNLOAD_WALLET=1 ./00_configure_lab_env.sh
-    source ./.deep-sec-mcp.env
-    </copy>
-    ```
-
-6. Record the database service name and connection method used by the simple app and MCP server.
 
 ## Task 2: Review Sample Data
 
@@ -131,23 +111,17 @@ In this lab, you will:
     </copy>
     ```
 
-## Task 3: Review Access Paths
+## Task 3: Confirm Identity Inputs
 
-1. Review the planned access paths: direct SQL, AI application, MCP tool call, and analytics or reporting.
-
-2. Record the baseline users, groups, or roles that will produce different results later.
-
-    The optional scripts use these OCI IAM test users and groups:
+1. Confirm the users, groups, and data-role mapping type that later labs use for identity-aware tests.
 
     ```bash
     <copy>
-    MARVIN_USERNAME=marvin
-    EMMA_USERNAME=emma
-    OCI_IAM_EMPLOYEE_GROUP=Default/deepsec-employees
-    OCI_IAM_MANAGER_GROUP=Default/deepsec-managers
-    DATA_ROLE_MAPPING_TYPE=IAM_GROUP_NAME
+    env | grep -E '^(MARVIN_USERNAME|EMMA_USERNAME|OCI_IAM_EMPLOYEE_GROUP|OCI_IAM_MANAGER_GROUP|DATA_ROLE_MAPPING_TYPE)=' | sort
     </copy>
     ```
+
+2. Keep these values loaded. Lab 5 uses the group names to create database data roles and prove that the same data-layer rules apply to SQL, the AI prompt simulator, and MCP tool access.
 
     You may now proceed to the next lab.
 

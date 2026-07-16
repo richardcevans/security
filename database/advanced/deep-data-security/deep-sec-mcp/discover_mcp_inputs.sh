@@ -46,6 +46,13 @@ append_or_replace_env() {
   fi
 }
 
+clear_env_key() {
+  local key="$1"
+  if grep -q "^export ${key}=" "$ENV_FILE"; then
+    perl -ni -e "print unless /^export ${key}=/" "$ENV_FILE"
+  fi
+}
+
 show_found() {
   echo -e "${GREEN}found ${1}=${2}${NC}"
   append_or_replace_env "$1" "$2"
@@ -116,7 +123,17 @@ lookup_connection_id() {
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
-    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}'].id | [0]" \
+    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE'].id | [0]" \
+    --raw-output 2>/dev/null || true
+}
+
+get_connection_state() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."lifecycle-state"' \
     --raw-output 2>/dev/null || true
 }
 
@@ -297,6 +314,15 @@ if [ -n "${MCP_IDENTITY_DOMAIN_OCID:-}" ] && [ "$MCP_IDENTITY_DOMAIN_OCID" != "n
 else
   show_missing MCP_IDENTITY_DOMAIN_OCID
   echo "  Set MCP_IDENTITY_DOMAIN_NAME, OCI_DOMAIN_URL, or MCP_IDENTITY_DOMAIN_OCID."
+fi
+
+if [ -n "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
+  DATABASE_TOOLS_CONNECTION_STATE=$(normalize_discovered_value "$(get_connection_state "$DATABASE_TOOLS_CONNECTION_ID")")
+  if [ "$DATABASE_TOOLS_CONNECTION_STATE" != "ACTIVE" ]; then
+    echo -e "${YELLOW}ignoring DATABASE_TOOLS_CONNECTION_ID=${DATABASE_TOOLS_CONNECTION_ID}; lifecycle state is ${DATABASE_TOOLS_CONNECTION_STATE:-unknown}${NC}"
+    clear_env_key DATABASE_TOOLS_CONNECTION_ID
+    DATABASE_TOOLS_CONNECTION_ID=""
+  fi
 fi
 
 if [ -z "${DATABASE_TOOLS_CONNECTION_ID:-}" ] && [ -n "${MCP_COMPARTMENT_OCID:-}" ] && [ "$MCP_COMPARTMENT_OCID" != "null" ]; then

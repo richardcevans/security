@@ -52,6 +52,13 @@ append_or_replace_env() {
   fi
 }
 
+clear_env_key() {
+  local key="$1"
+  if grep -q "^export ${key}=" "$ENV_FILE"; then
+    perl -ni -e "print unless /^export ${key}=/" "$ENV_FILE"
+  fi
+}
+
 lookup_compartment_from_adb() {
   [ -z "${ADB_OCID:-}" ] && return
   oci_query db autonomous-database get \
@@ -188,8 +195,59 @@ lookup_connection_id() {
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
-    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}'].id | [0]" \
+    --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE'].id | [0]" \
     --raw-output 2>/dev/null || true
+}
+
+get_connection_state() {
+  local connection_id="$1"
+  [ -z "$connection_id" ] && return
+
+  oci_query dbtools connection get \
+    --connection-id "$connection_id" \
+    --query 'data."lifecycle-state"' \
+    --raw-output 2>/dev/null || true
+}
+
+wait_for_connection_active() {
+  local connection_id="$1"
+  local state=""
+
+  for _ in {1..24}; do
+    state=$(get_connection_state "$connection_id")
+    state=$(normalize_discovered_value "$state")
+    if [ "$state" = "ACTIVE" ]; then
+      return 0
+    fi
+    if [ "$state" = "DELETED" ] || [ "$state" = "DELETING" ] || [ "$state" = "FAILED" ]; then
+      echo -e "${RED}ERROR: Database Tools connection ${connection_id} is ${state}.${NC}" >&2
+      return 1
+    fi
+    sleep 5
+  done
+
+  echo -e "${RED}ERROR: Database Tools connection ${connection_id} did not become ACTIVE. Last state: ${state:-unknown}.${NC}" >&2
+  return 1
+}
+
+validate_existing_connection_id() {
+  local connection_id="$1"
+  local state=""
+
+  [ -z "$connection_id" ] && return 1
+  state=$(get_connection_state "$connection_id")
+  state=$(normalize_discovered_value "$state")
+
+  if [ "$state" = "ACTIVE" ]; then
+    return 0
+  fi
+
+  if [ -z "$state" ]; then
+    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; state could not be read.${NC}"
+  else
+    echo -e "${YELLOW}Ignoring Database Tools connection ${connection_id}; lifecycle state is ${state}.${NC}"
+  fi
+  return 1
 }
 
 lookup_mcp_server_id() {
@@ -350,6 +408,15 @@ else
     --storage-tier Standard >/dev/null
 fi
 
+if [ -n "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
+  if validate_existing_connection_id "$DATABASE_TOOLS_CONNECTION_ID"; then
+    echo -e "${YELLOW}Using existing Database Tools connection: ${DATABASE_TOOLS_CONNECTION_ID}${NC}"
+  else
+    clear_env_key DATABASE_TOOLS_CONNECTION_ID
+    DATABASE_TOOLS_CONNECTION_ID=""
+  fi
+fi
+
 if [ -z "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
   require_var DATABASE_TOOLS_CONNECTION_STRING
 
@@ -401,9 +468,9 @@ if [ -z "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
 
     append_or_replace_env DATABASE_TOOLS_CONNECTION_ID "$DATABASE_TOOLS_CONNECTION_ID"
   fi
-else
-  echo -e "${YELLOW}Using existing Database Tools connection: ${DATABASE_TOOLS_CONNECTION_ID}${NC}"
 fi
+
+wait_for_connection_active "$DATABASE_TOOLS_CONNECTION_ID"
 
 if [ -z "${MCP_SERVER_ID:-}" ]; then
   existing_mcp_server_id=$(lookup_mcp_server_id)

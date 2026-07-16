@@ -29,8 +29,7 @@ In this lab, you will:
     <copy>
     cd "$HOME/dbsec-labs/deep-data-security/deep-sec-mcp"
     source ./.deep-sec-mcp.env
-    echo "ADB_SERVICE=${ADB_SERVICE}"
-    echo "TNS_ADMIN=${TNS_ADMIN}"
+    env | grep -E '^(ADB_SERVICE|TNS_ADMIN|WALLET_DIR|ADMIN_USER|DB_NAME)=' | sort
     </copy>
     ```
 
@@ -71,6 +70,7 @@ In this lab, you will:
     SELECT employee_id, first_name, last_name, user_name, ssn, salary, phone_number, manager_id
     FROM hr.employees
     ORDER BY employee_id;
+    EXIT;
     </copy>
     ```
 

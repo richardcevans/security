@@ -33,9 +33,9 @@ Learners then apply Deep Data Security controls and rerun the same AI, MCP, SQL,
 - Deep Data Security feature availability in the target database environment.
 - Included AI prompt and tool-access simulator scripts.
 - OCI Database Tools connection and permissions to create an MCP server.
-- OCI identity domain for the MCP server and registered MCP client.
+- OCI identity domain for the MCP server.
 - Object Storage bucket for the MCP server.
-- MCP-capable client for testing tool discovery and tool calls.
+- Optional external MCP client for additional tool discovery and testing.
 
 ## Notes
 
@@ -43,7 +43,7 @@ Learners then apply Deep Data Security controls and rerun the same AI, MCP, SQL,
 - Draft lab count: five hands-on labs plus a short wrap-up.
 - Current mode: draft skeleton.
 - Scope decision: learners use the included prompt-to-SQL tool simulator instead of building an app from scratch.
-- SME gap: confirm the MCP client used in the workshop and the exact OAuth or client registration steps.
+- SME gap: confirm whether an external MCP client should be added as an optional extension after the scripted lab path.
 - SME gap: confirm whether the MCP server runtime identity uses authenticated principal or resource principal.
 - SME gap: confirm the public Deep Data Security syntax for mapped data roles, application identity, and data grants before publishing.
 - Source guidance: use the internal Database Tools MCP server integration functional specification only for SME validation; use public Oracle documentation for customer-facing claims and commands.

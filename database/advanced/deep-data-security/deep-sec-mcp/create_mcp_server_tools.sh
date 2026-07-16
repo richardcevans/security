@@ -386,10 +386,11 @@ if [ -z "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
     fi
 
     echo -e "${CYAN}Creating Database Tools connection: ${DATABASE_TOOLS_CONNECTION_NAME}${NC}"
-    "${connection_cmd[@]}" >/dev/null
-
-    echo -e "${CYAN}Looking up Database Tools connection OCID.${NC}"
-    DATABASE_TOOLS_CONNECTION_ID=$(wait_for_lookup "Database Tools connection" lookup_connection_id)
+    DATABASE_TOOLS_CONNECTION_ID=$("${connection_cmd[@]}" --query 'data.id' --raw-output)
+    if [ -z "$DATABASE_TOOLS_CONNECTION_ID" ] || [ "$DATABASE_TOOLS_CONNECTION_ID" = "null" ]; then
+      echo -e "${CYAN}Looking up Database Tools connection OCID.${NC}"
+      DATABASE_TOOLS_CONNECTION_ID=$(wait_for_lookup "Database Tools connection" lookup_connection_id)
+    fi
 
     append_or_replace_env DATABASE_TOOLS_CONNECTION_ID "$DATABASE_TOOLS_CONNECTION_ID"
   fi
@@ -408,16 +409,19 @@ if [ -z "${MCP_SERVER_ID:-}" ]; then
       "$NAMESPACE" "$MCP_BUCKET_NAME" > "$tmpdir/mcp-storage.json"
 
     echo -e "${CYAN}Creating MCP server: ${MCP_SERVER_NAME}${NC}"
-    oci_query dbtools mcp-server create-mcp-server-default \
+    MCP_SERVER_ID=$(oci_query dbtools mcp-server create-mcp-server-default \
       --compartment-id "$MCP_COMPARTMENT_OCID" \
       --connection-id "$DATABASE_TOOLS_CONNECTION_ID" \
       --display-name "$MCP_SERVER_NAME" \
       --domain-id "$MCP_IDENTITY_DOMAIN_OCID" \
       --runtime-identity "$MCP_RUNTIME_IDENTITY" \
-      --storage "file://$tmpdir/mcp-storage.json" >/dev/null
-
-    echo -e "${CYAN}Looking up MCP server OCID.${NC}"
-    MCP_SERVER_ID=$(wait_for_lookup "MCP server" lookup_mcp_server_id)
+      --storage "file://$tmpdir/mcp-storage.json" \
+      --query 'data.id' \
+      --raw-output)
+    if [ -z "$MCP_SERVER_ID" ] || [ "$MCP_SERVER_ID" = "null" ]; then
+      echo -e "${CYAN}Looking up MCP server OCID.${NC}"
+      MCP_SERVER_ID=$(wait_for_lookup "MCP server" lookup_mcp_server_id)
+    fi
 
     append_or_replace_env MCP_SERVER_ID "$MCP_SERVER_ID"
   fi
@@ -434,15 +438,18 @@ if [ "$MCP_CREATE_BUILT_IN_SQL_TOOLSET" = "1" ] || [ "$MCP_CREATE_BUILT_IN_SQL_T
       append_or_replace_env MCP_BUILT_IN_SQL_TOOLSET_ID "$MCP_BUILT_IN_SQL_TOOLSET_ID"
     else
       echo -e "${CYAN}Creating built-in SQL MCP toolset: ${MCP_BUILT_IN_SQL_TOOLSET_NAME}${NC}"
-      oci_query dbtools mcp-toolset create-mcp-toolset-built-in-sql-tools \
+      MCP_BUILT_IN_SQL_TOOLSET_ID=$(oci_query dbtools mcp-toolset create-mcp-toolset-built-in-sql-tools \
         --compartment-id "$MCP_COMPARTMENT_OCID" \
         --display-name "$MCP_BUILT_IN_SQL_TOOLSET_NAME" \
         --mcp-server-id "$MCP_SERVER_ID" \
         --toolset-version "$MCP_BUILT_IN_SQL_TOOLSET_VERSION" \
-        --default-execution-type SYNCHRONOUS >/dev/null
-
-      echo -e "${CYAN}Looking up built-in SQL MCP toolset OCID.${NC}"
-      MCP_BUILT_IN_SQL_TOOLSET_ID=$(wait_for_lookup "built-in SQL MCP toolset" lookup_toolset_id)
+        --default-execution-type SYNCHRONOUS \
+        --query 'data.id' \
+        --raw-output)
+      if [ -z "$MCP_BUILT_IN_SQL_TOOLSET_ID" ] || [ "$MCP_BUILT_IN_SQL_TOOLSET_ID" = "null" ]; then
+        echo -e "${CYAN}Looking up built-in SQL MCP toolset OCID.${NC}"
+        MCP_BUILT_IN_SQL_TOOLSET_ID=$(wait_for_lookup "built-in SQL MCP toolset" lookup_toolset_id)
+      fi
 
       append_or_replace_env MCP_BUILT_IN_SQL_TOOLSET_ID "$MCP_BUILT_IN_SQL_TOOLSET_ID"
     fi
@@ -460,4 +467,4 @@ echo "DATABASE_TOOLS_CONNECTION_ID=${DATABASE_TOOLS_CONNECTION_ID}"
 echo "MCP_SERVER_ID=${MCP_SERVER_ID}"
 echo "MCP_BUILT_IN_SQL_TOOLSET_ID=${MCP_BUILT_IN_SQL_TOOLSET_ID:-}"
 echo
-echo -e "${YELLOW}Next: open the MCP server in the OCI Console to register or configure your MCP client and record MCP_SERVER_ENDPOINT in .deep-sec-mcp.env.${NC}"
+echo -e "${YELLOW}Next: open Database Tools in the OCI Console and review the connection, MCP server, and built-in SQL toolset.${NC}"

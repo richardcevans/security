@@ -14,7 +14,7 @@ In this workshop, you run an AI prompt and tool-access simulator, connect OCI Da
 - Included AI prompt and tool-access simulator scripts.
 - OCI Database Tools connection and permission to create an MCP server.
 - OCI identity domain and Object Storage bucket for MCP server setup.
-- MCP-capable client for tool discovery and testing.
+- Optional external MCP client for additional tool discovery and testing.
 
 ### Objectives
 

@@ -84,16 +84,38 @@ In this lab, you will:
     | Name | `deep-sec-mcp-cline` |
     | Description | `VS Code Cline client for DeepSec MCP workshop` |
     | Type | `Public` |
-    | Allowed scope | `urn:opc:dbtools:mcpserver:all` |
-    | Redirect URI | Use the localhost redirect URI shown by Cline or the default URI required by the OCI registration page |
+    | Allowed grant types | Confirm the page shows `authorization_code` and `refresh_token` |
+    | Scope | Use the scope displayed by the registration page |
+    | Redirect URI | If the page requires a redirect URI, use a localhost callback URI such as `http://localhost:8888/callback` |
 
-6. Complete the registration.
+    The scope can be server-specific. For example, the page may display a value in this shape:
 
-7. From the registered client or MCP server page, generate or download a personal access token for the MCP client.
+    ```text
+    <copy>
+    urn:opc:dbtools:mcpserver:<mcp_server_ocid>:mcp:all
+    </copy>
+    ```
+
+    Copy the value shown by your page instead of typing a generic scope.
+
+6. If the page asks for redirect URIs, add localhost callback URIs that your desktop client can use.
+
+    ```text
+    <copy>
+    http://localhost:8888/callback
+    http://127.0.0.1:8888/callback
+    </copy>
+    ```
+
+    If the registration page does not ask for redirect URIs, continue with the defaults shown by the page.
+
+7. Complete the registration.
+
+8. From the registered client or MCP server page, generate or download a personal access token for the MCP client.
 
     If the server was created with a short token lifetime, create a fresh token shortly before testing from Cline.
 
-8. Save the token only in your local Cline configuration. Do not paste it into workshop notes, Git commits, screenshots, or shared chat messages.
+9. Save the token only in your local Cline configuration. Do not paste it into workshop notes, Git commits, screenshots, or shared chat messages.
 
 ## Task 3: Configure Cline's Model Provider
 

@@ -294,6 +294,38 @@ lookup_mcp_server_id() {
     --raw-output 2>/dev/null || true
 }
 
+get_mcp_server_state() {
+  local mcp_server_id="$1"
+  [ -z "$mcp_server_id" ] && return
+
+  oci_query dbtools mcp-server get \
+    --mcp-server-id "$mcp_server_id" \
+    --query 'data."lifecycle-state"' \
+    --raw-output 2>/dev/null || true
+}
+
+wait_for_mcp_server_active() {
+  local mcp_server_id="$1"
+  local state=""
+
+  for _ in {1..36}; do
+    state=$(get_mcp_server_state "$mcp_server_id")
+    state=$(normalize_discovered_value "$state")
+    if [ "$state" = "ACTIVE" ]; then
+      return 0
+    fi
+    if [ "$state" = "DELETED" ] || [ "$state" = "DELETING" ] || [ "$state" = "FAILED" ]; then
+      echo -e "${RED}ERROR: MCP server ${mcp_server_id} is ${state}.${NC}" >&2
+      return 1
+    fi
+    echo -e "${YELLOW}Waiting for MCP server to become ACTIVE. Current state: ${state:-unknown}.${NC}"
+    sleep 10
+  done
+
+  echo -e "${RED}ERROR: MCP server ${mcp_server_id} did not become ACTIVE. Last state: ${state:-unknown}.${NC}" >&2
+  return 1
+}
+
 lookup_toolset_id() {
   oci_query dbtools mcp-toolset list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
@@ -557,6 +589,8 @@ if [ -z "${MCP_SERVER_ID:-}" ]; then
 else
   echo -e "${YELLOW}Using existing MCP server: ${MCP_SERVER_ID}${NC}"
 fi
+
+wait_for_mcp_server_active "$MCP_SERVER_ID"
 
 if [ "$MCP_CREATE_BUILT_IN_SQL_TOOLSET" = "1" ] || [ "$MCP_CREATE_BUILT_IN_SQL_TOOLSET" = "true" ]; then
   if [ -z "${MCP_BUILT_IN_SQL_TOOLSET_ID:-}" ]; then

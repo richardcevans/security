@@ -44,7 +44,13 @@
             "filename": "../../apply-validate-security/apply-validate-security.md"
         },
         {
-            "title": "Lab 6: Review Architecture, Clean Up, and Next Steps",
+            "title": "Optional Lab 6: Connect VS Code and Cline",
+            "description": "Connect Cline as an external MCP client and validate controlled Database Tools access.",
+            "type": "livelabs",
+            "filename": "../../connect-cline-client/connect-cline-client.md"
+        },
+        {
+            "title": "Lab 7: Review Architecture, Clean Up, and Next Steps",
             "description": "Review the secure AI access architecture, clean up resources, and plan next steps.",
             "type": "livelabs",
             "filename": "../../review-next-steps/review-next-steps.md"

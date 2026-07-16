@@ -1,4 +1,4 @@
-# Lab 6: Review Architecture, Clean Up, and Next Steps
+# Lab 7: Review Architecture, Clean Up, and Next Steps
 
 ## Introduction
 

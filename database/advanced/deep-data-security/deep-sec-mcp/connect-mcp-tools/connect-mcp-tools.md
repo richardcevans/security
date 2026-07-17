@@ -1,4 +1,4 @@
-# Lab 3: Connect MCP Server Tools
+# Lab 2: Connect MCP Server Tools
 
 ## Introduction
 
@@ -144,24 +144,15 @@ In this lab, you will:
 
 1. Use the OCI Console to create, inspect, and validate Database Tools and MCP resources.
 
-    The OCI Console is not the MCP client for this lab. Later labs use the prompt simulator and SQL checks to prove the data-access behavior. If you connect an external MCP client, use the MCP server details page to get the endpoint and tool information.
+    The OCI Console is not the MCP client for this lab. If you connect an external MCP client, use the MCP server details page to get the endpoint and tool information.
 
 2. Review the identity flow for the MCP path.
 
     - The user authenticates through OCI IAM.
     - The MCP server receives the user context through the token path.
-    - Database data roles map OCI IAM group context to database privileges.
-    - Deep Data Security controls apply at the data layer.
+    - The database enforces the identity and data controls configured by the ADB OCI IAM prerequisite lab.
 
-3. Confirm that Lab 5 will use `IAM_GROUP_NAME` mappings for the MCP token path.
-
-    ```bash
-    <copy>
-    env | grep -E '^(DATA_ROLE_MAPPING_TYPE|OCI_IAM_EMPLOYEE_GROUP|OCI_IAM_MANAGER_GROUP)=' | sort
-    </copy>
-    ```
-
-    You may now proceed to the next lab.
+    You may now proceed to the optional client lab or cleanup.
 
 ## Acknowledgements
 

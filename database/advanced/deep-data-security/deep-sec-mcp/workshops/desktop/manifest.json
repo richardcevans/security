@@ -14,16 +14,10 @@
             "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
         },
         {
-            "title": "Lab 1: Explore the Environment",
-            "description": "Review the database, sample schema, sensitive data, users, and access paths.",
+            "title": "Lab 1: Import the ADB OCI IAM Environment",
+            "description": "Import the existing ADB OCI IAM workshop environment for MCP Server Tools.",
             "type": "livelabs",
             "filename": "../../explore-environment/explore-environment.md"
-        },
-        {
-            "title": "Lab 2: Run the AI Application",
-            "description": "Run AI-style prompts and database tool calls against Autonomous Database.",
-            "type": "livelabs",
-            "filename": "../../run-ai-application/run-ai-application.md"
         },
         {
             "title": "Lab 3: Connect MCP Server Tools",
@@ -32,26 +26,14 @@
             "filename": "../../connect-mcp-tools/connect-mcp-tools.md"
         },
         {
-            "title": "Lab 4: Demonstrate AI Overreach",
-            "description": "Show how overprivileged AI and MCP access can expose sensitive data.",
-            "type": "livelabs",
-            "filename": "../../demonstrate-ai-overreach/demonstrate-ai-overreach.md"
-        },
-        {
-            "title": "Lab 5: Apply and Test Deep Data Security",
-            "description": "Apply identity-aware data controls and validate least-privilege behavior across access paths.",
-            "type": "livelabs",
-            "filename": "../../apply-validate-security/apply-validate-security.md"
-        },
-        {
-            "title": "Optional Lab 6: Connect VS Code and Cline",
-            "description": "Connect Cline as an external MCP client and validate controlled Database Tools access.",
+            "title": "Optional Lab 2: Connect Cursor",
+            "description": "Connect Cursor as an external MCP client and validate controlled Database Tools access.",
             "type": "livelabs",
             "filename": "../../connect-cline-client/connect-cline-client.md"
         },
         {
-            "title": "Lab 7: Review Architecture, Clean Up, and Next Steps",
-            "description": "Review the secure AI access architecture, clean up resources, and plan next steps.",
+            "title": "Lab 3: Review and Clean Up MCP Resources",
+            "description": "Review the MCP boundary and remove only MCP resources.",
             "type": "livelabs",
             "filename": "../../review-next-steps/review-next-steps.md"
         },

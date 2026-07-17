@@ -19,6 +19,7 @@ else
   echo -e "${RED}ERROR: .deep-sec-mcp.env not found. Run ./00_configure_lab_env.sh first.${NC}" >&2
   exit 1
 fi
+source "${SCRIPT_DIR}/../lib_oci_profile.sh"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -29,7 +30,7 @@ require_cmd() {
 
 oci_query() {
   PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}ignore::FutureWarning:urllib3.poolmanager" \
-    oci "$@"
+    oci_with_profile "$@"
 }
 
 append_or_replace_env() {

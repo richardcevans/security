@@ -4,7 +4,7 @@
   "tutorials": [
     {
       "title": "Introduction",
-      "description": "Review the secure AI data access pattern, prerequisites, and expected outcome.",
+      "description": "Review the MCP-only extension workflow and its ADB OCI IAM prerequisite.",
       "publisheddate": "07/09/2026",
       "filename": "../../deep-data-security/deep-sec-mcp/introduction/introduction.md"
     },
@@ -14,16 +14,10 @@
       "filename": "https://livelabs.oracle.com/cdn/common/labs/cloud-login/pre-register-free-tier-account.md"
     },
     {
-      "title": "Lab 1: Explore the Environment",
-      "description": "Review the database, sample schema, sensitive data, users, and access paths.",
+      "title": "Lab 1: Import the ADB OCI IAM Environment",
+      "description": "Import the existing ADB OCI IAM workshop environment for MCP Server Tools.",
       "publisheddate": "07/09/2026",
       "filename": "../../deep-data-security/deep-sec-mcp/explore-environment/explore-environment.md"
-    },
-    {
-      "title": "Lab 2: Run the AI Application",
-      "description": "Configure and run the prebuilt simple AI application against Autonomous Database.",
-      "publisheddate": "07/09/2026",
-      "filename": "../../deep-data-security/deep-sec-mcp/run-ai-application/run-ai-application.md"
     },
     {
       "title": "Lab 3: Connect MCP Server Tools",
@@ -32,26 +26,14 @@
       "filename": "../../deep-data-security/deep-sec-mcp/connect-mcp-tools/connect-mcp-tools.md"
     },
     {
-      "title": "Lab 4: Demonstrate AI Overreach",
-      "description": "Show how overprivileged AI and MCP access can expose sensitive data.",
-      "publisheddate": "07/09/2026",
-      "filename": "../../deep-data-security/deep-sec-mcp/demonstrate-ai-overreach/demonstrate-ai-overreach.md"
-    },
-    {
-      "title": "Lab 5: Apply and Test Deep Data Security",
-      "description": "Apply identity-aware data controls and validate least-privilege behavior across access paths.",
-      "publisheddate": "07/09/2026",
-      "filename": "../../deep-data-security/deep-sec-mcp/apply-validate-security/apply-validate-security.md"
-    },
-    {
-      "title": "Optional Lab 6: Connect VS Code and Cline",
-      "description": "Connect Cline as an external MCP client and validate controlled Database Tools access.",
+      "title": "Optional Lab 2: Connect Cursor",
+      "description": "Connect Cursor as an external MCP client and validate controlled Database Tools access.",
       "publisheddate": "07/09/2026",
       "filename": "../../deep-data-security/deep-sec-mcp/connect-cline-client/connect-cline-client.md"
     },
     {
-      "title": "Lab 7: Review Architecture, Clean Up, and Next Steps",
-      "description": "Review the secure AI access architecture, clean up resources, and plan next steps.",
+      "title": "Lab 3: Review and Clean Up MCP Resources",
+      "description": "Review the MCP boundary and remove only MCP resources.",
       "publisheddate": "07/09/2026",
       "filename": "../../deep-data-security/deep-sec-mcp/review-next-steps/review-next-steps.md"
     },

@@ -25,17 +25,16 @@ echo
 cat <<EOF
 Terraform packages are available under:
 
-  terraform/deep-sec-mcp-free-tier-sandbox-terraform-minimal-schema.zip
-  terraform/deep-sec-mcp-ora-corp-sandbox-terraform-minimal-schema.zip
   terraform/deep-sec-mcp-ora-corp-base-db-system-sandbox-terraform-minimal-schema.zip
 
-Use Terraform or Resource Manager when you want to pre-create compartments,
-ADB, buckets, Database Tools connections, and MCP servers.
+Use Terraform or Resource Manager only when its inputs reference an existing
+database. The ADB OCI IAM workshop, not this MCP extension, provisions the
+database and IAM environment.
 
-To create or reuse ADB-S, OCI IAM OAuth apps, groups, demo users, and wallet
-from Cloud Shell, run:
+To import that prerequisite environment, run:
 
-  ./setup_adbs_oci_iam.sh <compartment-name-or-ocid>
+  source /path/to/adb-oci-iam/.adb-oci-iam.env
+  ./00_configure_lab_env.sh
   source ./.deep-sec-mcp.env
 
 For a manual OCI CLI MCP server creation, collect these values:

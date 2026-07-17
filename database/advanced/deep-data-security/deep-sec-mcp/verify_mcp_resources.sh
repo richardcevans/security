@@ -36,7 +36,7 @@ require_var() {
 
 oci_query() {
   PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}ignore::FutureWarning:urllib3.poolmanager" \
-    oci "$@"
+    oci_with_profile "$@"
 }
 
 normalize_value() {
@@ -153,4 +153,3 @@ else
   echo -e "${RED}MCP Server Tools verification completed with ${failures} failure(s).${NC}" >&2
   exit 1
 fi
-

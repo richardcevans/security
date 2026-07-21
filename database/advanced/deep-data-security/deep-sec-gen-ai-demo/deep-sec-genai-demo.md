@@ -181,11 +181,7 @@ Show the newest ten HR audit events:
 ```
 
 The report shows UTC timestamp, command, database user, client program, and
-Deep Data Security end user. To disable and drop only this lab policy:
-
-```bash
-./99_disable_hr_employees_audit.sh
-```
+Deep Data Security end user.
 
 ### Why the client program changes from SQL*Plus
 
@@ -309,6 +305,18 @@ The service performs two OCI Generative AI calls:
     ```bash
     ./07_show_hr_employees_audit_trail.sh
     ```
+
+## Task 8: Clean up
+
+After completing all service and audit verification, disable and drop only the
+lab's `DEEPSEC_HR_EMPLOYEES_AUDIT` Unified Auditing policy:
+
+```bash
+./99_disable_hr_employees_audit.sh
+```
+
+This cleanup does not delete audit records, ADB resources, OCI IAM resources,
+the base `adb-oci-iam` lab, or the local virtual environment.
 
 ## Troubleshooting
 

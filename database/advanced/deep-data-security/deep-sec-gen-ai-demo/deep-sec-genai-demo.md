@@ -104,15 +104,19 @@ profile selector: `OCI_PROFILE_NAME`, `OCI_PROFILE`, or `OCI_CLI_PROFILE`.
 Inspect the inherited environment without changing OCI resources:
 
 ```bash
+<copy>
 ./00_show_adb_environment.sh
+</copy>
 ```
 
 If the token has expired, obtain a new one in the base lab, then return here:
 
 ```bash
+<copy>
 cd ../adb-oci-iam
 ./04_get_iam_oauth_token.sh
 cd ../deep-sec-gen-ai-demo
+</copy>
 ```
 
 ## Task 1: Prove OCI Generative AI access
@@ -121,14 +125,18 @@ This test is independent of ADB. It calls the Chicago OCI Generative AI
 endpoint with a harmless fixed prompt.
 
 ```bash
+<copy>
 ./01_genai_chicago_smoke.sh
+</copy>
 ```
 
 For a direct LLM-only experiment, with no ADB data involved:
 
 ```bash
+<copy>
 ./02_genai_llm_chat.sh \
   --prompt 'Explain Oracle data roles in one sentence.'
+</copy>
 ```
 
 The defaults are `meta.llama-3.3-70b-instruct` in `us-chicago-1`. Override
@@ -141,12 +149,14 @@ return only non-sensitive employee fields; they do not return SSN, salary,
 phone number, or photo.
 
 ```bash
+<copy>
 # Run one fixed, reviewed SELECT as the current OCI IAM user.
 ./03_query_hr_employees_as_current_user.sh
 
 # Send only the returned JSON rows and your question to OCI Generative AI.
 ./04_llm_with_authorized_hr_data.sh \
   --prompt 'How many authorized employees are listed?'
+</copy>
 ```
 
 `04` is a data-to-LLM bridge. The model does not query ADB in that flow; it
@@ -157,8 +167,10 @@ proof. It remains useful for comparison, but the local service is the primary
 dynamic path.
 
 ```bash
+<copy>
 ./08_llm_query_hr_as_current_user.sh \
   --prompt 'How many employees can I access by department?'
+</copy>
 ```
 
 ## Task 3: Enable and inspect Unified Auditing
@@ -167,7 +179,9 @@ Enable the lab's narrow policy once. It audits `SELECT`, `UPDATE`, and `DELETE`
 on `HR.EMPLOYEES` for all database users.
 
 ```bash
+<copy>
 ./06_enable_hr_employees_audit.sh
+</copy>
 ```
 
 The policy name is `DEEPSEC_HR_EMPLOYEES_AUDIT`. The script is safe to re-run,
@@ -177,7 +191,9 @@ sessions are audited, so reconnect sessions that predate the policy.
 Show the newest ten HR audit events:
 
 ```bash
+<copy>
 ./07_show_hr_employees_audit_trail.sh
+</copy>
 ```
 
 The report shows UTC timestamp, command, database user, client program, and
@@ -209,14 +225,18 @@ application-level correlation when needed.
 Create the project-local Python virtual environment once:
 
 ```bash
+<copy>
 python3 -m venv .venv
 .venv/bin/python -m pip install -r service/requirements.txt
+</copy>
 ```
 
 The service is intentionally bound to `127.0.0.1:8030`. Start it in Terminal 1:
 
 ```bash
+<copy>
 ./09_start_identity_service.sh
+</copy>
 ```
 
 The start script automatically uses `.venv/bin/python`; activation is optional.
@@ -235,7 +255,9 @@ Restart Terminal 1 whenever `service/identity_service.py` changes.
 In Terminal 2, with a current OAuth token:
 
 ```bash
+<copy>
 ./10_verify_identity_service.sh
+</copy>
 ```
 
 Expected shape:
@@ -262,11 +284,13 @@ The service accepts a tool name and validated arguments, never SQL text. Every
 tool opens a short-lived ADB connection using the caller's bearer token.
 
 ```bash
+<copy>
 ./11_query_identity_service.sh employee_count
 ./11_query_identity_service.sh employees_by_department
 ./11_query_identity_service.sh employees_by_job_code
 ./11_query_identity_service.sh list_employees --department-id 1 --limit 10
 ./11_query_identity_service.sh list_employees --job-code SWE2 --limit 10
+</copy>
 ```
 
 | Tool | Arguments | Result |
@@ -286,8 +310,10 @@ query is issued.
 The dynamic LLM path is `POST /v1/ask`, invoked by this client script:
 
 ```bash
+<copy>
 ./12_ask_llm_service.sh \
   --question 'How many employees can I access by department?'
+</copy>
 ```
 
 The service performs two OCI Generative AI calls:
@@ -303,7 +329,9 @@ The service performs two OCI Generative AI calls:
     After any service query, inspect the audit trail:
 
     ```bash
+    <copy>
     ./07_show_hr_employees_audit_trail.sh
+    </copy>
     ```
 
 ## Task 8: Clean up
@@ -312,7 +340,9 @@ After completing all service and audit verification, disable and drop only the
 lab's `DEEPSEC_HR_EMPLOYEES_AUDIT` Unified Auditing policy:
 
 ```bash
+<copy>
 ./99_disable_hr_employees_audit.sh
+</copy>
 ```
 
 This cleanup does not delete audit records, ADB resources, OCI IAM resources,

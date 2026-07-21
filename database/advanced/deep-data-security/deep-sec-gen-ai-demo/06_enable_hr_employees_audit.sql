@@ -65,7 +65,7 @@ prompt        object_name FROM AUDIT_UNIFIED_POLICIES ...
 prompt ============================================================================
 
 column policy_name format a34
-column audit_option_type format a12
+column audit_option_type format a14
 column audit_option format a12
 column object_schema format a16
 column object_name format a20

@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck disable=SC1091 # Resolved from this script's directory at runtime.
+source "${script_dir}/../lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+Usage: ./bin/labctl [--dry-run] <command>
+
+Phase 1 commands:
+  preflight              Check local prerequisites without changing OCI state.
+  status                 Show scaffold state without changing OCI state.
+  test                   Run offline regression checks.
+  identity configure     Run coupled legacy identity and ADB setup explicitly.
+  database configure     Configure the legacy direct-login database flow.
+  attach --env-file P    Attach to an existing adb-oci-iam environment without changing it.
+  baseline --expect-user U [--require-group G]...
+                        Read-only inherited ADB, token, and Deep Sec verification.
+  compartment create ... Record the attached ADB lab compartment as COMPARTMENT_OCID.
+  genai smoke ...      Run one harmless OCI Generative AI Chicago smoke test in that compartment.
+  genai readiness ...  Generate or run an explicit OCI Generative AI smoke test.
+  select-ai access      Create the attached ADB resource-principal chat policy.
+  select-ai configure   Create and smoke-test the minimal Select AI profile.
+  select-ai verify      Generate HR SQL; add --run to execute it as ADMIN.
+  select-ai current-user Run Select AI as the current OCI IAM token user.
+  verify [--persona P]   Verify admin, richard, marvin, or emma through the lab flow.
+  destroy <cleanup args> Delegate an explicit cleanup action to the legacy flow.
+  manifest <action>      Initialize or validate the new resource manifest.
+  all                    Run legacy setup, database configuration, and admin verification.
+  infra <action>         Run Terraform init, fmt, validate, plan, or explicit apply.
+  trace <action>         Enable, inspect, or disable local SQL*Plus Oracle Net tracing.
+  legacy <operation>     Run an existing direct-login lab command explicitly.
+
+Legacy operations:
+  setup | enable-oci-iam | create-hr | create-data-grants | token
+  verify-marvin | verify-emma | verify-db | cleanup | readiness | set-passwords
+
+Terraform, GenAI, Select AI, MCP, external-data, and application commands are
+not implemented in Phase 1.
+EOF
+}
+
+legacy_command() {
+  local operation=${1:-}
+  local target
+  case "$operation" in
+    setup) target=00_setup_adb.sh ;;
+    enable-oci-iam) target=01_enable_oci_iam.sh ;;
+    create-hr) target=02_create_hr_schema.sh ;;
+    create-data-grants) target=03_create_data_roles_and_grants.sh ;;
+    token) target=04_get_iam_oauth_token.sh ;;
+    verify-marvin) target=05_verify_as_marvin.sh ;;
+    verify-emma) target=06_verify_as_emma.sh ;;
+    cleanup) target=07_cleanup_adb_lab.sh ;;
+    readiness) target=check_oci_iam_login_readiness.sh ;;
+    set-passwords) target=set_oci_iam_passwords.sh ;;
+    verify-db) target=verify_db_setup.sh ;;
+    *) die "Unknown legacy operation: ${operation:-<missing>}" ;;
+  esac
+  shift
+  run_legacy_script "$target" "$@"
+}
+
+while [[ "${1:-}" == "--dry-run" ]]; do
+  export LAB_DRY_RUN=1
+  shift
+done
+
+command=${1:-help}
+case "$command" in
+  help|--help|-h) usage ;;
+  preflight) exec "${script_dir}/preflight.sh" ;;
+  status) exec "${script_dir}/status.sh" ;;
+  test) exec "${LAB_ROOT}/tests/offline/run.sh" ;;
+  identity)
+    [[ "${2:-}" == "configure" ]] || die 'Usage: ./bin/labctl identity configure [--from-terraform] [legacy-setup-argument]'
+    shift 2
+    exec "${script_dir}/configure-identity-domain.sh" "$@"
+    ;;
+  database)
+    [[ "${2:-}" == "configure" ]] || die 'Usage: ./bin/labctl database configure'
+    shift 2
+    exec "${script_dir}/configure-database.sh" "$@"
+    ;;
+  attach)
+    shift
+    exec "${script_dir}/attach-adb-oci-iam.sh" "$@"
+    ;;
+  baseline)
+    shift
+    exec "${script_dir}/verify-attached-baseline.sh" "$@"
+    ;;
+  compartment)
+    [[ "${2:-}" == "create" ]] || die 'Usage: ./bin/labctl compartment create [options]'
+    shift 2
+    exec "${script_dir}/create-genai-compartment.sh" "$@"
+    ;;
+  genai)
+    case "${2:-}" in
+      smoke)
+        shift 2
+        exec "${script_dir}/genai-chicago-smoke.sh" "$@"
+        ;;
+      readiness)
+        shift 2
+        exec "${script_dir}/genai-readiness.sh" "$@"
+        ;;
+      *) die 'Usage: ./bin/labctl genai smoke [--compartment-id OCID] [options]' ;;
+    esac
+    ;;
+  select-ai)
+    case "${2:-}" in
+      access)
+        shift 2
+        exec "${script_dir}/configure-select-ai-access.sh" "$@"
+        ;;
+      configure)
+        shift 2
+        exec "${script_dir}/configure-select-ai.sh" "$@"
+        ;;
+      verify)
+        shift 2
+        exec "${script_dir}/verify-select-ai-hr.sh" "$@"
+        ;;
+      current-user)
+        shift 2
+        exec "${script_dir}/verify-select-ai-current-user.sh" "$@"
+        ;;
+      *) die 'Usage: ./bin/labctl select-ai <access|configure|verify|current-user> [options]' ;;
+    esac
+    ;;
+  verify)
+    shift
+    exec "${script_dir}/verify-lab.sh" "$@"
+    ;;
+  destroy)
+    shift
+    exec "${script_dir}/destroy-lab.sh" "$@"
+    ;;
+  manifest)
+    shift
+    exec "${script_dir}/manifest.sh" "$@"
+    ;;
+  all)
+    shift
+    exec "${script_dir}/all.sh" "$@"
+    ;;
+  infra)
+    shift
+    exec "${script_dir}/terraform.sh" "$@"
+    ;;
+  trace)
+    shift
+    exec "${script_dir}/sqlnet-client-trace.sh" "$@"
+    ;;
+  legacy)
+    shift
+    legacy_command "$@"
+    ;;
+  data|mcp|app)
+    die "${command} is intentionally not implemented in Phase 1."
+    ;;
+  *)
+    usage >&2
+    die "Unknown command: ${command}"
+    ;;
+esac

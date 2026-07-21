@@ -1,0 +1,20 @@
+# Choose exactly one ownership mode.
+
+# Adopt a user-supplied ADB-S. Terraform will not manage or destroy it.
+create_autonomous_database = false
+autonomous_database_id     = "ocid1.autonomousdatabase.oc1..<replace-me>"
+autonomous_database_name   = "existing-adb-name"
+
+# To create a Terraform-managed ADB-S, remove autonomous_database_id and use:
+# create_autonomous_database       = true
+# compartment_ocid                 = "ocid1.compartment.oc1..<replace-me>"
+# autonomous_database_name         = "deepsecgenai"
+# autonomous_database_display_name = "deep-sec-gen-ai-demo"
+# database_version                 = "26ai"
+# is_free_tier                     = true
+# license_model                    = "BRING_YOUR_OWN_LICENSE"
+# export TF_VAR_adb_admin_password='replace-with-a-secret'
+
+# Set these only when OCI CLI configuration does not provide them.
+# tenancy_ocid = "ocid1.tenancy.oc1..<replace-me>"
+# region       = "us-chicago-1"

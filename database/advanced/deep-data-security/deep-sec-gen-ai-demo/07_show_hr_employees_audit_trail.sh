@@ -10,9 +10,7 @@ load_adb_lab_environment
 command -v sqlplus >/dev/null 2>&1 || die 'sqlplus is required.'
 [[ -n "${ADMIN_PWD:-}" ]] || die 'ADMIN_PWD is not set. Source the ADB OCI IAM environment first.'
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Last 10 Unified Audit Trail rows for HR.EMPLOYEES'
-printf '%s\n' '============================================================================'
+green_banner 'Last 10 Unified Audit Trail rows for HR.EMPLOYEES'
 printf '%s\n' 'Read-only report: timestamp (UTC), command, database user, client program,'
 printf '%s\n' 'and Deep Data Security end user. A dash means no end-user context was recorded.'
 printf '\nSQL*Plus command:\n'

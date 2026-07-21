@@ -19,9 +19,7 @@ token_file="${OCI_TOKEN_DIR:?OCI_TOKEN_DIR is required}/token"
 [[ -r "$token_file" ]] || die "Token file not found: ${token_file}"
 token=$(<"$token_file")
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Verify OCI IAM token propagation through the local service'
-printf '%s\n' '============================================================================'
+green_banner 'Verify OCI IAM token propagation through the local service'
 printf 'Target: http://%s:%s/v1/identity/proof\n' "$host" "$port"
 printf '%s\n' 'The bearer token is read from OCI_TOKEN_DIR/token and is not printed.'
 printf '\n'

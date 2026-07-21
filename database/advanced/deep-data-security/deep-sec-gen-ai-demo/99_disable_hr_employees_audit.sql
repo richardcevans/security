@@ -5,10 +5,12 @@ set linesize 180
 set pagesize 100
 whenever sqlerror exit sql.sqlcode rollback
 
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Disable the lab policy if it is enabled
 prompt NOAUDIT POLICY DEEPSEC_HR_EMPLOYEES_AUDIT;
 prompt ============================================================================
+host printf '\033[0m'
 
 DECLARE
   enabled_count PLS_INTEGER;
@@ -28,10 +30,12 @@ END;
 /
 
 prompt
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Drop the lab policy if it exists
 prompt DROP AUDIT POLICY DEEPSEC_HR_EMPLOYEES_AUDIT;
 prompt ============================================================================
+host printf '\033[0m'
 
 DECLARE
   policy_count PLS_INTEGER;

@@ -6,6 +6,8 @@ set -Eeuo pipefail
 LAB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ADB_LAB_DIR="${LAB_DIR}/../adb-oci-iam"
 ADB_IAM_ENV_FILE="${ADB_IAM_ENV_FILE:-${ADB_LAB_DIR}/.adb-oci-iam.env}"
+GREEN='\033[0;32m'
+NC='\033[0m'
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
@@ -13,6 +15,12 @@ show_cmd() {
   printf '  $'
   printf ' %q' "$@"
   printf '\n'
+}
+
+green_banner() {
+  printf '%b\n' "${GREEN}============================================================================${NC}"
+  printf '%b\n' "${GREEN}$1${NC}"
+  printf '%b\n' "${GREEN}============================================================================${NC}"
 }
 
 load_adb_lab_environment() {

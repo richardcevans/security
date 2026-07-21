@@ -5,12 +5,14 @@ set pagesize 100
 set trimspool on
 whenever sqlerror exit sql.sqlcode rollback
 
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Latest ten HR.EMPLOYEES Unified Audit Trail entries
 prompt SELECT timestamp, command, database user, client program, and Deep Data Security end user
 prompt FROM UNIFIED_AUDIT_TRAIL WHERE OBJECT_SCHEMA = 'HR'
 prompt   AND OBJECT_NAME = 'EMPLOYEES' ORDER BY EVENT_TIMESTAMP_UTC DESC;
 prompt ============================================================================
+host printf '\033[0m'
 
 column event_timestamp_utc format a27 heading 'TIMESTAMP (UTC)'
 column command format a12 heading 'COMMAND'

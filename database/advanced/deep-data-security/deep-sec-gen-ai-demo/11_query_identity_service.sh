@@ -82,9 +82,7 @@ print(json.dumps({"tool": tool, "arguments": arguments}, separators=(",", ":")))
 PY
 )
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Run reviewed query tool through the local OCI IAM-to-ADB service'
-printf '%s\n' '============================================================================'
+green_banner 'Run reviewed query tool through the local OCI IAM-to-ADB service'
 printf 'Tool  : %s\n' "$tool"
 printf 'Target: http://%s:%s/v1/query\n' "$host" "$port"
 printf '%s\n' 'The bearer token is read from OCI_TOKEN_DIR/token and is not printed.'

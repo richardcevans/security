@@ -10,9 +10,7 @@ load_adb_lab_environment
 command -v sqlplus >/dev/null 2>&1 || die 'sqlplus is required.'
 [[ -n "${ADMIN_PWD:-}" ]] || die 'ADMIN_PWD is not set. Source the ADB OCI IAM environment first.'
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Enable Unified Auditing for HR.EMPLOYEES'
-printf '%s\n' '============================================================================'
+green_banner 'Enable Unified Auditing for HR.EMPLOYEES'
 printf '%s\n' 'Scope: SELECT, UPDATE, and DELETE on HR.EMPLOYEES for all database users.'
 printf '%s\n' 'The script creates or enables only DEEPSEC_HR_EMPLOYEES_AUDIT.'
 printf '%s\n' 'Audit records are retained by Unified Auditing; this script does not purge them.'

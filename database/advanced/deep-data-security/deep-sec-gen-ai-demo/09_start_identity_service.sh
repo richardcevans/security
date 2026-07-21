@@ -27,9 +27,7 @@ EOF
 export IDENTITY_SERVICE_HOST=${IDENTITY_SERVICE_HOST:-127.0.0.1}
 export IDENTITY_SERVICE_PORT=${IDENTITY_SERVICE_PORT:-8030}
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Start OCI IAM-to-ADB identity-proof API'
-printf '%s\n' '============================================================================'
+green_banner 'Start OCI IAM-to-ADB identity-proof API'
 printf 'Listening only on: http://%s:%s\n' "$IDENTITY_SERVICE_HOST" "$IDENTITY_SERVICE_PORT"
 printf '%s\n' 'The service accepts a bearer token, validates it, and connects to ADB using that same token.'
 printf '%s\n' 'The LLM endpoint selects only reviewed query tools; it never accepts SQL.'

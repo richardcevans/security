@@ -45,9 +45,7 @@ print(json.dumps({"question": sys.argv[1]}, separators=(",", ":")))
 PY
 )
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'Ask OCI Generative AI through the local OCI IAM-to-ADB service'
-printf '%s\n' '============================================================================'
+green_banner 'Ask OCI Generative AI through the local OCI IAM-to-ADB service'
 printf 'Question: %s\n' "$question"
 printf 'Target  : http://%s:%s/v1/ask\n' "$host" "$port"
 printf '%s\n\n' 'The bearer token is not printed. The service accepts no SQL from the LLM.'

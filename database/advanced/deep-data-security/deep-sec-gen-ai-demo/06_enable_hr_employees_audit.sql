@@ -5,12 +5,14 @@ set linesize 180
 set pagesize 100
 whenever sqlerror exit sql.sqlcode rollback
 
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Create the narrowly scoped Unified Auditing policy if it is absent
 prompt CREATE AUDIT POLICY DEEPSEC_HR_EMPLOYEES_AUDIT
 prompt   ACTIONS SELECT ON HR.EMPLOYEES, UPDATE ON HR.EMPLOYEES,
 prompt           DELETE ON HR.EMPLOYEES;
 prompt ============================================================================
+host printf '\033[0m'
 
 DECLARE
   policy_count PLS_INTEGER;
@@ -35,10 +37,12 @@ END;
 /
 
 prompt
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Enable the policy for all database users if it is not already enabled
 prompt AUDIT POLICY DEEPSEC_HR_EMPLOYEES_AUDIT;
 prompt ============================================================================
+host printf '\033[0m'
 
 DECLARE
   enabled_count PLS_INTEGER;
@@ -58,14 +62,16 @@ END;
 /
 
 prompt
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Verify policy definition
 prompt SELECT policy_name, audit_option_type, audit_option, object_schema,
 prompt        object_name FROM AUDIT_UNIFIED_POLICIES ...
 prompt ============================================================================
+host printf '\033[0m'
 
 column policy_name format a34
-column audit_option_type format a14
+column audit_option_type format a17
 column audit_option format a12
 column object_schema format a16
 column object_name format a20
@@ -80,11 +86,13 @@ SELECT policy_name,
  ORDER BY audit_option;
 
 prompt
+host printf '\033[0;32m'
 prompt ============================================================================
 prompt Verify policy enablement
 prompt SELECT policy_name, enabled_option, entity_name FROM
 prompt        AUDIT_UNIFIED_ENABLED_POLICIES ...
 prompt ============================================================================
+host printf '\033[0m'
 
 column enabled_option format a18
 column entity_name format a35

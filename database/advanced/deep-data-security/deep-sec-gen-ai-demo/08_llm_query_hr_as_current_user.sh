@@ -86,9 +86,7 @@ print(json.dumps({
 PY
 )
 
-printf '%s\n' '============================================================================'
-printf '%s\n' 'LLM-controlled, reviewed HR query tools'
-printf '%s\n' '============================================================================'
+green_banner 'LLM-controlled, reviewed HR query tools'
 printf 'Question: %s\n' "$prompt"
 printf 'Step 1: Ask OCI Generative AI to choose one reviewed query tool.\n'
 show_cmd oci generative-ai-inference chat-result chat --region "$region" --connection-timeout "$connection_timeout" --read-timeout "$read_timeout" --compartment-id "$compartment_id" --serving-mode '<on-demand model>' --chat-request '<tool-selection request>'

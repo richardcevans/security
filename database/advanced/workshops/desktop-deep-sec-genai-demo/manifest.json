@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - OCI IAM, Deep Data Security, and Generative AI",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the OCI IAM token-to-ADB architecture and workshop prerequisites.",
+      "publisheddate": "07/21/2026",
+      "filename": "../../deep-data-security/deep-sec-gen-ai-demo/introduction.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Using noVNC Remote Desktop",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Build the OCI IAM and Generative AI HR Query Service",
+      "description": "Audit protected HR data access, verify caller identity propagation, and use bounded LLM query tools.",
+      "publisheddate": "07/21/2026",
+      "filename": "../../deep-data-security/deep-sec-gen-ai-demo/deep-sec-genai-demo.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to common problems and directions for receiving live help.",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

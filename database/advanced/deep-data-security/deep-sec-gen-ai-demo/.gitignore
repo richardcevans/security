@@ -1,0 +1,7 @@
+.lab/
+.venv/
+service/__pycache__/
+*.un~
+.select-ai-access.env
+*.log
+*.lst

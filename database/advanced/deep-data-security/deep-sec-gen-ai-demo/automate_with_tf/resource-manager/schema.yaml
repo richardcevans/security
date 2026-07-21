@@ -1,0 +1,112 @@
+title: "Deep Data Security GenAI Demo"
+stackDescription: "Provision or adopt an Autonomous Database Serverless baseline for the lab."
+description: "This stack contains no GenAI, MCP, Select AI, Object Storage, or application resources."
+schemaVersion: 1.1.0
+version: "20260720"
+locale: "en"
+
+variableGroups:
+  - title: "General"
+    variables:
+      - compartment_ocid
+      - region
+      - name_prefix
+  - title: "Database ownership"
+    variables:
+      - create_autonomous_database
+      - autonomous_database_id
+      - autonomous_database_name
+      - autonomous_database_display_name
+      - adb_admin_password
+      - database_version
+      - is_free_tier
+      - license_model
+  - title: "Advanced"
+    variables:
+      - adb_workload
+      - is_mtls_connection_required
+      - compute_model
+      - compute_count
+      - data_storage_size_in_tbs
+
+variables:
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment"
+    description: "Compartment for a Terraform-managed ADB-S."
+    required: false
+  region:
+    type: oci:identity:region:name
+    title: "Region"
+    required: false
+  name_prefix:
+    type: string
+    title: "Resource tag prefix"
+    default: "deep-sec-gen-ai-demo"
+    required: true
+  create_autonomous_database:
+    type: boolean
+    title: "Create a new ADB-S"
+    description: "False requires the OCID of an existing database; Terraform will not manage that database."
+    default: false
+    required: true
+  autonomous_database_id:
+    type: string
+    title: "Existing ADB-S OCID"
+    required: false
+  autonomous_database_name:
+    type: string
+    title: "New ADB-S database name"
+    required: false
+  autonomous_database_display_name:
+    type: string
+    title: "New ADB-S display name"
+    required: false
+  adb_admin_password:
+    type: password
+    title: "New ADB-S ADMIN password"
+    required: false
+  database_version:
+    type: enum
+    title: "Database version"
+    enum: ["26ai"]
+    default: "26ai"
+    required: true
+  is_free_tier:
+    type: boolean
+    title: "Request Always Free"
+    default: true
+    required: true
+  license_model:
+    type: enum
+    title: "Paid-tier license model"
+    enum: ["BRING_YOUR_OWN_LICENSE", "LICENSE_INCLUDED"]
+    default: "BRING_YOUR_OWN_LICENSE"
+    required: true
+  adb_workload:
+    type: enum
+    title: "Workload"
+    enum: ["OLTP", "DW", "AJD", "APEX"]
+    default: "OLTP"
+    required: true
+  is_mtls_connection_required:
+    type: boolean
+    title: "Require mutual TLS"
+    default: true
+    required: true
+  compute_model:
+    type: enum
+    title: "Paid-tier compute model"
+    enum: ["ECPU", "OCPU"]
+    default: "ECPU"
+    required: true
+  compute_count:
+    type: integer
+    title: "Paid-tier compute count"
+    default: 1
+    required: true
+  data_storage_size_in_tbs:
+    type: integer
+    title: "Paid-tier data storage (TB)"
+    default: 1
+    required: true

@@ -1,0 +1,2 @@
+oracledb>=3.0,<5
+PyJWT[crypto]>=2.0,<3

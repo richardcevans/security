@@ -174,23 +174,19 @@ Deep Data Security end user. To disable and drop only this lab policy:
 | Query path | Typical client program | Deep Data Security end user |
 | --- | --- | --- |
 | Interactive verification | `sqlplus@RCEVANS-H1MXSW3 ...` | OCI IAM user who obtained the token |
-| Early Python service calls | Oracle-generated `oracle@...oraclevcn.com` label | Same OCI IAM user |
-| Current Python service calls | `deep-sec-gen-ai-service` | Same OCI IAM user |
+| Python service calls | Oracle-generated `oracle@...oraclevcn.com` label | Same OCI IAM user |
 
 SQL*Plus connects directly from your workstation. The dynamic path opens the
 ADB connection from the Python backend with `python-oracledb`, so ADB records a
-different client program. The service now explicitly sets its program name to
-`deep-sec-gen-ai-service` for readable audit records.
+different client program. For this token-authenticated ADB path, the Unified
+Audit Trail records Oracle's `oracle@...oraclevcn.com` session label instead of
+the local Python executable name.
 
 This does **not** change authorization. Confirm identity in the `DEEP DATA
-SECURITY END USER` column. A service query for Richard should still show
-`RICHARD.C.EVANS@ORACLE.COM`. Override the program label only when necessary:
-
-```bash
-export DEEPSEC_CLIENT_PROGRAM_NAME='my-approved-service-name'
-```
-
-Restart the service after changing that value.
+SECURITY END USER` column. A service query for Marvin should still show
+`MARVIN@EXAMPLE.COM`. Do not use the client-program string as an
+authorization decision; use end-user identity, command, object, timestamp, and
+application-level correlation when needed.
 
 ## Task 4: Start the token-preserving service
 
@@ -231,10 +227,11 @@ Expected shape:
 ```json
 {
   "proof": "pass",
-  "token_subject": "RICHARD.C.EVANS@ORACLE.COM",
+  "token_subject": "MARVIN@EXAMPLE.COM",
   "database": {
-    "authenticated_identity": "RICHARD.C.EVANS@ORACLE.COM",
+    "authenticated_identity": "MARVIN@EXAMPLE.COM",
     "authentication_method": "TOKEN_GLOBAL",
+    "client_program_name": "oracle@...oraclevcn.com",
     "visible_employee_rows": 4
   }
 }
@@ -302,7 +299,7 @@ After any service query, inspect the audit trail:
 | Python dependency error | Create `.venv` and install `service/requirements.txt`. |
 | ADB token connection fails | Run `./10_verify_identity_service.sh`; compare token subject with `authenticated_identity`. |
 | No expected HR rows | Validate OCI IAM group membership and base-lab data grants. |
-| Audit shows an Oracle-generated program label | Restart the service, run a new query, then check the newest audit rows. |
+| Audit shows `oracle@...oraclevcn.com` for service queries | Expected for this token-authenticated ADB service path; confirm the Deep Data Security end user instead. |
 | GenAI request fails | Run `./01_genai_chicago_smoke.sh` with the same profile and compartment. |
 
 ## Deliberately deferred components

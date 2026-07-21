@@ -45,7 +45,6 @@ class ServiceSettings:
         self.genai_model_id = os.getenv("GENAI_MODEL_ID", "meta.llama-3.3-70b-instruct")
         self.oci_connection_timeout = int(os.getenv("OCI_CONNECTION_TIMEOUT", "10"))
         self.oci_read_timeout = int(os.getenv("OCI_READ_TIMEOUT", "60"))
-        self.client_program_name = os.getenv("DEEPSEC_CLIENT_PROGRAM_NAME", "deep-sec-gen-ai-service")
         self.metadata = self._metadata()
         self.jwks = PyJWKClient(self.metadata["jwks_uri"])
 
@@ -73,17 +72,19 @@ class ServiceSettings:
                     """
                     SELECT SYS_CONTEXT('USERENV', 'AUTHENTICATED_IDENTITY'),
                            SYS_CONTEXT('USERENV', 'CURRENT_USER'),
-                           SYS_CONTEXT('USERENV', 'AUTHENTICATION_METHOD')
+                           SYS_CONTEXT('USERENV', 'AUTHENTICATION_METHOD'),
+                           SYS_CONTEXT('USERENV', 'CLIENT_PROGRAM_NAME')
                       FROM dual
                     """
                 )
-                authenticated_identity, current_user, authentication_method = cursor.fetchone()
+                authenticated_identity, current_user, authentication_method, client_program_name = cursor.fetchone()
                 cursor.execute("SELECT COUNT(*) FROM hr.employees")
                 (visible_employee_rows,) = cursor.fetchone()
         return {
             "authenticated_identity": authenticated_identity,
             "current_user": current_user,
             "authentication_method": authentication_method,
+            "client_program_name": client_program_name,
             "visible_employee_rows": _json_value(visible_employee_rows),
         }
 
@@ -104,7 +105,6 @@ class ServiceSettings:
             config_dir=self.config_dir,
             wallet_location=self.config_dir,
             wallet_password=self.wallet_password,
-            program=self.client_program_name,
         )
 
     def answer_question(self, token, question):

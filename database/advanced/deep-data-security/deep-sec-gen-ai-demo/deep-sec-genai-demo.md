@@ -28,6 +28,26 @@ every HR query, including queries initiated by the service for an LLM workflow.
 
 Estimated Time: 60 minutes
 
+## Task 0: Download and unzip the lab files
+
+In a terminal on the lab host, download the current script bundle before
+continuing. The archive preserves executable permissions for the shell scripts.
+
+```bash
+<copy>
+export DBSEC_LABS="${DBSEC_LABS:-$HOME/dbsec-labs}"
+mkdir -vp "$DBSEC_LABS/deep-data-security"
+cd "$DBSEC_LABS/deep-data-security"
+wget -O deep-sec-gen-ai-demo.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/zxnIwtQ4Jxt9sylQUMYjfYMBLa_UHgOuJyMwYkQJZ0J2_62F5TionMi0okdi1H9v/n/oradbclouducm/b/dbsec_public/o/deep-sec-gen-ai-demo.zip
+unzip -o deep-sec-gen-ai-demo.zip
+cd deep-sec-gen-ai-demo
+</copy>
+```
+
+Use `unzip -o` when refreshing the archive so newly added files are included.
+This extension requires the adjacent `../adb-oci-iam` lab directory; download
+and complete that base lab first if it is not already present.
+
 ## Architecture
 
 ```text
@@ -280,15 +300,15 @@ The service performs two OCI Generative AI calls:
 2. The service runs that tool as the OCI IAM token user.
 3. The model receives the tool result and writes an answer based only on it.
 
-The response includes the selected tool, authorized result, and final answer.
-The model cannot supply SQL, connect to ADB, retrieve unreturned columns, or
-bypass ADB data grants.
+    The response includes the selected tool, authorized result, and final answer.
+    The model cannot supply SQL, connect to ADB, retrieve unreturned columns, or
+    bypass ADB data grants.
 
-After any service query, inspect the audit trail:
+    After any service query, inspect the audit trail:
 
-```bash
-./07_show_hr_employees_audit_trail.sh
-```
+    ```bash
+    ./07_show_hr_employees_audit_trail.sh
+    ```
 
 ## Troubleshooting
 

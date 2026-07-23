@@ -72,13 +72,19 @@ Confirm each item before creating the Stack:
 
 2. In the JupyterLab file browser, use the **Upload Files** button to upload your local `Wallet_DEEPSEC7.zip`. Then return to the terminal and verify the upload.
 
+    Display the current JupyterLab working directory. The next commands use this directory to locate the uploaded wallet.
+
     ```
     <copy>pwd</copy>
     ```
 
+    Confirm that the uploaded wallet ZIP is present and readable before using it.
+
     ```
     <copy>ls -l Wallet_DEEPSEC7.zip</copy>
     ```
+
+    Save the wallet ZIP path in `WALLET_ZIP`. Later commands use this variable instead of requiring you to retype the path.
 
     ```
     <copy>export WALLET_ZIP="$PWD/Wallet_DEEPSEC7.zip"</copy>
@@ -86,21 +92,31 @@ Confirm each item before creating the Stack:
 
 3. Download and extract **exactly** `deep-data-security-flask-app.zip`. This is the only lab archive required on the compute host; it includes the Flask application and database SQL scripts.
 
+    Create a dedicated directory for the extracted lab files. The `-v` option reports the directory that is created.
+
     ```
     <copy>mkdir -vp "$HOME/deepsec7-lab"</copy>
     ```
+
+    Move into the lab directory so the downloaded archive and extracted files stay together.
 
     ```
     <copy>cd "$HOME/deepsec7-lab"</copy>
     ```
 
+    Download the compute-host archive from the lab's published Object Storage location. Verbose output confirms the transfer progress and destination filename.
+
     ```
     <copy>wget --verbose -O deep-data-security-flask-app.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/Mzf75vY1KZat2TyYinBCgXRxO0q8Ky-adubY5hAAHj21tjcSBowCcJcHkBw6Glh5/n/oradbclouducm/b/dbsec_public/o/deep-data-security-flask-app.zip</copy>
     ```
 
+    Extract the application and database scripts from the downloaded archive. The `-o` option permits replacement if you are rerunning the lab setup.
+
     ```
     <copy>unzip -o deep-data-security-flask-app.zip</copy>
     ```
+
+    Enter the Flask application directory. All remaining compute-host commands in this task run from here unless stated otherwise.
 
     ```
     <copy>cd flask-app</copy>
@@ -108,15 +124,21 @@ Confirm each item before creating the Stack:
 
 4. Create the isolated Python environment, install the curated requirements, and verify the preinstalled SQL*Plus and Instant Client. These steps do not require `sudo`.
 
+    Create or refresh the application's isolated Python virtual environment and install its required packages.
+
     ```
     <copy>bash setup_venv.sh</copy>
     ```
+
+    Verify that the virtual environment, SQL*Plus, and Oracle Instant Client expected by the lab image are available.
 
     ```
     <copy>bash verify_app_server.sh</copy>
     ```
 
 5. Install the wallet uploaded in step 2 into a protected directory. Replace the path if your JupyterLab upload is in a different directory.
+
+    Extract the wallet into the protected location and update its configuration to use that directory.
 
     ```
     <copy>bash install_wallet.sh "$WALLET_ZIP"</copy>
@@ -126,19 +148,25 @@ Confirm each item before creating the Stack:
 
 6. List the wallet aliases, then connect as the ADB administrator. This fixed lab uses `deepsec7_low`. Enter the ADB `ADMIN` password when prompted.
 
+    List the service aliases provided by the extracted wallet. This confirms that the `deepsec7_low` alias is available.
+
     ```
     <copy>grep -E '^[[:alnum:]_]+[[:space:]]*=' "$HOME/deepsec7-wallet/tns_admin/tnsnames.ora"</copy>
     ```
+
+    Point Oracle client tools to the extracted wallet directory for this terminal session.
 
     ```
     <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
     ```
 
-    Verify that the environment variable points to the extracted wallet directory.
+    Display the value that Oracle client tools will use. It should be the protected wallet directory.
 
     ```
     <copy>echo "$TNS_ADMIN"</copy>
     ```
+
+    Open a SQL*Plus session as the Autonomous Database administrator. SQL*Plus prompts for the `ADMIN` password without echoing it.
 
     ```
     <copy>sqlplus admin@deepsec7_low</copy>
@@ -146,21 +174,31 @@ Confirm each item before creating the Stack:
 
 7. Stay connected as ADB `ADMIN` and run the provisioning scripts. ADMIN creates the `APPLAB` schema, sample data, broad baseline data grants, and local end users. The user-creation script securely prompts for the Emma, Marvin, and Carol database passwords.
 
+    Create the `APPLAB` schema and the customers table that the application queries.
+
     ```
     <copy>@../database/01_create_schema.sql</copy>
     ```
+
+    Load the sample customer rows used for the before-and-after access comparison.
 
     ```
     <copy>@../database/02_load_sample_data.sql</copy>
     ```
 
+    Run the intentional no-op application-account script. It documents that this lab does not use a shared database application account.
+
     ```
     <copy>@../database/03_create_app_user.sql</copy>
     ```
 
+    Create the data roles and deliberately broad baseline grants. SQL*Plus displays the full data-role and data-grant DDL as it runs.
+
     ```
     <copy>@../database/04_create_baseline_access.sql</copy>
     ```
+
+    Create the three password-authenticated local end users. Choose and record the Emma, Marvin, and Carol passwords when the script prompts.
 
     ```
     <copy>@../database/05_create_lab_users.sql</copy>
@@ -170,17 +208,25 @@ Confirm each item before creating the Stack:
 
 8. Test each local end user through a separate SQL*Plus connection. Exit the ADMIN session, then use the supplied runner to connect as Emma and execute the unchanged validation query. The password prompt keeps the password out of shell history.
 
+    Leave the privileged ADMIN connection before testing the application personas.
+
     ```
     <copy>exit</copy>
     ```
+
+    Connect as Emma and run the fixed validation query. Enter Emma's local database password when prompted.
 
     ```
     <copy>./query_data.sh emma</copy>
     ```
 
+    Connect as Marvin and run the same fixed validation query. Enter Marvin's local database password when prompted.
+
     ```
     <copy>./query_data.sh marvin</copy>
     ```
+
+    Connect as Carol and run the same fixed validation query. Enter Carol's local database password when prompted.
 
     ```
     <copy>./query_data.sh carol</copy>
@@ -196,9 +242,13 @@ Confirm each item before creating the Stack:
 
 9. Return to the application directory and create the Flask configuration.
 
+    Return to the application directory, where the environment configuration script is located.
+
     ```
     <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
     ```
+
+    Generate the application configuration, validate the wallet, and accept the Terraform-provided GenAI defaults when prompted.
 
     ```
     <copy>./configure_env.sh</copy>
@@ -210,6 +260,8 @@ Confirm each item before creating the Stack:
 
 10. Start the web server.
 
+    Start the Flask application with Gunicorn on port 7777. Keep this terminal open while you test the web interface.
+
     ```
     <copy>./run.sh</copy>
     ```
@@ -217,6 +269,8 @@ Confirm each item before creating the Stack:
     The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal. Use that terminal to remove the uploaded wallet ZIP or run cleanup. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
 
 11. After confirming the application works, delete the uploaded wallet ZIP. The protected extracted wallet remains available to the application.
+
+    Remove only the uploaded ZIP now that its contents are installed in the protected wallet directory. The `-v` option reports the removed file.
 
     ```
     <copy>rm -fv "$WALLET_ZIP"</copy>
@@ -232,6 +286,8 @@ Confirm each item before creating the Stack:
 
 4. While signed in as Emma, enter this bounded prompt and select **Ask AI**.
 
+    Use this prompt to ask OCI Generative AI about the rows returned for Emma. It explicitly directs the model to mention only fields that were available in that authorized result.
+
     ```
     <copy>Summarize all authorized customer rows. Mention credit limits and sensitive identifiers only when those values are available.</copy>
     ```
@@ -242,13 +298,19 @@ Confirm each item before creating the Stack:
 
 1. Keep Gunicorn running. In a second JupyterLab terminal, return to the application directory and connect as ADB `ADMIN`.
 
+    Return to the application directory in the second terminal so the database script paths resolve correctly.
+
     ```
     <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
     ```
 
+    Point SQL*Plus in this second terminal at the extracted wallet.
+
     ```
     <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
     ```
+
+    Connect as ADB `ADMIN` to replace the baseline grants with Deep Data Security policy grants.
 
     ```
     <copy>sqlplus admin@deepsec7_low</copy>
@@ -256,11 +318,15 @@ Confirm each item before creating the Stack:
 
 2. Run the Deep Data Security policy script. SQL*Plus `ECHO` is enabled, so the terminal prints each complete replacement `CREATE OR REPLACE DATA GRANT` statement. It replaces the broad Task 3 data grants with the Emma, Marvin, and Carol policy grants.
 
+    Execute the policy DDL and review the displayed grants to see the row and column restrictions assigned to each data role.
+
     ```
     <copy>@../database/06_implement_deep_sec_policies.sql</copy>
     ```
 
 3. Exit SQL*Plus. You do not need to restart Flask because the app opens a new database connection for every query.
+
+    Close the ADMIN session. The running application uses the updated grants the next time a persona signs in.
 
     ```
     <copy>exit</copy>
@@ -282,17 +348,25 @@ Confirm each item before creating the Stack:
 
 2. In the second JupyterLab terminal, return to the application directory, set the wallet location, and reconnect as ADB `ADMIN`.
 
+    Return to the application directory before running the cleanup script.
+
     ```
     <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
     ```
+
+    Point SQL*Plus to the installed wallet for this cleanup terminal.
 
     ```
     <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
     ```
 
+    Verify the wallet location before connecting as the administrator.
+
     ```
     <copy>echo "$TNS_ADMIN"</copy>
     ```
+
+    Connect as ADB `ADMIN` so the cleanup script can remove the lab database objects.
 
     ```
     <copy>sqlplus admin@deepsec7_low</copy>
@@ -300,15 +374,21 @@ Confirm each item before creating the Stack:
 
 3. In the ADB administrator SQL*Plus session, remove the lab database objects.
 
+    Remove the database users, data roles, grants, and schema created for this disposable lab.
+
     ```
     <copy>@../database/reset_lab.sql</copy>
     ```
 
 4. Exit SQL*Plus, then remove the protected wallet directory from the compute host.
 
+    Close the database administrator session after the cleanup script finishes.
+
     ```
     <copy>exit</copy>
     ```
+
+    Remove the extracted wallet directory and its connection configuration from the compute host. The verbose option lists the deleted files.
 
     ```
     <copy>rm -rfv "$HOME/deepsec7-wallet"</copy>

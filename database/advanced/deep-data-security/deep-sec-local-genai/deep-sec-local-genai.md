@@ -338,11 +338,19 @@ Confirm each item before creating the Stack:
 
 ## Task 7: Test Deep Sec Policies
 
-1. Return to the browser and sign in as **Emma: East Sales**. Run the unchanged query. Emma now sees only East sales rows. Credit limits and sensitive identifiers display as `Not authorized`.
+1. Return to the browser and sign in as **Emma: East Sales**. Run the unchanged query. Emma sees exactly **six** East sales rows: Acme East, Beacon Health, Cedar Retail, Delta Foods, Evergreen Labs, and Redwood Travel. She can see **Customer name**, **Region**, and **Revenue**. **Credit limit** and **Sensitive identifier** display as `Not authorized`.
 
-2. Sign out and sign in as **Marvin: Sales Manager**. Run the unchanged query. Marvin now sees all EMMA and MARVIN sales rows. Credit limits remain visible, but sensitive identifiers display as `Not authorized`.
+2. Sign out and sign in as **Marvin: Sales Manager**. Run the unchanged query. Marvin sees **20** EMMA and MARVIN sales rows. He can see **Customer name**, **Region**, **Revenue**, and **Credit limit**; **Sensitive identifier** displays as `Not authorized`.
 
-3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees every row across all regions, including Apex Treasury and Crown Capital. She can see sensitive identifiers.
+3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees all **22** rows across every region, including Apex Treasury and Crown Capital. She can see all displayed columns: **Customer name**, **Region**, **Revenue**, **Credit limit**, and **Sensitive identifier**.
+
+    Use this table to compare the policy-enforced result sets. The application always displays the same five column headers; `Not authorized` means the selected local end user did not receive that field from the database.
+
+    | Local user | Expected rows | Authorized columns in the application | Columns shown as `Not authorized` |
+    | --- | ---: | --- | --- |
+    | Emma | 6 | Customer name, Region, Revenue | Credit limit, Sensitive identifier |
+    | Marvin | 20 | Customer name, Region, Revenue, Credit limit | Sensitive identifier |
+    | Carol | 22 | Customer name, Region, Revenue, Credit limit, Sensitive identifier | None |
 
 4. Sign out and sign back in as Emma. Run the query and submit both GenAI questions from Task 5. Compare each answer with its Task 5 result. The post-policy Emma summaries cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
 

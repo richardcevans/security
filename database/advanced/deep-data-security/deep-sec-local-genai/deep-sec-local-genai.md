@@ -66,7 +66,7 @@ Confirm each item before creating the Stack:
 
 4. The wallet ZIP contains connection configuration and certificates; it does **not** contain the ADB `ADMIN` password or the Emma, Marvin, and Carol passwords. You enter those passwords only when prompted later in the lab.
 
-## Task 2: Set Up the Compute Host with JupyterLab
+## Task 2: Prepare the App Server
 
 1. Complete **Use JupyterLab on the App Server** before starting this task. Open `jupyter_url` from the Resource Manager Apply job Outputs page. In the JupyterLab file browser, select **+**. Under **Other**, select **Terminal**.
 

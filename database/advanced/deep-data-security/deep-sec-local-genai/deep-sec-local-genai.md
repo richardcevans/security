@@ -264,21 +264,13 @@ Confirm each item before creating the Stack:
 
 2. Start the web server.
 
-    Start the Flask application with Gunicorn on port 7777. Keep this terminal open while you test the web interface.
+    Start the web application on port 7777. Keep this terminal open while you test the web interface.
 
     ```
     <copy>./run.sh</copy>
     ```
 
-    The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal. Use that terminal to remove the uploaded wallet ZIP or run cleanup. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
-
-3. After confirming the application works, delete the uploaded wallet ZIP. The protected extracted wallet remains available to the application.
-
-    Remove only the uploaded ZIP now that its contents are installed in the protected wallet directory. The `-v` option reports the removed file.
-
-    ```
-    <copy>rm -fv "$WALLET_ZIP"</copy>
-    ```
+    The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal for the policy and cleanup tasks. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
 
 ## Task 5: Query App Data
 
@@ -298,9 +290,17 @@ Confirm each item before creating the Stack:
 
     The application queries ADB before it calls OCI Generative AI. The model receives only the returned rows and cannot generate or execute SQL. At this point, Emma's summary can reference the unrestricted baseline values.
 
+5. Ask a second question that requires the model to reason over the authorized result set.
+
+    This question identifies the highest-revenue customer and its region using only the rows ADB returned to Emma.
+
+    ```
+    <copy>Tell me who has the most money and tell me which region they're in.</copy>
+    ```
+
 ## Task 6: Implement Deep Sec Policies
 
-1. Keep Gunicorn running. In a second JupyterLab terminal, return to the application directory and connect as ADB `ADMIN`.
+1. You can keep the application running and open a second JupyterLab terminal. Return to the application directory and connect as ADB `ADMIN`.
 
     Return to the application directory in the second terminal so the database script paths resolve correctly.
 
@@ -344,11 +344,11 @@ Confirm each item before creating the Stack:
 
 3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees every row across all regions, including Apex Treasury and Crown Capital. She can see sensitive identifiers.
 
-4. Sign out and sign back in as Emma. Run the query and submit the same GenAI prompt from Task 5. Compare this answer with the Task 5 answer. The post-policy Emma summary cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
+4. Sign out and sign back in as Emma. Run the query and submit both GenAI questions from Task 5. Compare each answer with its Task 5 result. The post-policy Emma summaries cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
 
 ## Task 8: Clean Up
 
-1. In the terminal where Gunicorn is running, press `Ctrl+C` to stop the web server. Leave the terminal open.
+1. In the terminal where the application is running, press `Ctrl+C` to stop the web server. Leave the terminal open.
 
 2. In the second JupyterLab terminal, return to the application directory, set the wallet location, and reconnect as ADB `ADMIN`.
 

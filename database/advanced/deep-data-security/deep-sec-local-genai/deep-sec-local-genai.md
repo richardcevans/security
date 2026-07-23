@@ -136,7 +136,9 @@ Confirm each item before creating the Stack:
     <copy>bash verify_app_server.sh</copy>
     ```
 
-5. Install the wallet uploaded in step 2 into a protected directory. Replace the path if your JupyterLab upload is in a different directory.
+## Task 3: Configure the Database and Local Users
+
+1. Install the wallet uploaded in Task 2 into a protected directory. Replace the path if your JupyterLab upload is in a different directory.
 
     Extract the wallet into the protected location and update its configuration to use that directory.
 
@@ -146,7 +148,7 @@ Confirm each item before creating the Stack:
 
     The installer reports the protected wallet directory: `$HOME/deepsec7-wallet/tns_admin`. It also updates the downloaded `sqlnet.ora` wallet location from the Instant Client default to that directory.
 
-6. List the wallet aliases, then connect as the ADB administrator. This fixed lab uses `deepsec7_low`. Enter the ADB `ADMIN` password when prompted.
+2. List the wallet aliases, then connect as the ADB administrator. This fixed lab uses `deepsec7_low`. Enter the ADB `ADMIN` password when prompted.
 
     List the service aliases provided by the extracted wallet. This confirms that the `deepsec7_low` alias is available.
 
@@ -172,7 +174,7 @@ Confirm each item before creating the Stack:
     <copy>sqlplus admin@deepsec7_low</copy>
     ```
 
-7. Stay connected as ADB `ADMIN` and run the provisioning scripts. ADMIN creates the `APPLAB` schema, sample data, broad baseline data grants, and local end users. The user-creation script securely prompts for the Emma, Marvin, and Carol database passwords.
+3. Stay connected as ADB `ADMIN` and run the provisioning scripts. ADMIN creates the `APPLAB` schema, sample data, broad baseline data grants, and local end users. The user-creation script securely prompts for the Emma, Marvin, and Carol database passwords.
 
     Create the `APPLAB` schema and the customers table that the application queries.
 
@@ -206,7 +208,7 @@ Confirm each item before creating the Stack:
 
     The scripts create schema `APPLAB` and data roles `APP_EAST_SALES`, `APP_SALES_MANAGER`, and `APP_FINANCE`. The baseline-access script has SQL*Plus `ECHO` enabled, so the terminal prints each complete `CREATE DATA ROLE`, role grant, and `CREATE OR REPLACE DATA GRANT` statement as it executes. The baseline grants deliberately give every local end user all customer rows and columns. The application-account script is intentionally a no-op. This lab authenticates directly as each local end user; it does not use an IAM token or a shared database account.
 
-8. Test each local end user through a separate SQL*Plus connection. Exit the ADMIN session, then use the supplied runner to connect as Emma and execute the unchanged validation query. The password prompt keeps the password out of shell history.
+4. Test each local end user through a separate SQL*Plus connection. Exit the ADMIN session, then use the supplied runner to connect as Emma and execute the unchanged validation query. The password prompt keeps the password out of shell history.
 
     Leave the privileged ADMIN connection before testing the application personas.
 
@@ -232,7 +234,7 @@ Confirm each item before creating the Stack:
     <copy>./query_data.sh carol</copy>
     ```
 
-    You may optionally supply the password as the second argument, for example `./query_data.sh emma PASSWORD`. Replace `PASSWORD` with Emma's password. The prompt is safer because command-line passwords can appear in shell history or process listings. At this point, all three users return the same unrestricted data. Task 4 replaces this baseline with Deep Data Security policies.
+    You may optionally supply the password as the second argument, for example `./query_data.sh emma PASSWORD`. Replace `PASSWORD` with Emma's password. The prompt is safer because command-line passwords can appear in shell history or process listings. At this point, all three users return the same unrestricted data. Task 6 replaces this baseline with Deep Data Security policies.
 
     | Local user | Expected rows | Credit limit | Sensitive identifier |
     | --- | --- | --- | --- |
@@ -240,7 +242,9 @@ Confirm each item before creating the Stack:
     | Marvin | All customer rows | Visible | Visible |
     | Carol | All customer rows | Visible | Visible |
 
-9. Return to the application directory and create the Flask configuration.
+## Task 4: Configure and Start the Web Application
+
+1. Return to the application directory and create the Flask configuration.
 
     Return to the application directory, where the environment configuration script is located.
 
@@ -258,7 +262,7 @@ Confirm each item before creating the Stack:
 
     Do not add Emma, Marvin, or Carol passwords to `.env`. Students enter each local database password on the sign-in page.
 
-10. Start the web server.
+2. Start the web server.
 
     Start the Flask application with Gunicorn on port 7777. Keep this terminal open while you test the web interface.
 
@@ -268,7 +272,7 @@ Confirm each item before creating the Stack:
 
     The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal. Use that terminal to remove the uploaded wallet ZIP or run cleanup. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
 
-11. After confirming the application works, delete the uploaded wallet ZIP. The protected extracted wallet remains available to the application.
+3. After confirming the application works, delete the uploaded wallet ZIP. The protected extracted wallet remains available to the application.
 
     Remove only the uploaded ZIP now that its contents are installed in the protected wallet directory. The `-v` option reports the removed file.
 
@@ -276,7 +280,7 @@ Confirm each item before creating the Stack:
     <copy>rm -fv "$WALLET_ZIP"</copy>
     ```
 
-## Task 3: Query App Data
+## Task 5: Query App Data
 
 1. From the trusted browser, open `flask_url` from the Stack outputs. Select **Emma: East Sales**. Enter the Emma database password and select **Sign in**. Run the query. Emma sees every customer row across all regions, including credit limits and sensitive identifiers.
 
@@ -294,7 +298,7 @@ Confirm each item before creating the Stack:
 
     The application queries ADB before it calls OCI Generative AI. The model receives only the returned rows and cannot generate or execute SQL. At this point, Emma's summary can reference the unrestricted baseline values.
 
-## Task 4: Implement Deep Sec Policies
+## Task 6: Implement Deep Sec Policies
 
 1. Keep Gunicorn running. In a second JupyterLab terminal, return to the application directory and connect as ADB `ADMIN`.
 
@@ -316,7 +320,7 @@ Confirm each item before creating the Stack:
     <copy>sqlplus admin@deepsec7_low</copy>
     ```
 
-2. Run the Deep Data Security policy script. SQL*Plus `ECHO` is enabled, so the terminal prints each complete replacement `CREATE OR REPLACE DATA GRANT` statement. It replaces the broad Task 3 data grants with the Emma, Marvin, and Carol policy grants.
+2. Run the Deep Data Security policy script. SQL*Plus `ECHO` is enabled, so the terminal prints each complete replacement `CREATE OR REPLACE DATA GRANT` statement. It replaces the broad Task 5 data grants with the Emma, Marvin, and Carol policy grants.
 
     Execute the policy DDL and review the displayed grants to see the row and column restrictions assigned to each data role.
 
@@ -332,7 +336,7 @@ Confirm each item before creating the Stack:
     <copy>exit</copy>
     ```
 
-## Task 5: Test Deep Sec Policies
+## Task 7: Test Deep Sec Policies
 
 1. Return to the browser and sign in as **Emma: East Sales**. Run the unchanged query. Emma now sees only East sales rows. Credit limits and sensitive identifiers display as `Not authorized`.
 
@@ -340,9 +344,9 @@ Confirm each item before creating the Stack:
 
 3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees every row across all regions, including Apex Treasury and Crown Capital. She can see sensitive identifiers.
 
-4. Sign out and sign back in as Emma. Run the query and submit the same GenAI prompt from Task 3. Compare this answer with the Task 3 answer. The post-policy Emma summary cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
+4. Sign out and sign back in as Emma. Run the query and submit the same GenAI prompt from Task 5. Compare this answer with the Task 5 answer. The post-policy Emma summary cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
 
-## Task 6: Clean Up
+## Task 8: Clean Up
 
 1. In the terminal where Gunicorn is running, press `Ctrl+C` to stop the web server. Leave the terminal open.
 

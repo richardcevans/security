@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - Local Deep Data Security and Generative AI",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Review the direct local-end-user architecture, preflight requirements, and lab flow.",
+      "publisheddate": "07/22/2026",
+      "filename": "../../deep-data-security/deep-sec-local-genai/introduction.md"
+    },
+    {
+      "title": "Get Started: JupyterLab on the App Server",
+      "description": "Open the provisioned JupyterLab service, upload the wallet, and use separate terminal sessions safely.",
+      "filename": "../../deep-data-security/deep-sec-local-genai/jupyter-orientation.md"
+    },
+    {
+      "title": "Build a Local End-User Deep Data Security Web App",
+      "description": "Configure local Deep Data Security users, deploy the Flask web app, and summarize only database-authorized data with OCI Generative AI.",
+      "publisheddate": "07/22/2026",
+      "filename": "../../deep-data-security/deep-sec-local-genai/deep-sec-local-genai.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to common problems and directions for receiving live help.",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

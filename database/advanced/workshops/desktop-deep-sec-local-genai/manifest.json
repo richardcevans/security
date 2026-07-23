@@ -9,11 +9,6 @@
       "filename": "../../deep-data-security/deep-sec-local-genai/introduction.md"
     },
     {
-      "title": "Get Started: JupyterLab on the App Server",
-      "description": "Open the provisioned JupyterLab service, upload the wallet, and use separate terminal sessions safely.",
-      "filename": "../../deep-data-security/deep-sec-local-genai/jupyter-orientation.md"
-    },
-    {
       "title": "Build a Local End-User Deep Data Security Web App",
       "description": "Configure local Deep Data Security users, deploy the Flask web app, and summarize only database-authorized data with OCI Generative AI.",
       "publisheddate": "07/22/2026",

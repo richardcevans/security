@@ -68,9 +68,11 @@ Confirm each item before creating the Stack:
 
 ## Task 2: Prepare the App Server
 
-1. Complete **Use JupyterLab on the App Server** before starting this task. Open `jupyter_url` from the Resource Manager Apply job Outputs page. In the JupyterLab file browser, select **+**. Under **Other**, select **Terminal**.
+1. Open `jupyter_url` from the Resource Manager Stack **Application Information** tab. This opens the JupyterLab service on the application server.
 
-2. In the JupyterLab file browser, use the **Upload Files** button to upload your local `Wallet_DEEPSEC7.zip`. Then return to the terminal and verify the upload.
+2. At the JupyterLab sign-in prompt, enter `Oracle123`. This is the shared password for this disposable lab environment.
+
+3. In the JupyterLab file browser, select **+** and then **Other** > **Terminal**. Use the **Upload Files** button to upload your local `Wallet_DEEPSEC7.zip`, then return to the terminal and verify the upload.
 
     Display the current JupyterLab working directory. The next commands use this directory to locate the uploaded wallet.
 
@@ -90,7 +92,7 @@ Confirm each item before creating the Stack:
     <copy>export WALLET_ZIP="$PWD/Wallet_DEEPSEC7.zip"</copy>
     ```
 
-3. Download and extract **exactly** `deep-data-security-flask-app.zip`. This is the only lab archive required on the compute host; it includes the Flask application and database SQL scripts.
+4. Download and extract **exactly** `deep-data-security-flask-app.zip`. This is the only lab archive required on the compute host; it includes the Flask application and database SQL scripts.
 
     Create a dedicated directory for the extracted lab files. The `-v` option reports the directory that is created.
 
@@ -122,7 +124,7 @@ Confirm each item before creating the Stack:
     <copy>cd flask-app</copy>
     ```
 
-4. Create the isolated Python environment, install the curated requirements, and verify the preinstalled SQL*Plus and Instant Client. These steps do not require `sudo`.
+5. Create the isolated Python environment, install the curated requirements, and verify the preinstalled SQL*Plus and Instant Client. These steps do not require `sudo`.
 
     Create or refresh the application's isolated Python virtual environment and install its required packages.
 

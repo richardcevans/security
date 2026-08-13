@@ -1,0 +1,17 @@
+{
+  "workshoptitle": "Can AI-Generated Application Code Bypass Database Security?",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Deep Data Security with a Local End User",
+      "description": "Build, test, and protect an AI-assisted customer application with Oracle Deep Data Security.",
+      "type": "livelabs",
+      "filename": "deep-sec-local-genai.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Troubleshooting and support information.",
+      "filename": "https://raw.githubusercontent.com/oracle-livelabs/common/main/labs/need-help/need-help-freetier.md"
+    }
+  ]
+}

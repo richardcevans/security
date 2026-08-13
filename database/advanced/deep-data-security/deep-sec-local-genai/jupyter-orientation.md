@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This workshop uses the JupyterLab service already installed on the DeepSec7 application server. Use its browser file area only to upload the wallet ZIP. Use terminal sessions for the remaining lab commands.
+This workshop uses the JupyterLab service already installed on the DeepSec9 application server. Use its browser file area only to upload the wallet ZIP. Use terminal sessions for the remaining lab commands.
 
 Estimated Time: 5 minutes
 
@@ -15,7 +15,7 @@ Estimated Time: 5 minutes
 ### Prerequisites
 
 - A completed Resource Manager Apply job with a `jupyter_url` output.
-- The wallet ZIP downloaded from the `deepsec7` Autonomous Database Console page.
+- The wallet ZIP downloaded from the `deepsec9` Autonomous Database Console page.
 
 ## Task 1: Orient Yourself in JupyterLab
 
@@ -23,7 +23,7 @@ Estimated Time: 5 minutes
 
 2. Select **+**, then select **Other** and **Terminal**. This opens the first terminal session.
 
-3. Use the JupyterLab file-browser **Upload Files** button only to upload `Wallet_DEEPSEC7.zip` from your computer. Keep the file private.
+3. Use the JupyterLab file-browser **Upload Files** button only to upload `Wallet_DEEPSEC9.zip` from your computer. Keep the file private.
 
 4. Later, when `run.sh` is running, leave that first terminal open. Select **+**, then **Other** and **Terminal** again to open a second terminal for validation or cleanup.
 

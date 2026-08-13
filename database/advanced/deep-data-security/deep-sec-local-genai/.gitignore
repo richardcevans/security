@@ -1,0 +1,10 @@
+cloudshell/config.env
+cloudshell/generated/
+cloudshell/artifacts/
+flask-app/.env
+flask-app/.venv/
+flask-app/__pycache__/
+cloudshell/__pycache__/
+flask-app/logs/
+dist/*.zip
+dist/*.sha256

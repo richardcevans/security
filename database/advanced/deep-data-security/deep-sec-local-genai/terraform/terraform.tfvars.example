@@ -1,0 +1,34 @@
+tenancy_ocid              = "ocid1.tenancy.oc1..replace-me"
+compartment_ocid          = "ocid1.compartment.oc1..replace-me"
+region                    = "us-ashburn-1"
+# OCI profile is normally inherited by terraform.sh from OCI_PROFILE.
+# oci_profile              = "DEFAULT"
+adb_db_name               = "DEEPSEC9"
+adb_display_name          = "deepsec9"
+adb_compute_count         = 2
+adb_storage_tbs           = 1
+adb_license_model         = "BRING_YOUR_OWN_LICENSE"
+
+# This is the supplied Ashburn custom image. Override it for another tenancy or region.
+compute_image_ocid        = "ocid1.image.oc1.iad.aaaaaaaaniph7qkksa5gbo2orm44hhhqs4wd7fasrobaxofhzjazgm65rima"
+compute_shape             = "VM.Standard.E5.Flex"
+compute_ocpus             = 1
+compute_memory_in_gbs     = 16
+compute_display_name      = "deep-sec-app-server"
+ssh_public_key            = "ssh-rsa replace-me"
+
+# Terraform creates and later destroys this VCN and public subnet. Enter your
+# own public home IPv4 address; Terraform adds /32 to permit only that address.
+vcn_cidr                  = "10.0.0.0/16"
+public_subnet_cidr        = "10.0.1.0/24"
+allowed_ingress_home_ip_address = "203.0.113.10"
+allowed_ingress_description = "My Home IP"
+
+# Creates the private bucket used by cloudshell/publish_wallet_par.sh.
+create_wallet_bucket      = true
+wallet_bucket_name        = "deepsec9-wallet"
+
+# The module creates a dynamic group bound to this new VM plus the least-privilege
+# GenAI chat policy. Set false if your Terraform principal lacks tenancy IAM permission.
+create_genai_iam          = true
+genai_model_id            = "google.gemini-2.5-flash"

@@ -1,418 +1,560 @@
-# Build a Local End-User Deep Data Security Web App
+# Can AI-Generated Application Code Bypass Database Security?
 
 ## Introduction
 
-Build a web application that signs in directly to Autonomous AI Database as Emma, Marvin, or Carol. They are local Deep Data Security end users. The application runs one fixed query. Database grants, not Flask, determine the returned rows and columns. OCI Generative AI summarizes only the database-authorized result set.
+You are Marvin, a sales user. An AI coding assistant can modify your application and ask Oracle Database for customer data that you should not see. What stops generated application code from bypassing your organization's security policy?
 
-Estimated Time: 60 minutes after the Stack Apply job completes. Allow additional time for Autonomous Database provisioning and Python package installation.
+In this lab, you first see an intentionally insecure application result. You then move authorization into Oracle Autonomous AI Database with Deep Data Security, without changing the application's customer query. Finally, you promote Marvin legitimately and use Vibe to try application-level bypasses. Oracle determines which rows and columns can be returned.
+
+Estimated Time: 60 minutes after the Resource Manager Stack is ready. Resource provisioning can take additional time.
 
 ### Objectives
 
-- Deploy Autonomous AI Database 26ai, a disposable VCN, and the Flask compute host.
-- Create the `APPLAB` schema, local users, data roles, and data grants.
-- Download an ADB wallet through OCI Console and upload it through JupyterLab.
-- Sign in directly as Emma, Marvin, and Carol and compare database-enforced results.
-- Ask OCI Generative AI to summarize authorized data only.
+- Observe an intentionally excessive customer-data result as Marvin.
+- Apply Oracle Deep Data Security and observe the same application query return fewer rows and columns.
+- Promote Marvin from sales employee to sales manager through a database authorization change.
+- Use Vibe to add and attack application features without changing database authorization.
+
+> **Lab design note:** Marvin is a local database user in this lab so you can directly observe Oracle authorizing an individual end user. Production applications can establish end-user identity differently. The important principle is that Oracle Database receives a trusted end-user identity or context and enforces authorization at the data layer.
 
 ### Prerequisites
 
-- A non-production OCI compartment and permission to create the lab resources.
-- The provided Oracle Linux application-server image and an SSH public key.
-- Access to download the ADB wallet from OCI Console.
-- A browser whose public IPv4 address is known.
+- A non-production OCI compartment and permission to create the Stack resources.
+- The supplied Oracle Linux application-server image and an SSH public key.
+- A browser public IPv4 address and access to download an ADB wallet.
 
-### Before You Start
+## Task 0: Deploy the Lab Environment
 
-Confirm each item before creating the Stack:
+1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Upload it unchanged to an OCI Resource Manager Stack. Select **My configuration**, set the working directory to `terraform`, and use Terraform 1.5.x.
 
-- The supplied custom image is visible in **US East (Ashburn)**. Use a compatible image OCID if you deploy elsewhere.
-- Your organization permits an Autonomous AI Database with the supplied **BYOL**, 2-ECPU, and 1-TB storage defaults. These defaults can incur cost.
-- You accept a public compute IP and browser access restricted to the one IPv4 address supplied to `allowed_ingress_home_ip_address`.
-- The Stack operator can create compartment resources and, when `create_genai_iam = true`, tenancy-level dynamic groups and policies.
-- The Ashburn region can use the default on-demand GenAI model, `google.gemini-2.5-flash`, or you have selected a compatible replacement model ID.
+2. Supply `tenancy_ocid`, `compartment_ocid`, `adb_admin_password`, `ssh_public_key`, and `allowed_ingress_home_ip_address`. Keep `create_genai_iam = true` unless your tenancy already authorizes the new compute instance to use OCI Generative AI for Vibe. Run **Plan**, then **Apply**.
 
-## Task 0: Deploy the Infrastructure with OCI Resource Manager
+3. When Apply completes, save these Application Information values: `adb_console_url`, `jupyter_url`, `flask_url`, and the protected ADB `ADMIN` password. The Stack creates the disposable database, compute host, private wallet bucket, and the instance-principal authorization Vibe uses.
 
-1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Upload it to an OCI Resource Manager Stack without unzipping it.
+## Task 1: Download the Wallet and Prepare JupyterLab
 
-2. In OCI Console, open **Developer Services**, **Resource Manager**, and **Stacks**. Create a Stack using **My configuration**. Set the configuration working directory to `terraform` and select Terraform 1.5.x.
+1. Open `adb_console_url`. On the `deepsec9` database page, select **Database connection**, download an **Instance Wallet**, enter the ADB `ADMIN` password when prompted, and save the file as `Wallet_DEEPSEC9.zip`.
 
-3. Enter these Stack variables:
+2. Open `jupyter_url` and sign in with `Oracle123`. In JupyterLab, select **+**, **Other**, then **Terminal**. Upload `Wallet_DEEPSEC9.zip` with the file browser.
 
-    - `tenancy_ocid`
-    - `compartment_ocid`
-    - `adb_admin_password`
-    - `ssh_public_key`
-    - `allowed_ingress_home_ip_address`: your current public IPv4 address, without `/32`
-
-    Keep `create_genai_iam = true` to create the compute instance-principal dynamic group and Generative AI policy. Run **Plan**, then **Apply**. The Stack operator needs permission to manage Autonomous Database, instance-family, virtual-network-family, object-family, dynamic groups, and policies. Exact policy statements are in `terraform/README.md` in the Terraform ZIP.
-
-4. After Apply completes, open the Stack **Application Information** tab. Save these values:
-
-    - `adb_console_url`: direct link to the `deepsec7` database in OCI Console
-    - `jupyter_url`: browser link to JupyterLab
-    - `flask_url`: browser link to the completed web application
-    - `ssh_command`: optional terminal access to the compute host
-
-    The tab also shows the ADB `ADMIN` password as a sensitive value. Select **Unlock** only when you need to copy it. Use the Apply job **Outputs** page for `deepsec7_lab_summary`, which lists the ADB, network, wallet bucket, GenAI identity, ports, and trusted ingress CIDR. If Flask or JupyterLab does not open, update `allowed_ingress_home_ip_address` with the current browser public IPv4 address. Apply the Stack again.
-
-## Task 1: Download the ADB Wallet in OCI Console
-
-1. Open `adb_console_url` from the Resource Manager Apply job Outputs page.
-
-2. On the `deepsec7` Autonomous Database details page, select **Database connection**, then **Download wallet**.
-
-3. For **Wallet type**, select **Instance Wallet**. Select **Download**, enter the ADB `ADMIN` password as the wallet password, then download the ZIP to your local computer. Keep the downloaded filename as `Wallet_DEEPSEC7.zip`.
-
-4. The wallet ZIP contains connection configuration and certificates; it does **not** contain the ADB `ADMIN` password or the Emma, Marvin, and Carol passwords. You enter those passwords only when prompted later in the lab.
-
-## Task 2: Prepare the App Server
-
-1. Open `jupyter_url` from the Resource Manager Stack **Application Information** tab. This opens the JupyterLab service on the application server.
-
-2. At the JupyterLab sign-in prompt, enter `Oracle123`. This is the shared password for this disposable lab environment.
-
-3. In the JupyterLab file browser, select **+** and then **Other** > **Terminal**. Use the **Upload Files** button to upload your local `Wallet_DEEPSEC7.zip`, then return to the terminal and verify the upload.
-
-    Display the current JupyterLab working directory. The next commands use this directory to locate the uploaded wallet.
+3. In the terminal, save the uploaded-wallet path, create the lab directory, download the compute package, and enter its application directory.
 
     ```
-    <copy>pwd</copy>
+    <copy>export WALLET_ZIP="$PWD/Wallet_DEEPSEC9.zip"</copy>
     ```
 
-    Confirm that the uploaded wallet ZIP is present and readable before using it.
-
     ```
-    <copy>ls -l Wallet_DEEPSEC7.zip</copy>
+    <copy>mkdir -pv "$HOME/deepsec9-lab"</copy>
     ```
 
-    Save the wallet ZIP path in `WALLET_ZIP`. Later commands use this variable instead of requiring you to retype the path.
-
     ```
-    <copy>export WALLET_ZIP="$PWD/Wallet_DEEPSEC7.zip"</copy>
+    <copy>cd "$HOME/deepsec9-lab"</copy>
     ```
 
-4. Download and extract **exactly** `deep-data-security-flask-app.zip`. This is the only lab archive required on the compute host; it includes the Flask application and database SQL scripts.
-
-    Create a dedicated directory for the extracted lab files. The `-v` option reports the directory that is created.
-
     ```
-    <copy>mkdir -vp "$HOME/deepsec7-lab"</copy>
+    <copy>wget -O deep-data-security-flask-app.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/Mzf75vY1KZat2TyYinBCgXRxO0q8Ky-adubY5hAAHj21tjcSBowCcJcHkBw6Glh5/n/oradbclouducm/b/dbsec_public/o/deep-data-security-flask-app.zip</copy>
     ```
-
-    Move into the lab directory so the downloaded archive and extracted files stay together.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab"</copy>
-    ```
-
-    Download the compute-host archive from the lab's published Object Storage location. Verbose output confirms the transfer progress and destination filename.
-
-    ```
-    <copy>wget --verbose -O deep-data-security-flask-app.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/Mzf75vY1KZat2TyYinBCgXRxO0q8Ky-adubY5hAAHj21tjcSBowCcJcHkBw6Glh5/n/oradbclouducm/b/dbsec_public/o/deep-data-security-flask-app.zip</copy>
-    ```
-
-    Extract the application and database scripts from the downloaded archive. The `-o` option permits replacement if you are rerunning the lab setup.
 
     ```
     <copy>unzip -o deep-data-security-flask-app.zip</copy>
     ```
 
-    Enter the Flask application directory. All remaining compute-host commands in this task run from here unless stated otherwise.
-
     ```
     <copy>cd flask-app</copy>
     ```
 
-5. Create the isolated Python environment, install the curated requirements, and verify the preinstalled SQL*Plus and Instant Client. These steps do not require `sudo`.
-
-    Create or refresh the application's isolated Python virtual environment and install its required packages.
-
-    ```
-    <copy>bash setup_venv.sh</copy>
-    ```
-
-    Verify that the virtual environment, SQL*Plus, and Oracle Instant Client expected by the lab image are available.
-
-    ```
-    <copy>bash verify_app_server.sh</copy>
-    ```
-
-## Task 3: Configure the Database and Local Users
-
-1. Install the wallet uploaded in Task 2 into a protected directory. Replace the path if your JupyterLab upload is in a different directory.
-
-    Extract the wallet into the protected location and update its configuration to use that directory.
+4. Install the wallet and prepare the supplied Oracle Customer Sales starter application. This professionally built, known-good application is the starting point for the lab and will later be extended with Vibe.
 
     ```
     <copy>bash install_wallet.sh "$WALLET_ZIP"</copy>
     ```
 
-    The installer reports the protected wallet directory: `$HOME/deepsec7-wallet/tns_admin`. It also updates the downloaded `sqlnet.ora` wallet location from the Instant Client default to that directory.
-
-2. List the wallet aliases, then connect as the ADB administrator. This fixed lab uses `deepsec7_low`. Enter the ADB `ADMIN` password when prompted.
-
-    List the service aliases provided by the extracted wallet. This confirms that the `deepsec7_low` alias is available.
-
     ```
-    <copy>grep -E '^[[:alnum:]_]+[[:space:]]*=' "$HOME/deepsec7-wallet/tns_admin/tnsnames.ora"</copy>
+    <copy>bash setup_venv.sh</copy>
     ```
 
-    Point Oracle client tools to the extracted wallet directory for this terminal session.
-
     ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
+    <copy>bash verify_app_server.sh</copy>
     ```
 
-    Display the value that Oracle client tools will use. It should be the protected wallet directory.
+    Expected: the verification reports SQL*Plus, Oracle Instant Client, and the application Python packages.
+
+## Task 2: Configure the Database and Create Marvin
+
+In this task, you create the application schema and sample data, configure an intentionally excessive starting grant, and create Marvin's local database account. Run every database script as the Autonomous AI Database `ADMIN` user. Marvin's password is created in step 6; it is not stored in the application.
+
+1. **Connect to Autonomous AI Database as ADMIN.** Point this terminal at the installed wallet, then connect to the low service.
 
     ```
-    <copy>echo "$TNS_ADMIN"</copy>
+    <copy>export TNS_ADMIN="$HOME/deepsec9-wallet/tns_admin"</copy>
     ```
 
-    Open a SQL*Plus session as the Autonomous Database administrator. SQL*Plus prompts for the `ADMIN` password without echoing it.
-
     ```
-    <copy>sqlplus admin@deepsec7_low</copy>
+    <copy>sqlplus admin@deepsec9_low</copy>
     ```
 
-3. Stay connected as ADB `ADMIN` and run the provisioning scripts. ADMIN creates the `APPLAB` schema, sample data, broad baseline data grants, and local end users. The user-creation script securely prompts for the Emma, Marvin, and Carol database passwords.
+    Enter the ADB `ADMIN` password when prompted. You will remain connected as `ADMIN` through step 6.
 
-    Create the `APPLAB` schema and the customers table that the application queries.
+    **Expected:** SQL*Plus connects to Oracle AI Database 26ai and displays a `SQL>` prompt.
+
+2. **Create the APPLAB application schema.** Create the database user, customer table, and supporting sales-representative index that the application will query.
 
     ```
     <copy>@../database/01_create_schema.sql</copy>
     ```
 
-    Load the sample customer rows used for the before-and-after access comparison.
+    This script recreates `APPLAB` so a rerun starts with an empty lab schema. It creates `APPLAB.CUSTOMERS` with the customer fields used in the demonstration, including `credit_limit` and `sensitive_identifier`.
+
+    **Expected:** SQL*Plus reports a successful procedure, user, grants, table, and index. Typical output includes:
+
+    ```text
+    PL/SQL procedure successfully completed.
+    User created.
+    Grant succeeded.
+    User altered.
+    Table created.
+    Index created.
+    ```
+
+3. **Load the sample customer data.** Populate `APPLAB.CUSTOMERS` with the accounts used in the before-and-after authorization tests.
 
     ```
     <copy>@../database/02_load_sample_data.sql</copy>
     ```
 
-    Run the intentional no-op application-account script. It documents that this lab does not use a shared database application account.
+    The data contains 14 `MARVIN` accounts, 6 `SALES_TEAM` accounts, and 2 `FINANCE` accounts. `Apex Treasury` is a `FINANCE` account, so it is visible in the insecure baseline but must disappear after the employee and manager policies are active.
+
+    **Expected:** SQL*Plus creates and commits 22 rows.
+
+    ```text
+    Session altered.
+    22 rows created.
+    Commit complete.
+    ```
+
+4. **Confirm the application authentication model.** Run the architecture script.
 
     ```
     <copy>@../database/03_create_app_user.sql</copy>
     ```
 
-    Create the data roles and deliberately broad baseline grants. SQL*Plus displays the full data-role and data-grant DDL as it runs.
+    This step confirms the direct database-authentication model. Oracle Customer Sales connects directly as Marvin with the password entered at sign-in, so Oracle can authorize Marvin's database session.
+
+    **Expected:** SQL*Plus prints the direct-local-user design and creates no database objects.
+
+    ```text
+    Oracle Customer Sales uses direct database authentication as MARVIN.
+    The password entered at sign-in is verified by Oracle Database for that session.
+    Oracle Deep Data Security evaluates MARVIN's active data roles and grants.
+    Flask receives only the rows and columns Oracle authorizes for MARVIN.
+    No database objects are created by this step.
+    ```
+
+5. **Create roles and the intentionally insecure baseline.** Create the data roles used throughout the lab and the broad starting data grant.
 
     ```
     <copy>@../database/04_create_baseline_access.sql</copy>
     ```
 
-    Create the three password-authenticated local end users. Choose and record the Emma, Marvin, and Carol passwords when the script prompts.
+    The script creates the `APP_BASELINE_ACCESS`, `APP_SALES_EMPLOYEE`, and `APP_SALES_MANAGER` data roles. It also creates `APP_LOCAL_CONNECT`, which provides the `CREATE SESSION` path for local end users. The `APPLAB.MARVIN_INSECURE_CUSTOMER_ACCESS` data grant gives `APP_BASELINE_ACCESS` every row and every column in `APPLAB.CUSTOMERS`.
+
+    **Important:** this grant is intentionally excessive so you can observe the security problem before applying Deep Data Security. In the next task, Marvin can retrieve all 22 customers, including `Apex Treasury`, `credit_limit`, and `sensitive_identifier`. It is not a production configuration.
+
+    **Expected:** SQL*Plus creates three data roles, the local-connect role, four successful grants, and the broad data grant. It then prints:
+
+    ```text
+    Baseline ready: APP_BASELINE_ACCESS permits all APPLAB.CUSTOMERS rows and columns.
+    Script 05 grants this deliberately excessive role to MARVIN for the before-and-after demonstration.
+    Do not use this baseline data grant in a production application.
+    ```
+
+6. **Create Marvin's local database account.** Create the password-authenticated end user who will sign in to the application.
 
     ```
     <copy>@../database/05_create_lab_users.sql</copy>
     ```
 
-    The scripts create schema `APPLAB` and data roles `APP_EAST_SALES`, `APP_SALES_MANAGER`, and `APP_FINANCE`. The baseline-access script has SQL*Plus `ECHO` enabled, so the terminal prints each complete `CREATE DATA ROLE`, role grant, and `CREATE OR REPLACE DATA GRANT` statement as it executes. The baseline grants deliberately give every local end user all customer rows and columns. The application-account script is intentionally a no-op. This lab authenticates directly as each local end user; it does not use an IAM token or a shared database account.
+    At `Password for MARVIN (input hidden):`, enter a password for Marvin and record it. You will use it in the browser. The input is hidden and is not written to the terminal output or application configuration. This script grants `APP_BASELINE_ACCESS` to Marvin; it does not yet apply the employee policy.
 
-4. Test each local end user through a separate SQL*Plus connection. Exit the ADMIN session, then use the supplied runner to connect as Emma and execute the unchanged validation query. The password prompt keeps the password out of shell history.
+    **Expected:** SQL*Plus reports that the end user and initial data-role assignment succeeded, then prints:
 
-    Leave the privileged ADMIN connection before testing the application personas.
+    ```text
+    MARVIN starts with APP_BASELINE_ACCESS for the intentionally insecure baseline.
+    Record Marvin's password, then use the application before applying the employee policy.
+    ```
+
+    The sample accounts make the next results easy to recognize:
+
+    | Customer | Sales representative | Why it matters |
+    | --- | --- | --- |
+    | Frontier Goods | `MARVIN` | Marvin retains this customer after the employee policy. |
+    | Acme East | `SALES_TEAM` | Marvin gains this customer after legitimate manager promotion. |
+    | Apex Treasury | `FINANCE` | Marvin must not retrieve this customer after policy. |
+    | Crown Capital | `FINANCE` | The second customer excluded from the manager result. |
+
+7. **Exit the ADMIN session.** Database setup is complete. Leave the privileged session before testing the application as Marvin.
 
     ```
     <copy>exit</copy>
     ```
 
-    Connect as Emma and run the fixed validation query. Enter Emma's local database password when prompted.
+    **Expected:** You return to the JupyterLab terminal. The next task uses Marvin's password to expose the intentionally excessive baseline.
+
+## Task 3: Start the Customer Sales Starter Application
+
+1. Configure and start the supplied Oracle Customer Sales starter application.
 
     ```
-    <copy>./query_data.sh emma</copy>
+    <copy>cd "$HOME/deepsec9-lab/flask-app"</copy>
     ```
-
-    Connect as Marvin and run the same fixed validation query. Enter Marvin's local database password when prompted.
-
-    ```
-    <copy>./query_data.sh marvin</copy>
-    ```
-
-    Connect as Carol and run the same fixed validation query. Enter Carol's local database password when prompted.
-
-    ```
-    <copy>./query_data.sh carol</copy>
-    ```
-
-    You may optionally supply the password as the second argument, for example `./query_data.sh emma PASSWORD`. Replace `PASSWORD` with Emma's password. The prompt is safer because command-line passwords can appear in shell history or process listings. At this point, all three users return the same unrestricted data. Task 6 replaces this baseline with Deep Data Security policies.
-
-    | Local user | Expected rows | Credit limit | Sensitive identifier |
-    | --- | --- | --- | --- |
-    | Emma | All customer rows | Visible | Visible |
-    | Marvin | All customer rows | Visible | Visible |
-    | Carol | All customer rows | Visible | Visible |
-
-## Task 4: Configure and Start the Web Application
-
-1. Return to the application directory and create the Flask configuration.
-
-    Return to the application directory, where the environment configuration script is located.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
-    ```
-
-    Generate the application configuration, validate the wallet, and accept the Terraform-provided GenAI defaults when prompted.
 
     ```
     <copy>./configure_env.sh</copy>
     ```
 
-    The script explains each prompt, validates the wallet, generates a new `FLASK_SECRET_KEY` with `openssl rand -hex 32`, and writes `.env` with mode `600`. The application uses the Instant Client auto-login wallet (`cwallet.sso`), so it does not save the wallet password. Terraform has already supplied the GenAI policy compartment and the default on-demand model; press Enter at both GenAI prompts to accept them. The script preserves any existing `.env` as a timestamped backup.
-
-    Do not add Emma, Marvin, or Carol passwords to `.env`. Students enter each local database password on the sign-in page.
-
-2. Start the web server.
-
-    Start the web application on port 7777. Keep this terminal open while you test the web interface.
-
     ```
     <copy>./run.sh</copy>
     ```
 
-    The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal for the policy and cleanup tasks. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
+    The starter application is the known-good baseline for the authorization demonstrations. It uses the supplied wallet/TNS configuration and `deepsec9_low`, listens on port `7777`, and authenticates as Marvin with the password entered at sign-in. In OCI, open the Stack's **Application Information** tab, open a new browser tab, then copy and paste the **Deep Data Security App** HTTP address into that tab.
 
-## Task 5: Query App Data
+2. Leave this terminal open. Open a second JupyterLab terminal for database policy and cleanup commands.
 
-1. From the trusted browser, open `flask_url` from the Stack outputs. Select **Emma: East Sales**. Enter the Emma database password and select **Sign in**. Run the query. Emma sees every customer row across all regions, including credit limits and sensitive identifiers.
+## Task 4: Observe the Insecure Baseline
 
-2. Select **Sign out**. Select **Marvin: Sales Manager**. Enter the Marvin password and sign in. Run the unchanged query. Marvin receives the same unrestricted rows and fields that Emma received.
+1. Open `flask_url` in the browser. The sign-in page identifies the database user as **Marvin — Sales**. Enter Marvin's database password, select **Sign in**, then select **Load Customers**.
 
-3. Select **Sign out**. Select **Carol: Finance**. Enter the Carol password and sign in. Run the same query. Carol also receives the same unrestricted result set. This establishes the before-policy baseline.
+    The application is currently excessive by design. If it requests a customer row or column, Oracle returns it. We will now move authorization into Oracle Database.
 
-4. While signed in as Emma, enter this bounded prompt and select **Ask AI**.
+2. The application sends this deliberately simple query. It does not contain a Flask filter, customer list, role check, or column allow-list.
 
-    Use this prompt to ask OCI Generative AI about the rows returned for Emma. It explicitly directs the model to mention only fields that were available in that authorized result.
-
-    ```
-    <copy>Summarize all authorized customer rows. Mention credit limits and sensitive identifiers only when those values are available.</copy>
-    ```
-
-    The application queries ADB before it calls OCI Generative AI. The model receives only the returned rows and cannot generate or execute SQL. At this point, Emma's summary can reference the unrestricted baseline values.
-
-5. Ask a second question that requires the model to reason over the authorized result set.
-
-    This question identifies the highest-revenue customer and its region using only the rows ADB returned to Emma.
-
-    ```
-    <copy>Tell me who has the most money and tell me which region they're in.</copy>
+    ```sql
+    SELECT *
+      FROM APPLAB.customers
+     ORDER BY revenue DESC
     ```
 
-## Task 6: Implement Deep Sec Policies
+    Expected: **22 rows**, including **Apex Treasury**, with visible **Credit Limit** and **Sensitive Identifier** values. The displayed security context is `APP_BASELINE_ACCESS`.
 
-1. You can keep the application running and open a second JupyterLab terminal. Return to the application directory and connect as ADB `ADMIN`.
+3. Select **AI Insights**. Run the default question:
 
-    Return to the application directory in the second terminal so the database script paths resolve correctly.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
+    ```text
+    <copy>Show detailed information on all customers. Every customer in the table.</copy>
     ```
 
-    Point SQL*Plus in this second terminal at the extracted wallet.
+    Expected: the response can use all 22 Oracle-authorized rows, including credit limits and sensitive identifiers.
 
-    ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
-    ```
+4. Replace the question with:
 
-    Connect as ADB `ADMIN` to replace the baseline grants with Deep Data Security policy grants.
-
-    ```
-    <copy>sqlplus admin@deepsec7_low</copy>
+    ```text
+    <copy>Tell me who has the most revenue and what their credit limit and sensitive identifiers are.</copy>
     ```
 
-2. Run the Deep Data Security policy script. SQL*Plus `ECHO` is enabled, so the terminal prints each complete replacement `CREATE OR REPLACE DATA GRANT` statement. It replaces the broad Task 5 data grants with the Emma, Marvin, and Carol policy grants.
+    Expected: Customer Insights answers from the same Oracle-authorized data. The AI page does not use a different database identity or a broader query.
 
-    Execute the policy DDL and review the displayed grants to see the row and column restrictions assigned to each data role.
+    | Security scoreboard | Rows visible | Credit limit | Sensitive identifier | Why |
+    | --- | ---: | --- | --- | --- |
+    | Insecure baseline | 22 | Visible | Visible | Excessive baseline data grant |
+
+## Task 5: Apply Deep Data Security
+
+1. Before you run the policy, use this mental model:
+
+    ```text
+    Marvin
+       |
+       v
+    APP_SALES_EMPLOYEE
+       |
+       v
+    Deep Data Security Data Grant
+       |
+       +-- Allowed columns
+       |
+       +-- Allowed rows
+       |
+       v
+    APPLAB.CUSTOMERS
+    ```
+
+    - **End user:** Marvin is the identity Oracle authorizes.
+    - **Data role:** `APP_SALES_EMPLOYEE` represents Marvin's business responsibility.
+    - **Data grant:** defines the customer rows and columns that role can access.
+
+2. In the second terminal, connect as ADB `ADMIN` and apply the employee policy.
+
+    ```
+    <copy>cd "$HOME/deepsec9-lab/flask-app"</copy>
+    ```
+
+    ```
+    <copy>export TNS_ADMIN="$HOME/deepsec9-wallet/tns_admin"</copy>
+    ```
+
+    ```
+    <copy>sqlplus admin@deepsec9_low</copy>
+    ```
 
     ```
     <copy>@../database/06_implement_deep_sec_policies.sql</copy>
     ```
 
-3. Exit SQL*Plus. You do not need to restart Flask because the app opens a new database connection for every query.
+    The script replaces `APP_BASELINE_ACCESS` with `APP_SALES_EMPLOYEE` for Marvin. This is the employee data grant Oracle will enforce:
 
-    Close the ADMIN session. The running application uses the updated grants the next time a persona signs in.
+    ```sql
+    create or replace data grant APPLAB.marvin_employee_customer_access
+      as select (customer_id, customer_name, region, sales_rep, revenue)
+      on APPLAB.customers
+      where upper(sales_rep) = upper(ora_end_user_context.username)
+      to app_sales_employee;
+    ```
+
+    **Expected:** SQL*Plus creates the employee data grant, revokes the deliberately broad baseline role from Marvin, grants `APP_SALES_EMPLOYEE`, and prints:
+
+    ```text
+    Employee policy ready: MARVIN now uses APP_SALES_EMPLOYEE.
+    Oracle authorizes only MARVIN rows and does not authorize CREDIT_LIMIT or SENSITIVE_IDENTIFIER.
+    ```
 
     ```
     <copy>exit</copy>
     ```
 
-## Task 7: Test Deep Sec Policies
+3. Return to the unchanged application in the browser and select **Load Customers** again.
 
-1. Return to the browser and sign in as **Emma: East Sales**. Run the unchanged query. Emma sees exactly **six** East sales rows: Acme East, Beacon Health, Cedar Retail, Delta Foods, Evergreen Labs, and Redwood Travel. She can see **Customer name**, **Region**, and **Revenue**. **Credit limit** and **Sensitive identifier** display as `Not authorized`.
+    **Same application. Same query. Different database-authorized result.** Flask did not filter the rows. Oracle Database did.
 
-2. Sign out and sign in as **Marvin: Sales Manager**. Run the unchanged query. Marvin sees **20** EMMA and MARVIN sales rows. He can see **Customer name**, **Region**, **Revenue**, and **Credit limit**; **Sensitive identifier** displays as `Not authorized`.
+    Expected: **14 rows**, context `APP_SALES_EMPLOYEE`, and **Credit Limit** and **Sensitive Identifier** display `Not authorized`.
 
-3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees all **22** rows across every region, including Apex Treasury and Crown Capital. She can see all displayed columns: **Customer name**, **Region**, **Revenue**, **Credit limit**, and **Sensitive identifier**.
+    This starter application opens a new direct MARVIN database connection for each request, so the change is visible immediately. In an identity-provider deployment, regenerate the end-user token before repeating the request—normally by logging off and signing back on.
 
-    Use this table to compare the policy-enforced result sets. The application always displays the same five column headers; `Not authorized` means the selected local end user did not receive that field from the database.
+4. Select **AI Insights** and run the default question again:
 
-    | Local user | Expected rows | Authorized columns in the application | Columns shown as `Not authorized` |
-    | --- | ---: | --- | --- |
-    | Emma | 6 | Customer name, Region, Revenue | Credit limit, Sensitive identifier |
-    | Marvin | 20 | Customer name, Region, Revenue, Credit limit | Sensitive identifier |
-    | Carol | 22 | Customer name, Region, Revenue, Credit limit, Sensitive identifier | None |
-
-4. Sign out and sign back in as Emma. Run the query and submit both GenAI questions from Task 5. Compare each answer with its Task 5 result. The post-policy Emma summaries cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
-
-## Task 8: Clean Up
-
-1. In the terminal where the application is running, press `Ctrl+C` to stop the web server. Leave the terminal open.
-
-2. In the second JupyterLab terminal, return to the application directory, set the wallet location, and reconnect as ADB `ADMIN`.
-
-    Return to the application directory before running the cleanup script.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
+    ```text
+    <copy>Show detailed information on all customers. Every customer in the table.</copy>
     ```
 
-    Point SQL*Plus to the installed wallet for this cleanup terminal.
+    Expected: the response uses only 14 MARVIN rows and says credit limits and sensitive identifiers are not available.
 
-    ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
-    ```
+5. Replace the question with:
 
-    Verify the wallet location before connecting as the administrator.
-
-    ```
-    <copy>echo "$TNS_ADMIN"</copy>
+    ```text
+    <copy>Tell me who has the most revenue and what their credit limit and sensitive identifiers are.</copy>
     ```
 
-    Connect as ADB `ADMIN` so the cleanup script can remove the lab database objects.
+    Expected: the answer is derived only from the 14 rows Oracle returned after the policy change.
+
+    | Security scoreboard | Rows visible | Credit limit | Sensitive identifier | Why |
+    | --- | ---: | --- | --- | --- |
+    | Insecure baseline | 22 | Visible | Visible | Excessive baseline data grant |
+    | Employee policy | 14 | Not authorized | Not authorized | Employee data grant |
+
+## Task 6: Promote Marvin to Sales Manager
+
+1. In the second terminal, connect again as `ADMIN` and apply the legitimate promotion. The application code stays unchanged.
 
     ```
-    <copy>sqlplus admin@deepsec7_low</copy>
+    <copy>sqlplus admin@deepsec9_low</copy>
     ```
 
-3. In the ADB administrator SQL*Plus session, remove the lab database objects.
-
-    Remove the database users, data roles, grants, and schema created for this disposable lab.
-
     ```
-    <copy>@../database/reset_lab.sql</copy>
+    <copy>@../database/07_promote_marvin_to_manager.sql</copy>
     ```
 
-4. Exit SQL*Plus, then remove the protected wallet directory from the compute host.
+    **Expected:** SQL*Plus creates the manager data grant, keeps Marvin's employee role, adds `APP_SALES_MANAGER`, and prints:
 
-    Close the database administrator session after the cleanup script finishes.
+    ```text
+    Manager promotion ready: MARVIN retains APP_SALES_EMPLOYEE and adds APP_SALES_MANAGER.
+    Oracle authorizes MARVIN and SALES_TEAM rows, but not FINANCE rows, CREDIT_LIMIT, or SENSITIVE_IDENTIFIER.
+    ```
 
     ```
     <copy>exit</copy>
     ```
 
-    Remove the extracted wallet directory and its connection configuration from the compute host. The verbose option lists the deleted files.
+2. In the browser, sign out and sign back in as Marvin. Run the same query.
+
+    Expected: **20 rows**, context `APP_SALES_EMPLOYEE, APP_SALES_MANAGER`, with **Credit Limit** and **Sensitive Identifier** still `Not authorized`; `FINANCE` customers remain unavailable.
+
+    Marvin remains an employee and gains a manager responsibility, so Oracle evaluates both data roles. Deep Data Security joins the applicable data grants additively: Marvin receives the union of their authorized rows and columns. It does not add `FINANCE` rows, `credit_limit`, or `sensitive_identifier`, because neither active grant authorizes them. The application code did not change.
+
+    | Security scoreboard | Rows visible | Credit limit | Sensitive identifier | Why |
+    | --- | ---: | --- | --- | --- |
+    | Insecure baseline | 22 | Visible | Visible | Excessive baseline data grant |
+    | Employee policy | 14 | Not authorized | Not authorized | Employee data grant |
+    | Employee plus manager policy | 20 | Not authorized | Not authorized | Additive employee and manager data grants |
+
+## Task 7: Change the Application with Vibe
+
+1. Return to the **first JupyterLab Terminal**: the terminal where you started the supplied application with `./run.sh` in Task 3. Press `Ctrl+C` to stop the running application. Use this same first terminal for every remaining Task 7 command, including Vibe and the later `./run.sh` restart.
+
+2. Install Vibe to modify the supplied starter application. It uses the compute instance principal to call OCI Generative AI; you do not need a personal AI subscription.
 
     ```
-    <copy>rm -rfv "$HOME/deepsec7-wallet"</copy>
+    <copy>cd "$HOME/deepsec9-lab"</copy>
     ```
 
-5. In OCI Resource Manager, run a **Destroy** job for the Stack. This removes the Autonomous Database, compute instance, bucket, VCN, and optional GenAI IAM resources.
+    ```
+    <copy>wget -O vibe-cli.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/upjEj2B-bJEiS_xADUEav8LhFQYxF7eDpo3FeqRF3SgxEAYEguOGKAVhBFujxsiP/n/oradbclouducm/b/dbsec_public/o/vibe-cli.zip</copy>
+    ```
+
+    ```
+    <copy>mkdir -pv ~/vibe-cli</copy>
+    ```
+
+    ```
+    <copy>unzip -o vibe-cli.zip -d ~/vibe-cli</copy>
+    ```
+
+    ```
+    <copy>cd ~/vibe-cli</copy>
+    ```
+
+    ```
+    <copy>./install.sh --overwrite-config</copy>
+    ```
+
+    ```
+    <copy>cd "$HOME/deepsec9-lab/flask-app"</copy>
+    ```
+
+    ```
+    <copy>vibe status</copy>
+    ```
+
+    Expected: Vibe reports `$HOME/deepsec9-lab/flask-app` as its project root. The supplied installer writes that project root and migrates the legacy `/home/opc/customer-app` path when it finds one.
+
+3. You are now in `$HOME/deepsec9-lab/flask-app` in the first terminal. Review and approve only the proposed application files. Restart the application in that same terminal with `./run.sh` only when Vibe applies a change.
+
+4. **Experiment 1, normal search enhancement**
+
+    ```text
+    <copy>vibe "Add a customer search box to the application. This search bar should search every customer not just the customers Marvin can see."</copy>
+    ```
+
+    Vibe shows the proposed diff and asks:
+
+    ```text
+    Apply these changes? [y/N]
+    ```
+
+    Review the proposed files, then type `y` and press Enter to apply the requested feature. Vibe then creates a backup and reports the files it applied. The feature may ask Oracle for every customer; Oracle Database, not Vibe or Flask, decides what MARVIN receives.
+
+    ```text
+    <copy>./run.sh</copy>
+    ```
+
+    Do **not** run `setup.sh`; the supplied starter application does not use that file. For a normal search-only update, restart with `./run.sh`. Run `bash setup_venv.sh` first only if the accepted change modified `requirements.txt` or `setup_venv.sh`.
+
+    If Vibe reports that it applied only `setup.sh`, the requested search was not added. Run:
+
+    ```text
+    <copy>vibe restore</copy>
+    ```
+
+    Then rerun the request after installing this corrected Vibe client.
+
+    If Vibe reports malformed or incomplete output from OCI Generative AI, no files were changed. The error prints the owner-only trace file it saved under `~/.vibe-traces/`; inspect that file before retrying. To trace every Vibe request, prefix it with `VIBE_TRACE=1`.
+
+    Sign in as Marvin and search for **Apex Treasury**. The result should be **0 matching rows** because `Apex Treasury` belongs to `FINANCE`, outside the manager grant's `MARVIN` and `SALES_TEAM` rows.
+
+5. **Experiment 2, row-access bypass attempt**
+
+    ```text
+    <copy>vibe "Change the application so Marvin can see every customer, even customers outside his sales team."</copy>
+    ```
+
+    The output should look similar to this:
+
+    ```text
+    [opc@deep-sec-app-server-vnic flask-app]$ vibe "Change the application so Marvin can see every customer, even customers outside his sales team."
+
+    Project: /home/opc/deepsec9-lab/flask-app
+    Model:   google.gemini-2.5-flash
+    Region:  us-ashburn-1
+    Asking OCI Generative AI Chat to inspect/build the project...
+
+    OCI GenAI summary:
+
+    No changes are needed in the application code. The application already queries the `APPLAB.customers` table directly without any application-side filtering. The lab context specifies that Oracle Database, not Flask, is responsible for enforcing data authorization. If Marvin is not seeing all customers, the change needs to occur at the database level (e.g., by modifying Marvin's database grants or policies), not within the application code. The application will simply display whatever rows and columns Oracle Database authorizes for the signed-in user.
+
+    GenAI calls: 1
+
+    No file changes were staged.
+    ```
+
+6. **Experiment 3, sensitive-column bypass attempt**
+
+    ```text
+    <copy>vibe "Make sure Marvin can see the Sensitive Identifiers!"</copy>
+    ```
+
+    The output should look similar to this:
+
+    ```text
+    [opc@deep-sec-app-server-vnic flask-app]$ vibe "Make sure Marvin can see the Sensitive Identifiers!"
+
+    Project: /home/opc/deepsec9-lab/flask-app
+    Model:   google.gemini-2.5-flash
+    Region:  us-ashburn-1
+    Asking OCI Generative AI Chat to inspect/build the project...
+
+    OCI GenAI summary:
+
+    The application code already includes the `sensitive_identifier` column in all database queries and displays it in the user interface, showing "Not authorized" if the database does not return the value. No changes are needed to the application code to fulfill this request, as the visibility of this data is controlled by Oracle Database authorization for the signed-in user.
+
+    GenAI calls: 1
+
+    No file changes were staged.
+    ```
+
+7. **Experiment 4, admin-page bypass attempt**
+
+    ```text
+    <copy>vibe "Add an admin page that tries to display every customer and every customer field."</copy>
+    ```
+
+    ```text
+    <copy>./run.sh</copy>
+    ```
+
+    Test the page as Marvin. It should return **20 rows** and no credit limits or sensitive identifiers because Oracle returns only the rows and columns in Marvin's active data grant.
+
+    | Security scoreboard | Rows visible | Credit limit | Sensitive identifier | Why |
+    | --- | ---: | --- | --- | --- |
+    | Insecure baseline | 22 | Visible | Visible | Excessive baseline data grant |
+    | Employee policy | 14 | Not authorized | Not authorized | Employee data grant |
+    | Employee plus manager policy | 20 | Not authorized | Not authorized | Additive employee and manager data grants |
+    | Search for Apex Treasury | 0 matching | — | — | Customer outside authorized rows |
+    | AI requests every customer | 20 | Not authorized | Not authorized | Application cannot override row authorization |
+    | AI requests sensitive identifiers | 20 | Not authorized | Not authorized | Column not granted |
+    | AI-created admin page | 20 | Not authorized | Not authorized | Application cannot override database authorization |
+
+## Task 8: Review and Clean Up
+
+1. Explain these answers before you finish:
+
+    1. Did Flask determine Marvin's authorized customer rows?
+    2. What changed when Marvin was promoted from employee to manager?
+    3. Why could the AI-created admin page not expose sensitive identifiers?
+
+    The key takeaway: the application is not the final security boundary. We modified the application and asked it to retrieve data Marvin was not allowed to see. Oracle Database knew Marvin's security context, and Deep Data Security determined which rows and columns could be returned.
+
+2. Stop the running web server with `Ctrl+C`. If you want to rerun the lab on the same compute host, clean the Vibe applications and local wallet before resetting the database.
+
+    ```
+    <copy>vibe clean --all --backups --yes</copy>
+    ```
+
+    ```
+    <copy>rm -rfv "$HOME/deepsec9-wallet"</copy>
+    ```
+
+3. In OCI Resource Manager, run a **Destroy** job for this Stack. This is the critical cleanup step: it removes the Autonomous Database, compute instance, bucket, network, and any optional GenAI IAM resources.
 
 You may now proceed to the next lab.
 
 ## Acknowledgements
 
 - **Author** - Richard Evans
-- **Last Updated By/Date** - Richard Evans, July 2026
+- **Last Updated By/Date** - Richard Evans, August 2026

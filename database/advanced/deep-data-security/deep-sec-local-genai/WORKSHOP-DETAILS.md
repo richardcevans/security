@@ -6,11 +6,11 @@ See an intentionally excessive application and AI Insights result, then use Orac
 
 ## Long Description
 
-In this 60-minute workshop, you create a customer-data demonstration on Oracle Autonomous AI Database 26ai. Marvin is a local Oracle Deep Data Security end user, not an OCI IAM user. Students first see an intentionally broad baseline result, including Credit Limit and Sensitive Identifier, then apply an employee data grant and rerun the unchanged Flask query and AI Insights questions. Oracle Deep Data Security determines the rows and columns returned to both experiences.
+In this 60-minute workshop, you create a customer-data demonstration on Oracle Autonomous AI Database 26ai. Marvin is a local Oracle Deep Data Security end user, not an OCI IAM user. Students first see a full-access result, including Credit Limit and Sensitive Identifier, then apply an employee data grant and rerun the unchanged Flask query and AI Insights questions. Oracle Deep Data Security determines the rows and columns returned to both experiences.
 
 ## Workshop Outline
 
-1. Provision the lab, install the wallet, and create the intentionally broad baseline.
+1. Provision the lab, install the wallet, and create the full-access role.
 2. Start the supplied customer application and observe Marvin's excessive access in Customer Accounts and AI Insights.
 3. Apply the employee data grant and rerun the unchanged query and AI Insights questions.
 4. Promote Marvin to manager and observe the legitimate increase in authorized rows.

@@ -13,9 +13,9 @@ output "adb_display_name" {
   description = "ADB display name."
 }
 
-output "adb_admin_password" {
-  value       = var.adb_admin_password
-  description = "ADB ADMIN password supplied when the Stack was created. Displayed as a sensitive Application Information value."
+output "lab_admin_jupyter_password" {
+  value       = random_password.lab_admin.result
+  description = "Terraform-generated shared password for ADB ADMIN, JupyterLab, and MARVIN. Select Unlock, then copy it before opening either service and entering Marvin's password in Task 2."
   sensitive   = true
 }
 
@@ -26,7 +26,7 @@ output "adb_service_alias" {
 
 output "adb_console_url" {
   value       = "https://cloud.oracle.com/db/adbs/${oci_database_autonomous_database.lab.id}?region=${var.region}&cloudshell=true&bdcstate=minimized"
-  description = "Open this OCI Console URL, select Database connection, and download an Instance Wallet."
+  description = "Open this OCI Console URL to inspect the Autonomous AI Database. Terraform delivers its wallet securely to the lab compute instance."
 }
 
 output "compute_instance_ocid" {
@@ -41,12 +41,17 @@ output "compute_public_ip" {
 
 output "compute_private_ip" {
   value       = oci_core_instance.flask.private_ip
-  description = "Application-server private IP address in the DeepSec9 public subnet."
+  description = "Application-server private IP address in the Deep Sec public subnet."
 }
 
 output "flask_url" {
   value       = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:7777/" : null
   description = "Open this URL from the trusted ingress IP to use the Flask web application."
+}
+
+output "admin_console_url" {
+  value       = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:7778/" : null
+  description = "Deep Sec Administrator Console. It starts automatically and authenticates directly as ADB ADMIN."
 }
 
 output "jupyter_url" {
@@ -61,10 +66,26 @@ output "ssh_command" {
 
 output "application_ports" {
   value = {
-    flask   = 7777
-    jupyter = 8888
+    flask         = 7777
+    admin_console = 7778
+    jupyter       = 8888
   }
   description = "Application ports permitted only from allowed_ingress_home_ip_address."
+}
+
+output "operational_debug" {
+  value = {
+    full_status       = "sudo /usr/local/sbin/deep-sec-status"
+    bootstrap_status  = "sudo cat /var/lib/deep-sec/bootstrap-status"
+    bootstrap_log     = "sudo tail -n 200 /var/log/deep-sec-bootstrap.log"
+    cloud_init_log    = "sudo journalctl -u cloud-final.service -b -n 200 --no-pager -o short-iso"
+    admin_status      = "sudo systemctl status deep-sec-admin-console.service --no-pager -l"
+    customer_status   = "sudo systemctl status deep-sec-customer-sales.service --no-pager -l"
+    admin_journal     = "sudo journalctl -fu deep-sec-admin-console.service -o short-iso"
+    customer_journal  = "sudo journalctl -fu deep-sec-customer-sales.service -o short-iso"
+    all_boot_warnings = "sudo journalctl -p warning..alert -b --no-pager -o short-iso"
+  }
+  description = "Copy-ready reliability diagnostics available on the disposable compute instance. Application and bootstrap logs are deliberately verbose; generated passwords are never logged."
 }
 
 output "trusted_ingress_cidr" {
@@ -83,13 +104,13 @@ output "public_subnet_ocid" {
 }
 
 output "wallet_bucket_name" {
-  value       = var.create_wallet_bucket ? oci_objectstorage_bucket.wallet[0].name : null
-  description = "Private wallet bucket name."
+  value       = oci_objectstorage_bucket.wallet.name
+  description = "Private bucket used by Terraform to deliver the generated wallet to the lab compute instance."
 }
 
 output "wallet_bucket_namespace" {
-  value       = var.create_wallet_bucket ? data.oci_objectstorage_namespace.current.namespace : null
-  description = "Object Storage namespace containing the private wallet bucket."
+  value       = data.oci_objectstorage_namespace.current.namespace
+  description = "Object Storage namespace containing the private wallet delivery bucket."
 }
 
 output "genai_dynamic_group_name" {
@@ -111,12 +132,12 @@ output "genai_app_configuration" {
   value = {
     compartment_ocid = local.genai_compartment_ocid
     model_id         = var.genai_model_id
-    defaults_file    = "/home/opc/.deepsec9-genai-defaults"
+    defaults_file    = "/home/opc/.deep-sec-genai-defaults"
   }
   description = "Default GenAI values placed on the compute instance for Customer Insights and the Vibe CLI."
 }
 
-output "deepsec9_lab_summary" {
+output "deep_sec_lab_summary" {
   value = {
     adb = {
       db_name       = oci_database_autonomous_database.lab.db_name
@@ -128,19 +149,20 @@ output "deepsec9_lab_summary" {
       license_model = oci_database_autonomous_database.lab.license_model
     }
     compute = {
-      display_name = oci_core_instance.flask.display_name
-      ocid         = oci_core_instance.flask.id
-      public_ip    = oci_core_instance.flask.public_ip
-      private_ip   = oci_core_instance.flask.private_ip
-      flask_url    = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:7777/" : null
-      jupyter_url  = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:8888/" : null
+      display_name      = oci_core_instance.flask.display_name
+      ocid              = oci_core_instance.flask.id
+      public_ip         = oci_core_instance.flask.public_ip
+      private_ip        = oci_core_instance.flask.private_ip
+      flask_url         = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:7777/" : null
+      admin_console_url = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:7778/" : null
+      jupyter_url       = var.assign_public_ip ? "http://${oci_core_instance.flask.public_ip}:8888/" : null
     }
     network = {
       vcn_ocid             = oci_core_vcn.lab.id
       public_subnet_ocid   = oci_core_subnet.public_app.id
       trusted_ingress_cidr = local.home_ip_cidr
     }
-    wallet_bucket = var.create_wallet_bucket ? oci_objectstorage_bucket.wallet[0].name : null
+    wallet_bucket = oci_objectstorage_bucket.wallet.name
     genai = {
       dynamic_group    = var.create_genai_iam ? oci_identity_dynamic_group.compute[0].name : null
       policy           = var.create_genai_iam ? oci_identity_policy.compute_genai[0].name : null
@@ -148,5 +170,5 @@ output "deepsec9_lab_summary" {
       model_id         = var.genai_model_id
     }
   }
-  description = "Student-facing deployment summary for the DeepSec9 lab."
+  description = "Student-facing deployment summary for the Deep Sec lab."
 }

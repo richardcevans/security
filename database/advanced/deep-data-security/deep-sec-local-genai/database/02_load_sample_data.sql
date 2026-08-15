@@ -3,11 +3,18 @@ whenever sqlerror exit sql.sqlcode rollback
 set echo off
 
 -- Preserve literal ampersands in sample customer names. Re-enable substitution
--- before returning to the caller because the user-creation script prompts for passwords.
+-- before returning to the caller because the user-creation script accepts a parameter.
 set define off
 
+prompt SQL> ALTER SESSION SET CURRENT_SCHEMA = APPLAB
 alter session set current_schema = applab;
 
+prompt SQL> DELETE FROM APPLAB.CUSTOMERS
+prompt Removing prior lab rows so this fixed 22-row dataset can be loaded again safely.
+delete from customers;
+
+prompt SQL> INSERT ALL (... 22 fixed APPLAB.CUSTOMERS rows ...)
+prompt The data includes MARVIN, SALES_TEAM, and FINANCE accounts for the authorization demonstrations.
 insert all
   into customers values ( 1, 'Acme East',       'EAST', 'SALES_TEAM', 920000, 180000, 'E-1001-SSN')
   into customers values ( 2, 'Beacon Health',  'EAST', 'SALES_TEAM', 870000, 160000, 'E-1002-SSN')
@@ -34,6 +41,9 @@ insert all
   into customers values (22, 'Crown Capital',  'SOUTH', 'FINANCE', 1200000, 310000, 'F-6002-TAX')
 select 1 from dual;
 
+prompt SQL> COMMIT
 commit;
+
+prompt Sample data ready: 22 customer rows are available for the lab.
 
 set define on

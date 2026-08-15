@@ -29,7 +29,7 @@ def _required(name: str) -> str:
 
 def _load_genai_defaults() -> dict[str, str]:
     """Read Terraform's non-secret OCI Generative AI settings when present."""
-    path = os.getenv("GENAI_DEFAULTS_FILE", "/home/opc/.deepsec9-genai-defaults")
+    path = os.getenv("GENAI_DEFAULTS_FILE", "/home/opc/.deep-sec-genai-defaults")
     values: dict[str, str] = {}
     try:
         with open(path, encoding="utf-8") as defaults_file:

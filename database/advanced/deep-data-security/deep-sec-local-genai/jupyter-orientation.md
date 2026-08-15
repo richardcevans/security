@@ -2,20 +2,20 @@
 
 ## Introduction
 
-This workshop uses the JupyterLab service already installed on the DeepSec9 application server. Use its browser file area only to upload the wallet ZIP. Use terminal sessions for the remaining lab commands.
+This workshop uses the JupyterLab service already installed on the Deep Sec application server. Terraform generates the database wallet and cloud-init installs it before you begin. Use terminal sessions for the lab commands.
 
 Estimated Time: 5 minutes
 
 ### Objectives
 
 - Open JupyterLab from the Resource Manager Stack output.
-- Upload the wallet ZIP without exposing it in source control or Object Storage.
-- Use separate terminals for the running web server and later cleanup commands.
+- Confirm the Stack-provided wallet is ready without downloading or uploading it.
+- The Customer Sales and Admin Console services already run from Terraform. Task 7 uses the Admin Console's Vibe Coding page, so no terminal setup is required.
 
 ### Prerequisites
 
 - A completed Resource Manager Apply job with a `jupyter_url` output.
-- The wallet ZIP downloaded from the `deepsec9` Autonomous Database Console page.
+- Terraform has completed the compute-instance cloud-init setup.
 
 ## Task 1: Orient Yourself in JupyterLab
 
@@ -23,9 +23,9 @@ Estimated Time: 5 minutes
 
 2. Select **+**, then select **Other** and **Terminal**. This opens the first terminal session.
 
-3. Use the JupyterLab file-browser **Upload Files** button only to upload `Wallet_DEEPSEC9.zip` from your computer. Keep the file private.
+3. The generated wallet is already protected at `/home/opc/deep-sec-wallet/tns_admin`. Do not download or upload a wallet.
 
-4. Later, when `run.sh` is running, leave that first terminal open. Select **+**, then **Other** and **Terminal** again to open a second terminal for validation or cleanup.
+4. You can open a terminal later for diagnostics if needed. The Stack labels terminals in opening order.
 
 You may now proceed to the next lab.
 

@@ -2,8 +2,8 @@
 # Extract a wallet that was uploaded to the application host.
 set -euo pipefail
 
-wallet_zip=${1:-${WALLET_ZIP:-$HOME/deepsec9-wallet/Wallet_DEEPSEC9.zip}}
-wallet_dir=${WALLET_DIR:-$HOME/deepsec9-wallet/tns_admin}
+wallet_zip=${1:-${WALLET_ZIP:-$HOME/deep-sec-wallet/Wallet_DEEPSEC.zip}}
+wallet_dir=${WALLET_DIR:-$HOME/deep-sec-wallet/tns_admin}
 
 [ -f "$wallet_zip" ] || { echo "ERROR: wallet ZIP not found: $wallet_zip" >&2; exit 1; }
 command -v unzip >/dev/null || { echo 'ERROR: unzip is required' >&2; exit 1; }

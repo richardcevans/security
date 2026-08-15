@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deep Sec Admin Console</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+  </head>
+  <body data-completed-actions='{{ completed_actions|tojson }}'>
+    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec Admin Console</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="header-link active" href="/console">Lab actions</a><a class="header-link" href="/vibe">Vibe Coding</a></nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
+    <main class="page">
+      <section class="heading"><div><p class="eyebrow">Oracle Deep Data Security</p><h1>Lab policy administration</h1><p>Run a visible, fixed lab script as <code>ADMIN</code>. The console never accepts browser-supplied SQL.</p></div><button id="refresh-state" class="secondary" type="button">Refresh Marvin's current state</button></section>
+      <section class="state-card" aria-labelledby="state-title"><div class="section-title"><h2 id="state-title">Marvin's current Oracle result</h2><span id="state-status" class="muted" aria-live="polite">Loading…</span></div><dl id="state" class="state-grid"><dt>End user</dt><dd>—</dd><dt>Active data roles</dt><dd>—</dd><dt>Rows returned by Oracle</dt><dd>—</dd><dt>Columns returned by Oracle</dt><dd>—</dd></dl><p id="state-error" class="error" role="alert"></p></section>
+      <section class="instructions"><strong>How to use this console:</strong> complete the guided setup actions in order through <em>Create MARVIN</em>. The console reads Oracle state when you sign in, so a logout or page reload does not reset completed setup actions. After Marvin exists, policy and validation actions unlock. Review the exact checked-in SQL*Plus script, then select <em>Run action</em>.</section>
+      <section class="stepper" aria-label="Fixed Deep Sec lab actions">
+        <ol class="stepper-list">
+        {% for action in actions %}
+          <li class="step-item{% if action.locked %} is-locked{% endif %}" data-action-step="{{ action.key }}">
+            <button class="step-badge" data-select-action="{{ action.key }}" aria-controls="action-{{ action.key }}" type="button"{% if action.locked %} disabled{% endif %}>
+              <span class="step-number">{{ loop.index }}</span>
+              <span class="step-label">{{ action.short_label }}</span>
+            </button>
+          </li>
+        {% endfor %}
+        </ol>
+      </section>
+      <section class="action-details" aria-live="polite">
+        {% for action in actions %}
+        <article id="action-{{ action.key }}" class="action-card action-panel{% if action.destructive %} destructive{% endif %}" data-action-panel="{{ action.key }}"{% if not loop.first %} hidden{% endif %}>
+          <div class="action-heading"><div><h2>{{ action.title }}</h2><p>{{ action.description }}</p></div>{% if action.destructive %}<span class="warning">Changes database state</span>{% endif %}</div>
+          {% if not action.link_step %}
+            <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+            <details><summary>View exact script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
+            <button class="primary run-action" data-action="{{ action.key }}" data-requires="{{ action.requires|join(',') }}" data-resets-setup="{{ 'true' if action.resets_setup else 'false' }}" type="button"{% if action.locked %} disabled{% endif %}>Run action</button><span class="action-status" aria-live="polite">{% if action.locked %}Complete {{ action.required_titles|join(' → ') }} first.{% endif %}</span>
+            <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+          {% else %}
+            <p><a href="{{ action.link_url }}" target="_blank" rel="noopener">Oracle Customer Sales</a></p>
+            <button class="primary run-action" data-action="{{ action.key }}" data-requires="{{ action.requires|join(',') }}" type="button"{% if action.locked %} disabled{% endif %}>Continue</button><span class="action-status" aria-live="polite">{% if action.locked %}Complete {{ action.required_titles|join(' → ') }} first.{% endif %}</span>
+            <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Step status</h3><pre>{{ action.output or '' }}</pre></section>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </section>
+    </main>
+    <footer>Deep Sec Administrator Console · Oracle Database is the authorization boundary</footer>
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+  </body>
+</html>

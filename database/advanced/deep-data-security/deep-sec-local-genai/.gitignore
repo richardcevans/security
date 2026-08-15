@@ -8,3 +8,4 @@ cloudshell/__pycache__/
 flask-app/logs/
 dist/*.zip
 dist/*.sha256
+terraform/.deep-sec-generated-wallet.zip

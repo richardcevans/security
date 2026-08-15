@@ -1,10 +1,10 @@
-title: "DeepSec9 Local End-User GenAI Lab"
-stackDescription: "Deploy the DeepSec9 Autonomous AI Database, application server, wallet bucket, and optional OCI Generative AI instance-principal access."
+title: "Deep Sec Local End-User GenAI Lab"
+stackDescription: "Pre-lab deployment of the Deep Sec Autonomous AI Database, application server, wallet bucket, and optional OCI Generative AI instance-principal access."
 description: "Deep Data Security demonstration using local database end user Marvin."
-informationalText: "After Apply completes, use the Application Outputs below. The ADB ADMIN password is sensitive and requires Unlock. Marvin's password is created later by the database setup script and is never shown here."
-instructions: "Run Plan before Apply. After Apply, download the ADB wallet from the ADB Console link, then use the Jupyter URL to upload it and configure the application."
+informationalText: "After Apply completes, use the Application Outputs below. Terraform generates one sensitive password for ADB ADMIN, JupyterLab, and Marvin; select Unlock and copy it. Enter that password for Marvin when the database setup script prompts in Task 2."
+instructions: "Provisioning is pre-lab work and is excluded from the 60-minute hands-on estimate. Run Plan before Apply, then Apply. Terraform automatically generates and securely delivers the ADB wallet to the compute instance. Afterward, select Unlock and copy the shared ADB ADMIN, JupyterLab, and Marvin password, then use the JupyterLab link to configure the application."
 schemaVersion: 1.1.0
-version: "20260813"
+version: "20260816"
 locale: "en"
 
 variableGroups:
@@ -15,7 +15,6 @@ variableGroups:
       - region
   - title: "Autonomous AI Database"
     variables:
-      - adb_admin_password
       - adb_db_name
       - adb_display_name
       - adb_compute_count
@@ -51,10 +50,6 @@ variables:
   region:
     type: oci:identity:region:name
     title: "Region"
-    required: true
-  adb_admin_password:
-    type: password
-    title: "ADB ADMIN password"
     required: true
   adb_db_name:
     type: string
@@ -131,15 +126,19 @@ outputs:
   adb_console_url:
     type: link
     title: "Autonomous AI Database"
-    displayText: "Open DeepSec9 in OCI Console"
-  adb_admin_password:
+    displayText: "Open Deep Sec in OCI Console"
+  lab_admin_jupyter_password:
     type: copyableString
-    title: "ADB ADMIN password"
+    title: "ADB ADMIN, JupyterLab, and Marvin password"
     sensitive: true
   flask_url:
     type: link
     title: "Deep Data Security App"
     displayText: "Open Deep Data Security App"
+  admin_console_url:
+    type: link
+    title: "Deep Sec Admin Console"
+    displayText: "Open Deep Sec Admin Console"
   jupyter_url:
     type: link
     title: "JupyterLab"
@@ -184,13 +183,14 @@ outputs:
     type: copyableString
     title: "GenAI policy"
 
-primaryOutputButton: ${jupyter_url}
+primaryOutputButton: ${admin_console_url}
 
 outputGroups:
   - title: "Start the Lab"
     outputs:
+      - ${admin_console_url}
       - ${adb_console_url}
-      - ${adb_admin_password}
+      - ${lab_admin_jupyter_password}
       - ${flask_url}
       - ${jupyter_url}
   - title: "Database"

@@ -1,6 +1,7 @@
 """Flask UI for direct local Oracle Deep Data Security end users."""
 
 import logging
+import os
 import secrets
 import time
 from decimal import Decimal
@@ -21,6 +22,7 @@ load_dotenv()
 settings = load_settings()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = settings.secret_key
+app.config["SESSION_COOKIE_NAME"] = "deep_sec_customer_session"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 Bootstrap5(app)
@@ -28,6 +30,7 @@ HTMX(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+app.logger.setLevel(getattr(logging, os.getenv("FLASK_LOG_LEVEL", "INFO").upper(), logging.INFO))
 
 # Passwords remain only in this process's memory, keyed by an opaque browser
 # session ID. They are never placed in a cookie, written to disk, or logged.

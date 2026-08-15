@@ -5,7 +5,7 @@ variable "tenancy_ocid" {
 
 variable "compartment_ocid" {
   type        = string
-  description = "Compartment that receives ADB, compute, and the optional private wallet bucket."
+  description = "Compartment that receives ADB, compute, and the private wallet delivery bucket."
 }
 
 variable "region" {
@@ -23,19 +23,13 @@ variable "oci_profile" {
 variable "adb_db_name" {
   type        = string
   description = "Autonomous Database name; use uppercase letters, digits, $, or #."
-  default     = "DEEPSEC9"
+  default     = "DEEPSEC"
 }
 
 variable "adb_display_name" {
   type        = string
   description = "Autonomous Database display name."
-  default     = "deepsec9"
-}
-
-variable "adb_admin_password" {
-  type        = string
-  description = "ADMIN password for the Terraform-managed ADB. Set TF_VAR_adb_admin_password; do not commit it."
-  sensitive   = true
+  default     = "Deep Sec"
 }
 
 variable "adb_compute_count" {
@@ -59,7 +53,7 @@ variable "adb_license_model" {
 variable "compute_image_ocid" {
   type        = string
   description = "Custom-image OCID for the Flask compute instance. Override when using a different tenancy or region."
-  default     = "ocid1.image.oc1.iad.aaaaaaaaniph7qkksa5gbo2orm44hhhqs4wd7fasrobaxofhzjazgm65rima"
+  default     = "ocid1.image.oc1.iad.aaaaaaaaftfqwqdkerxwrqjjssmwvog6kohczmfhfj2i2kmjmqorteybgp2a"
 }
 
 variable "vcn_cidr" {
@@ -77,7 +71,7 @@ variable "public_subnet_cidr" {
 variable "vcn_dns_label" {
   type        = string
   description = "DNS label for the disposable lab VCN."
-  default     = "deepsec9"
+  default     = "deepsec"
 }
 
 variable "allowed_ingress_home_ip_address" {
@@ -131,16 +125,27 @@ variable "assign_public_ip" {
   default     = true
 }
 
-variable "create_wallet_bucket" {
-  type        = bool
-  description = "Create a private Object Storage bucket for short-lived wallet PAR publishing."
-  default     = true
-}
-
 variable "wallet_bucket_name" {
   type        = string
-  description = "Private wallet bucket name."
-  default     = "deepsec9-wallet"
+  description = "Private bucket used only for automatic wallet delivery to the lab compute instance."
+  default     = "deep-sec-wallet"
+}
+
+variable "wallet_object_name" {
+  type        = string
+  description = "Object name used for the automatically generated ADB wallet ZIP."
+  default     = "deep-sec-wallet.zip"
+}
+
+variable "wallet_par_ttl_hours" {
+  type        = number
+  description = "Hours that the one-object wallet download link remains valid after the Stack first applies."
+  default     = 24
+
+  validation {
+    condition     = var.wallet_par_ttl_hours >= 1 && var.wallet_par_ttl_hours <= 168
+    error_message = "wallet_par_ttl_hours must be between 1 and 168 hours."
+  }
 }
 
 variable "create_genai_iam" {
@@ -158,13 +163,13 @@ variable "genai_policy_compartment_ocid" {
 variable "genai_dynamic_group_name" {
   type        = string
   description = "Dynamic group name when create_genai_iam is true."
-  default     = "DEEPSEC9_COMPUTE"
+  default     = "DEEP_SEC_COMPUTE"
 }
 
 variable "genai_policy_name" {
   type        = string
   description = "IAM policy name when create_genai_iam is true."
-  default     = "DEEPSEC9_COMPUTE_GENAI"
+  default     = "DEEP_SEC_COMPUTE_GENAI"
 }
 
 variable "genai_model_id" {

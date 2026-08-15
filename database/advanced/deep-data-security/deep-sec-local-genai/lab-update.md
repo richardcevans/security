@@ -63,7 +63,7 @@ The existing application already has several important properties that MUST be p
 * Python `oracledb`
 * Oracle Thick mode / Instant Client
 * Autonomous AI Database wallet/TNS configuration
-* `deepsec9_low`
+* `deepsec_low`
 * Gunicorn
 * responsive custom CSS
 * short-lived Oracle connections
@@ -265,15 +265,15 @@ Important examples:
 
 ---
 
-# Authorization State 1 — Insecure Baseline
+# Authorization State 1 — Full Access
 
 Initially Marvin has:
 
 ```text
-APP_BASELINE_ACCESS
+APP_FULL_ACCESS
 ```
 
-The intentionally excessive database data grant permits every row and column.
+The full-access database data grant permits every row and column.
 
 Expected application result:
 
@@ -795,7 +795,7 @@ The application must continue to:
 * use Oracle Thick mode
 * initialize Oracle Instant Client
 * use the installed wallet/TNS configuration
-* connect through `deepsec9_low`
+* connect through `deepsec_low`
 * authenticate as Marvin
 * use Marvin's entered password
 * close database connections after requests
@@ -995,7 +995,7 @@ Expected:
 1 matching customer
 ```
 
-because the intentionally broad baseline database grant permits the Finance row.
+because the full-access database grant permits the Finance row.
 
 ---
 
@@ -1168,7 +1168,7 @@ Unless you find a real bug required to make the existing application operate, do
 In particular, preserve the expected sequence:
 
 ```text
-APP_BASELINE_ACCESS
+APP_FULL_ACCESS
         |
         v
 APP_SALES_EMPLOYEE
@@ -1209,7 +1209,7 @@ If it is not available, clearly state which checks require the live lab environm
 
 # Manual Lab Acceptance Tests
 
-## Baseline
+## Full Access
 
 Sign in as Marvin.
 
@@ -1222,7 +1222,7 @@ Rows Returned: 22
 Apex Treasury: visible
 Crown Capital: visible
 Sensitive Identifier: visible
-Active Data Role: APP_BASELINE_ACCESS
+Active Data Role: APP_FULL_ACCESS
 ```
 
 ---
@@ -1376,7 +1376,7 @@ The task is complete when all of the following are true:
 * Marvin's password remains server-side and in memory only.
 * Thick-mode `oracledb` behavior is preserved.
 * Wallet/TNS behavior is preserved.
-* `deepsec9_low` compatibility is preserved.
+* `deepsec_low` compatibility is preserved.
 * Gunicorn defaults to one worker.
 * No Flask customer row authorization exists.
 * No Flask sensitive-column authorization exists.

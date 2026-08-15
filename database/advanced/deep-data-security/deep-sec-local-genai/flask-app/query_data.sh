@@ -5,12 +5,12 @@ set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 requested_user=${1:-}
 provided_password=${2:-}
-dsn=${DB_DSN:-deepsec9_low}
+dsn=${DB_DSN:-deepsec_low}
 validation_sql="$script_dir/../database/06_validation_queries.sql"
 
 usage() {
   echo "Usage: $0 <marvin> [password]" >&2
-  echo "Set DB_DSN to override the default service: deepsec9_low." >&2
+  echo "Set DB_DSN to override the default service: deepsec_low." >&2
 }
 
 case "${requested_user,,}" in

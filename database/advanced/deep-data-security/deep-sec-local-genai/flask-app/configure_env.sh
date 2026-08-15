@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Create the Flask configuration for the DeepSec9 local-end-user lab.
+# Create the Flask configuration for the Deep Sec local-end-user lab.
 set -euo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 env_file="$script_dir/.env"
-wallet_dir=${TNS_ADMIN:-${DB_WALLET_LOCATION:-$HOME/deepsec9-wallet/tns_admin}}
-db_dsn=${DB_DSN:-deepsec9_low}
+wallet_dir=${TNS_ADMIN:-${DB_WALLET_LOCATION:-$HOME/deep-sec-wallet/tns_admin}}
+db_dsn=${DB_DSN:-deepsec_low}
 
 say() {
   printf '\n==> %s\n' "$1"
@@ -19,7 +19,7 @@ dotenv_double_quote() {
   printf '"%s"' "$value"
 }
 
-say 'DeepSec9 Flask configuration'
+say 'Deep Sec Flask configuration'
 echo "This script creates $env_file for the local-end-user web application."
 echo "It does not collect or save Marvin's password."
 

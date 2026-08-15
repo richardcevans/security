@@ -5,7 +5,7 @@ data "oci_identity_availability_domains" "available" {
 resource "oci_core_vcn" "lab" {
   compartment_id = var.compartment_ocid
   cidr_blocks    = [var.vcn_cidr]
-  display_name   = "deepsec9-vcn"
+  display_name   = "Deep Sec VCN"
   dns_label      = var.vcn_dns_label
 
   freeform_tags = local.common_tags
@@ -14,7 +14,7 @@ resource "oci_core_vcn" "lab" {
 resource "oci_core_internet_gateway" "lab" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.lab.id
-  display_name   = "deepsec9-igw"
+  display_name   = "Deep Sec IGW"
   enabled        = true
 
   freeform_tags = local.common_tags
@@ -23,7 +23,7 @@ resource "oci_core_internet_gateway" "lab" {
 resource "oci_core_route_table" "public" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.lab.id
-  display_name   = "deepsec9-public-rt"
+  display_name   = "Deep Sec Public Route Table"
 
   route_rules {
     network_entity_id = oci_core_internet_gateway.lab.id
@@ -37,7 +37,7 @@ resource "oci_core_route_table" "public" {
 resource "oci_core_security_list" "public_app" {
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.lab.id
-  display_name   = "deepsec9-public-sl"
+  display_name   = "Deep Sec Public Security List"
 
   egress_security_rules {
     protocol    = "all"
@@ -58,7 +58,7 @@ resource "oci_core_subnet" "public_app" {
   compartment_id             = var.compartment_ocid
   vcn_id                     = oci_core_vcn.lab.id
   cidr_block                 = var.public_subnet_cidr
-  display_name               = "deepsec9-public-subnet"
+  display_name               = "Deep Sec Public Subnet"
   dns_label                  = "app"
   route_table_id             = oci_core_route_table.public.id
   security_list_ids          = [oci_core_security_list.public_app.id]

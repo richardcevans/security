@@ -475,7 +475,7 @@ Customer Accounts
 
 Review the customer accounts available to your current database identity.
 
-[ Load Customers ]
+[ Customer Report ]
 ```
 
 After loading:
@@ -635,7 +635,7 @@ Add professional loading behavior.
 When the user selects:
 
 ```text
-Load Customers
+Customer Report
 ```
 
 the application should:
@@ -889,7 +889,7 @@ Customer Accounts
 Database User
 Active Data Roles
 Rows Returned
-Load Customers
+Customer Report
 Sensitive Identifier
 Not authorized
 ```

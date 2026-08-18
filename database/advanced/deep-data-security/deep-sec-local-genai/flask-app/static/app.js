@@ -75,7 +75,7 @@ if (load) {
       showError("Unable to load customer accounts. Please try again.");
     } finally {
       load.disabled = false;
-      load.textContent = "Load Customers";
+      load.textContent = "Customer Report";
       status.textContent = "";
     }
   });

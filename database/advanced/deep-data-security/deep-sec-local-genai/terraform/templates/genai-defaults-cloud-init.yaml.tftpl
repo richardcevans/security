@@ -55,6 +55,16 @@ write_files:
 
         PS1="$${PS1}\[\033]0;$${JUPYTER_TERMINAL_TITLE}\007\]"
       fi
+  - path: /home/opc/.deep-sec-sqlpath.sh
+    owner: opc:opc
+    permissions: '0644'
+    content: |
+      # Makes the checked-in lab scripts available to SQL*Plus by filename.
+      deep_sec_sqlpath=/opt/deep-sec-admin-database
+      case ":$${SQLPATH:-}:" in
+        *:$${deep_sec_sqlpath}:*) ;;
+        *) export SQLPATH="$${deep_sec_sqlpath}$${SQLPATH:+:$${SQLPATH}}" ;;
+      esac
   - path: /home/opc/reset_deep-sec_terminal_titles.sh
     owner: opc:opc
     permissions: '0755'
@@ -76,6 +86,7 @@ write_files:
       title_source_line='[[ -f /home/opc/.deep-sec-jupyter-terminal-title.sh ]] && source /home/opc/.deep-sec-jupyter-terminal-title.sh'
       password_source_line='[[ -r /home/opc/.deep-sec-lab-password ]] && export LAB_PWD="$(< /home/opc/.deep-sec-lab-password)"'
       environment_source_line='[[ -r /home/opc/.deep-sec-lab-environment ]] && source /home/opc/.deep-sec-lab-environment'
+      sqlpath_source_line='[[ -f /home/opc/.deep-sec-sqlpath.sh ]] && source /home/opc/.deep-sec-sqlpath.sh'
 
       touch "$bashrc"
       if ! grep -Fqx "$title_source_line" "$bashrc"; then
@@ -86,6 +97,9 @@ write_files:
       fi
       if ! grep -Fqx "$environment_source_line" "$bashrc"; then
         printf '# Deep Sec loads the database connection environment for terminal use.\n%s\n' "$environment_source_line" >> "$bashrc"
+      fi
+      if ! grep -Fqx "$sqlpath_source_line" "$bashrc"; then
+        printf '# Deep Sec makes the checked-in SQL scripts available to SQL*Plus.\n%s\n' "$sqlpath_source_line" >> "$bashrc"
       fi
       chown opc:opc "$bashrc"
       chmod 0644 "$bashrc"

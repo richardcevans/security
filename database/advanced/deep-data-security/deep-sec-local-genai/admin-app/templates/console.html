@@ -12,7 +12,7 @@
     <main class="page">
       <section class="heading"><div><p class="eyebrow">Oracle Deep Data Security</p><h1>Lab policy administration</h1><p>Run a visible, fixed lab script as <code>ADMIN</code>. The console never accepts browser-supplied SQL.</p></div><button id="refresh-state" class="secondary" type="button">Refresh Marvin's current state</button></section>
       <section class="state-card" aria-labelledby="state-title"><div class="section-title"><h2 id="state-title">Marvin's current Oracle result</h2><span id="state-status" class="muted" aria-live="polite">Loading…</span></div><dl id="state" class="state-grid"><dt>End user</dt><dd>—</dd><dt>Active data roles</dt><dd>—</dd><dt>Rows returned by Oracle</dt><dd>—</dd><dt>Columns returned by Oracle</dt><dd>—</dd></dl><p id="state-error" class="error" role="alert"></p></section>
-      <section class="instructions"><strong>How to use this console:</strong> complete the guided setup actions in order through <em>Create MARVIN</em>. The console reads Oracle state when you sign in, so a logout or page reload does not reset completed setup actions. After Marvin exists, policy and validation actions unlock. Review the exact checked-in SQL*Plus script, then select <em>Run action</em>.</section>
+      <section class="instructions"><strong>How to use this console:</strong> complete the guided setup actions in order through <em>Create MARVIN</em>. The console reads Oracle state when you sign in, so a logout or page reload does not reset completed setup actions. After Marvin exists, policy and validation actions unlock. Review the SQL*Plus script then press <em>Run action</em>.</section>
       <section class="stepper" aria-label="Fixed Deep Sec lab actions">
         <ol class="stepper-list">
         {% for step in steps %}
@@ -80,7 +80,7 @@
               {% endfor %}
             </div>
           {% endif %}
-          {% if step.next_hint %}<p class="action-next"><strong>Next:</strong> {{ step.next_hint }}</p>{% endif %}
+          {% if step.next_hint %}<p class="action-next"><span class="next-button">Next</span><span>{{ step.next_hint }}</span></p>{% endif %}
         </article>
         {% endfor %}
       </section>

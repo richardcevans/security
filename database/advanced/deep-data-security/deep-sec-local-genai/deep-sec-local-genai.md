@@ -80,7 +80,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 ### **Browser — Oracle Customer Sales**
 
-1. Select **Load Customers**. Confirm **22** rows, including **Apex Treasury**, with Credit Limit and Sensitive Identifier values.
+1. Select **Customer Report**. Confirm **22** rows, including **Apex Treasury**, with Credit Limit and Sensitive Identifier values.
 
 2. The application runs:
 
@@ -110,7 +110,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 1. In the Admin Console, select **Enable sales-employee policy** and run it.
 
-2. Return to Oracle Customer Sales and select **Load Customers**.
+2. Return to Oracle Customer Sales and select **Customer Report**.
 
     Expected: **3** rows, `APP_SALES_EMPLOYEE`, and **Not authorized** for Credit Limit and Sensitive Identifier.
 
@@ -124,11 +124,11 @@ A data role bundles row and column permissions, much like a database role bundle
 
 1. In the Admin Console, select **Create manager hierarchy** and run it. Then select **Enable sales-manager policy** and run it.
 
-2. In Oracle Customer Sales, sign out and sign back in as Marvin. A fresh sign-in picks up the newly added manager role for this session. Select **Load Customers**.
+2. In Oracle Customer Sales, sign out and sign back in as Marvin. A fresh sign-in picks up the newly added manager role for this session. Select **Customer Report**.
 
     Expected: **9** rows, `APP_SALES_EMPLOYEE, APP_SALES_MANAGER`, Credit Limit visible, and **Not authorized** for Sensitive Identifier.
 
-> **Optional:** In the Admin Console, run **Customize the manager grant** to remove Region or Revenue from Marvin's manager access, watch **Load Customers** in Customer Sales reflect the change immediately, then rerun **Enable sales-manager policy** to restore the original six columns.
+> **Optional:** In the Admin Console, run **Customize the manager grant** to remove Region or Revenue from Marvin's manager access, watch **Customer Report** in Customer Sales reflect the change immediately, then rerun **Enable sales-manager policy** to restore the original six columns.
 
 ## Task 8: Change the Application with Vibe
 

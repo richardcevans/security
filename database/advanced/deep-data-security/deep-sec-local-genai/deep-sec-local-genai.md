@@ -53,7 +53,7 @@ Run this task only if the Admin Console or Customer Sales page does not load.
 
 A data role bundles row and column permissions, much like a database role bundles system privileges. A data grant is the filter that defines which rows and columns a role can see. You will create both, then create Marvin as a local database user who receives one of these roles at a time throughout the lab.
 
-### **Browser — Deep Sec Admin Console**
+### **Browser — Deep Sec DEMO Setup**
 
 1. Sign in as `ADMIN` with the generated password.
 
@@ -106,7 +106,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 ## Task 6: Apply the Employee Policy
 
-### **Browser — Deep Sec Admin Console, then Oracle Customer Sales**
+### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
 
 1. In the Admin Console, select **Enable sales-employee policy** and run it.
 
@@ -120,7 +120,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 ## Task 7: Promote Marvin to Sales Manager
 
-### **Browser — Deep Sec Admin Console, then Oracle Customer Sales**
+### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
 
 1. In the Admin Console, select **Create manager hierarchy** and run it. Then select **Enable sales-manager policy** and run it.
 
@@ -132,7 +132,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 ## Task 8: Change the Application with Vibe
 
-### **Browser — Deep Sec Admin Console, then Oracle Customer Sales**
+### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
 
 1. In the Admin Console, select **Vibe Coding**. Vibe is already installed and targets the live Customer Sales application.
 

@@ -138,8 +138,8 @@ outputs:
     displayText: "Open Deep Data Security App"
   admin_console_url:
     type: link
-    title: "Deep Sec Admin Console"
-    displayText: "Open Deep Sec Admin Console"
+    title: "Deep Sec DEMO Setup"
+    displayText: "Open Deep Sec DEMO Setup"
   jupyter_url:
     type: link
     title: "JupyterLab"

@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Deep Sec Admin Console</title>
+    <title>Deep Sec DEMO Setup</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   </head>
   <body data-completed-actions='{{ completed_actions|tojson }}'>
-    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec Admin Console</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="header-link active" href="/console">Lab actions</a><a class="header-link" href="/vibe">Vibe Coding</a></nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
+    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec DEMO Setup</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="header-link active" href="/console">Lab actions</a><a class="header-link" href="/vibe">Vibe Coding</a></nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
     <main class="page">
       <section class="heading"><div><p class="eyebrow">Oracle Deep Data Security</p><h1>Lab policy administration</h1><p>Run a visible, fixed lab script as <code>ADMIN</code>. The console never accepts browser-supplied SQL.</p></div><button id="refresh-state" class="secondary" type="button">Refresh Marvin's current state</button></section>
       <section class="state-card" aria-labelledby="state-title"><div class="section-title"><h2 id="state-title">Marvin's current Oracle result</h2><span id="state-status" class="muted" aria-live="polite">Loading…</span></div><dl id="state" class="state-grid"><dt>End user</dt><dd>—</dd><dt>Active data roles</dt><dd>—</dd><dt>Rows returned by Oracle</dt><dd>—</dd><dt>Columns returned by Oracle</dt><dd>—</dd></dl><p id="state-error" class="error" role="alert"></p></section>

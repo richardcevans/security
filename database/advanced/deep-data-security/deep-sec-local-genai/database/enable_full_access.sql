@@ -1,4 +1,4 @@
--- Run as ADB ADMIN from the Deep Sec Admin Console or SQL*Plus.
+-- Run as ADB ADMIN from the Deep Sec DEMO Setup or SQL*Plus.
 -- Restores full access for the before-and-after demonstration.
 whenever sqlerror exit sql.sqlcode rollback
 set echo off

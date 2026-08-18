@@ -42,7 +42,7 @@ bash verify_app_server.sh
 
 The setup script does not save Marvin's password. It is entered at the web sign-in page.
 
-The **Deep Sec Admin Console** starts automatically on port `7778`. It authenticates directly as ADB `ADMIN` with the same generated lab password. It provides a fixed allow-list of visible database scripts, runs the selected script through SQL*Plus, displays the output, and reads Marvin's resulting rows, columns, and active data roles directly from Oracle.
+The **Deep Sec DEMO Setup** starts automatically on port `7778`. It authenticates directly as ADB `ADMIN` with the same generated lab password. It provides a fixed allow-list of visible database scripts, runs the selected script through SQL*Plus, displays the output, and reads Marvin's resulting rows, columns, and active data roles directly from Oracle.
 
 Start the public web server with:
 

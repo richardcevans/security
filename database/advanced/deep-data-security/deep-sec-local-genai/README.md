@@ -66,8 +66,10 @@ Start the public web server with:
 | `admin-app/admin_app.py` | Auto-starting administrator console on port 7778. It accepts only fixed, visible Deep Sec lab actions. |
 | `database/create_lab_users.sql` | Prompts for and creates the local Marvin end user. |
 | `database/create_emma_user.sql` | Creates Emma, a fixed APP_SALES_EMPLOYEE comparison user. |
-| `database/create_data_roles.sql` | Creates the full-access, sales-employee, and sales-manager data roles and grants. |
-| `database/implement_deep_sec_policies.sql` | Replaces the full-access role with Marvin's sales-employee data role and grant. |
+| `database/create_db_roles.sql` | Creates APP_LOCAL_CONNECT, an ordinary Oracle role with CREATE SESSION. |
+| `database/create_data_roles.sql` | Creates the full-access, sales-employee, and sales-manager data roles. |
+| `database/create_data_grants.sql` | Defines the full-access and sales-employee data grants. |
+| `database/enable_employee_policy.sql` | Replaces Marvin's full-access role with the sales-employee data role. |
 | `database/promote_marvin_to_manager.sql` | Adds the sales-manager data role and grant while Marvin retains the employee role. |
 | `package.sh` | Builds the credential-free compute ZIP. |
 

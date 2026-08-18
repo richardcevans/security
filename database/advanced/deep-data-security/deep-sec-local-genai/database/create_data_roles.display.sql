@@ -7,17 +7,8 @@ CREATE OR REPLACE DATA ROLE APP_FULL_ACCESS;
 CREATE OR REPLACE DATA ROLE APP_SALES_EMPLOYEE;
 CREATE OR REPLACE DATA ROLE APP_SALES_MANAGER;
 
--- 2. Give each data role the ordinary CREATE SESSION capability through a
---    normal database role. APPLAB table access remains data-grant controlled.
-CREATE ROLE APP_LOCAL_CONNECT;
-GRANT CREATE SESSION TO APP_LOCAL_CONNECT;
+-- 2. Attach the ordinary APP_LOCAL_CONNECT role created on the previous
+--    page. APPLAB table access remains data-grant controlled.
 GRANT APP_LOCAL_CONNECT TO APP_FULL_ACCESS;
 GRANT APP_LOCAL_CONNECT TO APP_SALES_EMPLOYEE;
 GRANT APP_LOCAL_CONNECT TO APP_SALES_MANAGER;
-
--- 3. Define the deliberately broad starting grant. It authorizes all rows
---    and displayed columns only for the disposable before-and-after exercise.
-CREATE OR REPLACE DATA GRANT APPLAB.MARVIN_FULL_CUSTOMER_ACCESS
-  AS SELECT (CUSTOMER_ID, CUSTOMER_NAME, REGION, SALES_REP, REVENUE, CREDIT_LIMIT, SENSITIVE_IDENTIFIER)
-  ON APPLAB.CUSTOMERS
-  TO APP_FULL_ACCESS;

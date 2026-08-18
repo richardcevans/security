@@ -295,7 +295,7 @@ The database authorization is intentionally too broad.
 After:
 
 ```sql
-@../database/implement_deep_sec_policies.sql
+@../database/enable_employee_policy.sql
 ```
 
 Marvin has:
@@ -1004,7 +1004,7 @@ because the full-access database grant permits the Finance row.
 After:
 
 ```sql
-@../database/implement_deep_sec_policies.sql
+@../database/enable_employee_policy.sql
 ```
 
 Search:
@@ -1232,7 +1232,7 @@ Active Data Role: APP_FULL_ACCESS
 Apply:
 
 ```sql
-@../database/implement_deep_sec_policies.sql
+@../database/enable_employee_policy.sql
 ```
 
 Sign out and sign back in as Marvin.

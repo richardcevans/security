@@ -32,7 +32,6 @@ create table APPLAB.customers (
   customer_name        varchar2(100) not null,
   region               varchar2(20) not null,
   sales_rep            varchar2(100) not null,
-  manager_name         varchar2(100),
   revenue              number not null,
   credit_limit         number not null,
   sensitive_identifier varchar2(50) not null
@@ -40,8 +39,6 @@ create table APPLAB.customers (
 
 prompt SQL> CREATE INDEX APPLAB.CUSTOMERS_SALES_REP_IX ON APPLAB.CUSTOMERS (SALES_REP)
 create index APPLAB.customers_sales_rep_ix on APPLAB.customers (sales_rep);
-prompt SQL> CREATE INDEX APPLAB.CUSTOMERS_MANAGER_IX ON APPLAB.CUSTOMERS (MANAGER_NAME)
-create index APPLAB.customers_manager_ix on APPLAB.customers (manager_name);
 prompt APPLAB schema is ready for sample customer data.
 undefine applab_password
 undefine APPLAB_PASSWORD

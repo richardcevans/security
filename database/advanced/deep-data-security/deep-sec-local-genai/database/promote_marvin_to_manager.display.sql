@@ -3,12 +3,13 @@
 -- an application edit. Sensitive identifiers remain outside this data grant.
 
 -- 1. Define the manager data grant. It permits Marvin's own rows and rows
---    whose protected MANAGER_NAME is Marvin. CREDIT_LIMIT is included.
+--    assigned to a direct report named in APPLAB.MGR_CTX.REPORTS. CREDIT_LIMIT
+--    is included.
 CREATE OR REPLACE DATA GRANT APPLAB.MARVIN_MANAGER_CUSTOMER_ACCESS
   AS SELECT (CUSTOMER_ID, CUSTOMER_NAME, REGION, SALES_REP, REVENUE, CREDIT_LIMIT)
   ON APPLAB.CUSTOMERS
   WHERE UPPER(SALES_REP) = UPPER(ORA_END_USER_CONTEXT.USERNAME)
-     OR UPPER(MANAGER_NAME) = UPPER(ORA_END_USER_CONTEXT.USERNAME)
+     OR INSTR(','||ORA_END_USER_CONTEXT.APPLAB.MGR_CTX.reports||',', ','||UPPER(SALES_REP)||',') > 0
   TO APP_SALES_MANAGER;
 
 -- 2. Add the manager role while Marvin keeps the employee role. Oracle

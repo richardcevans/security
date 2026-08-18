@@ -47,9 +47,7 @@ def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
     """Infer the guided setup position from durable Oracle state.
 
     Browser sessions are deliberately short-lived, so setup progress must never
-    depend on a Flask login surviving. The authentication-model script is
-    informational and creates no object; a loaded customer table therefore
-    represents both that step and the preceding data-load step.
+    depend on a Flask login surviving.
     """
     completed: set[str] = set()
     with database_connection(settings, "ADMIN", password) as connection:
@@ -57,13 +55,28 @@ def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
             cursor.execute("select count(*) from all_users where username = 'APPLAB'")
             if cursor.fetchone()[0] != 1:
                 return completed
+            completed.add("create_schema")
             try:
                 cursor.execute("select count(*) from APPLAB.customers")
                 customer_count = cursor.fetchone()[0]
             except oracledb.DatabaseError:
                 customer_count = 0
             if customer_count >= 22:
-                completed.add("setup_database")
+                completed.add("load_data")
+            cursor.execute("select count(*) from dba_roles where role = 'APP_LOCAL_CONNECT'")
+            if cursor.fetchone()[0] == 1:
+                completed.add("create_db_roles")
+            cursor.execute(
+                """
+                select count(*)
+                  from dba_data_grants
+                 where grantee = 'APP_FULL_ACCESS'
+                   and object_owner = 'APPLAB'
+                   and object_name = 'CUSTOMERS'
+                """
+            )
+            if cursor.fetchone()[0] >= 1:
+                completed.update({"create_roles", "create_data_grants"})
 
     try:
         # CREATE END USER is not consistently represented in ordinary user
@@ -75,8 +88,7 @@ def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
                 cursor.fetchone()
                 cursor.execute("select role_name from v$end_user_data_role")
                 active_roles = {row[0] for row in cursor}
-        # MARVIN can be created only after the data roles exist.
-        completed.update({"create_roles", "create_marvin"})
+        completed.add("create_marvin")
         if "APP_FULL_ACCESS" in active_roles:
             completed.add("enable_full_access")
         if "APP_SALES_EMPLOYEE" in active_roles:
@@ -173,15 +185,15 @@ def lab_state(settings: AdminSettings, password: str) -> dict:
             row_count = sum(1 for _ in cursor)
             cursor.execute("select ora_end_user_context.username from dual")
             (end_user,) = cursor.fetchone()
-            cursor.execute(
-                """
-                select distinct sales_rep
-                  from applab.customers
-                 where upper(sales_rep) <> upper(ora_end_user_context.username)
-                 order by sales_rep
-                """
-            )
-            direct_reports = [row[0] for row in cursor]
+            try:
+                cursor.execute("select ora_end_user_context.APPLAB.MGR_CTX.reports from dual")
+                (reports,) = cursor.fetchone()
+                direct_reports = [report for report in (reports or "").split(",") if report]
+            except oracledb.DatabaseError:
+                # The manager context is deliberately created later in the
+                # lab. Its absence must not hide Marvin's otherwise valid
+                # current authorization result.
+                direct_reports = []
             cursor.execute("select role_name from v$end_user_data_role order by role_name")
             data_roles = [row[0] for row in cursor]
     return {

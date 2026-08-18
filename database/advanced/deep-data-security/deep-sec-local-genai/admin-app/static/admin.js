@@ -467,54 +467,82 @@ document.querySelector(".run-vibe-reset")?.addEventListener("click", async (even
   }
 });
 
-function selectedGrantColumns() {
-  return Array.from(document.querySelectorAll(".grant-column:checked")).map((element) => element.value);
-}
-
-async function refreshGrantPreview() {
-  const preview = document.querySelector("#grant-preview");
-  if (!preview) return;
-  try {
-    const {payload} = await requestJson("/api/manager-grant/preview", {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({columns: selectedGrantColumns()}),
-    });
-    preview.textContent = payload.sql || payload.error || "Could not generate a preview.";
-  } catch (_) {
-    preview.textContent = "Could not contact the administrator console.";
-  }
-}
-
-document.querySelectorAll(".grant-column").forEach((box) => {
-  box.addEventListener("change", refreshGrantPreview);
-});
-if (document.querySelector("#grant-preview")) refreshGrantPreview();
-
-document.querySelector(".run-grant-apply")?.addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const status = document.querySelector("#grant-status");
-  const output = document.querySelector("#grant-output");
+document.querySelectorAll(".grant-wizard").forEach((wizard) => {
+  const apiPrefix = wizard.dataset.apiPrefix;
+  const preview = wizard.querySelector(".grant-preview");
+  const applyButton = wizard.querySelector(".run-grant-apply");
+  const status = wizard.querySelector(".grant-status");
+  const output = wizard.querySelector(".grant-output");
   const outputText = output?.querySelector("pre");
-  if (!window.confirm("Apply this column set to Marvin's manager grant now?")) return;
-  button.disabled = true;
-  status.textContent = "Applying…";
-  try {
-    const {response, payload} = await requestJson("/api/manager-grant/apply", {
-      method: "POST",
-      headers: jsonHeaders,
-      body: JSON.stringify({columns: selectedGrantColumns()}),
-    });
-    status.textContent = response.ok ? "Applied." : (payload.error || "Failed.");
-    if (output) {
-      output.hidden = false;
-      output.open = true;
-      outputText.textContent = payload.output || payload.error || "No output was returned.";
-    }
-    if (response.ok) await refreshState();
-  } catch (_) {
-    status.textContent = "Could not contact the administrator console.";
-  } finally {
-    button.disabled = false;
+
+  function selectedColumns() {
+    return Array.from(wizard.querySelectorAll(".grant-column:checked")).map((element) => element.value);
   }
+
+  function allowUpdate() {
+    return wizard.querySelector(".grant-allow-update")?.checked || false;
+  }
+
+  async function refreshPreview() {
+    if (!preview) return;
+    try {
+      const {payload} = await requestJson(`/api/${apiPrefix}/preview`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({columns: selectedColumns(), allow_update: allowUpdate()}),
+      });
+      preview.textContent = payload.sql || payload.error || "Could not generate a preview.";
+    } catch (_) {
+      preview.textContent = "Could not contact the administrator console.";
+    }
+  }
+
+  wizard.querySelectorAll(".grant-column").forEach((box) => {
+    box.addEventListener("change", refreshPreview);
+  });
+  wizard.querySelector(".grant-allow-update")?.addEventListener("change", refreshPreview);
+  refreshPreview();
+
+  applyButton?.addEventListener("click", async () => {
+    if (!window.confirm("Apply this column set to Marvin's data grant now?")) return;
+    applyButton.disabled = true;
+    status.textContent = "Applying…";
+    try {
+      const {response, payload} = await requestJson(`/api/${apiPrefix}/apply`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({columns: selectedColumns(), allow_update: allowUpdate()}),
+      });
+      status.textContent = response.ok ? "Applied." : (payload.error || "Failed.");
+      if (output) {
+        output.hidden = false;
+        output.open = true;
+        outputText.textContent = payload.output || payload.error || "No output was returned.";
+      }
+      if (response.ok) await refreshState();
+    } catch (_) {
+      status.textContent = "Could not contact the administrator console.";
+    } finally {
+      applyButton.disabled = false;
+    }
+  });
+
+  const testButton = wizard.querySelector(".run-grant-test-update");
+  const testOutput = wizard.querySelector(".grant-test-output");
+  const testOutputText = testOutput?.querySelector("pre");
+  testButton?.addEventListener("click", async () => {
+    testButton.disabled = true;
+    try {
+      const {payload} = await requestJson(`/api/${apiPrefix}/test-update`, {method: "POST", headers: jsonHeaders});
+      testOutput.hidden = false;
+      testOutput.open = true;
+      testOutputText.textContent = payload.output || payload.error || "No output was returned.";
+    } catch (_) {
+      testOutput.hidden = false;
+      testOutput.open = true;
+      testOutputText.textContent = "Could not contact the administrator console.";
+    } finally {
+      testButton.disabled = false;
+    }
+  });
 });

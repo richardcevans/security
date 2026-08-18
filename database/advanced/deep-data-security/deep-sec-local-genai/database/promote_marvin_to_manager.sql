@@ -5,15 +5,15 @@ whenever sqlerror exit sql.sqlcode rollback
 set echo off
 
 prompt Creating MARVIN's manager data grant.
-prompt The manager grant includes the authenticated manager's rows and rows whose protected MANAGER_NAME matches that manager. Its select list includes CREDIT_LIMIT but omits SENSITIVE_IDENTIFIER, and its predicate excludes FINANCE rows.
+prompt The manager grant includes the authenticated manager's rows and rows for the manager's direct reports, read from APPLAB.MGR_CTX.REPORTS. Its select list includes CREDIT_LIMIT but omits SENSITIVE_IDENTIFIER, and its predicate excludes FINANCE rows.
 -- A manager can see their own accounts and direct-report accounts, but never
 -- sensitive identifiers or accounts outside the manager hierarchy.
-prompt SQL> CREATE OR REPLACE DATA GRANT APPLAB.MARVIN_MANAGER_CUSTOMER_ACCESS AS SELECT (... core columns ...) ON APPLAB.CUSTOMERS WHERE SALES_REP = authenticated user OR MANAGER_NAME = authenticated user TO APP_SALES_MANAGER
+prompt SQL> CREATE OR REPLACE DATA GRANT APPLAB.MARVIN_MANAGER_CUSTOMER_ACCESS AS SELECT (... core columns ...) ON APPLAB.CUSTOMERS WHERE SALES_REP = authenticated user OR SALES_REP is in APPLAB.MGR_CTX.REPORTS TO APP_SALES_MANAGER
 create or replace data grant APPLAB.marvin_manager_customer_access
   as select (customer_id, customer_name, region, sales_rep, revenue, credit_limit)
   on APPLAB.customers
   where upper(sales_rep) = upper(ora_end_user_context.username)
-     or upper(manager_name) = upper(ora_end_user_context.username)
+     or instr(','||ora_end_user_context.APPLAB.MGR_CTX.reports||',', ','||upper(sales_rep)||',') > 0
   to app_sales_manager;
 
 -- Marvin remains an employee. Add the manager role as an additional business

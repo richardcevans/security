@@ -4,7 +4,6 @@ set echo off
 set linesize 160 pagesize 100
 column customer_Name format a25
 column sales_rep format a10
-column manager_name format a14
 column sensitive_identifier format a20
 prompt SQL> SELECT * FROM APPLAB.CUSTOMERS ORDER BY REVENUE DESC
 prompt This is the same deliberately broad application query. Oracle Deep Data Security determines the rows and columns returned.

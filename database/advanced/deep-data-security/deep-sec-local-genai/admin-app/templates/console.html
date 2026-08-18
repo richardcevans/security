@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   </head>
   <body data-completed-actions='{{ completed_actions|tojson }}'>
-    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec DEMO Setup</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="header-link active" href="/console">Lab actions</a><a class="header-link" href="/vibe">Vibe Coding</a></nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
+    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec DEMO Setup</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}">{{ page.nav_label }}</a>{% endfor %}</nav><nav class="header-utilities" aria-label="Utilities">{% for util in utility_pages %}<a class="header-link header-link-utility{% if util.key == current_page_key %} active{% endif %}" href="{{ util.path }}">{{ util.nav_label }}</a>{% endfor %}</nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
     <main class="page">
       <section class="heading"><div><p class="eyebrow">Oracle Deep Data Security</p><h1>Lab policy administration</h1><p>Run a visible, fixed lab script as <code>ADMIN</code>. The console never accepts browser-supplied SQL.</p></div><button id="refresh-state" class="secondary" type="button">Refresh Marvin's current state</button></section>
       <section class="state-card" aria-labelledby="state-title"><div class="section-title"><h2 id="state-title">Marvin's current Oracle result</h2><span id="state-status" class="muted" aria-live="polite">Loading…</span></div><dl id="state" class="state-grid"><dt>End user</dt><dd>—</dd><dt>Active data roles</dt><dd>—</dd><dt>Rows returned by Oracle</dt><dd>—</dd><dt>Columns returned by Oracle</dt><dd>—</dd></dl><p id="state-error" class="error" role="alert"></p></section>
@@ -32,20 +32,30 @@
             {% set action = step.actions[0] %}
             <div class="action-heading"><div><h2>{{ action.title }}</h2><p>{{ action.description }}</p></div>{% if action.destructive %}<span class="warning">Changes database state</span>{% endif %}</div>
             {% if action.expect %}<p class="action-expect"><strong>What to expect:</strong> {{ action.expect }}</p>{% endif %}
-            {% if action.custom_grant_step %}
+            {% if action.grant_wizard %}
+              {% set wiz = action.grant_wizard %}
+              <div class="grant-wizard" data-api-prefix="{{ wiz.api_prefix }}">
               <fieldset class="grant-columns">
-                <legend>Columns Marvin's manager role can see</legend>
-                <div class="grant-row"><input type="checkbox" id="col-customer-id" checked disabled><label for="col-customer-id">customer_id <span class="muted">(always included, primary key)</span></label></div>
-                <div class="grant-row"><input type="checkbox" id="col-customer-name" class="grant-column" value="customer_name" checked><label for="col-customer-name">customer_name</label></div>
-                <div class="grant-row"><input type="checkbox" id="col-region" class="grant-column" value="region" checked><label for="col-region">region</label></div>
-                <div class="grant-row"><input type="checkbox" id="col-sales-rep" class="grant-column" value="sales_rep" checked><label for="col-sales-rep">sales_rep</label></div>
-                <div class="grant-row"><input type="checkbox" id="col-revenue" class="grant-column" value="revenue" checked><label for="col-revenue">revenue</label></div>
-                <div class="grant-row"><input type="checkbox" id="col-credit-limit" class="grant-column" value="credit_limit" checked><label for="col-credit-limit">credit_limit</label></div>
-                <p class="muted">sensitive_identifier is never offered here, so it remains off-limits.</p>
+                <legend>{{ wiz.title }}</legend>
+                {% for column in wiz.columns %}
+                {% set column_id = wiz.api_prefix ~ '-' ~ column.key %}
+                <div class="grant-row"><input type="checkbox" id="{{ column_id }}" class="grant-column" value="{{ column.key }}"{% if column.required or column.default %} checked{% endif %}{% if column.required %} disabled{% endif %}><label for="{{ column_id }}">{{ column.label }}{% if column.note %} <span class="muted">({{ column.note }})</span>{% endif %}</label></div>
+                {% endfor %}
               </fieldset>
-              <details open><summary>Generated SQL</summary><pre id="grant-preview">Loading…</pre></details>
-              <button class="primary run-grant-apply" type="button">Apply this grant</button><span class="action-status" id="grant-status" aria-live="polite"></span>
-              <details class="action-output" id="grant-output" hidden><summary>SQL*Plus output</summary><pre></pre></details>
+              {% if wiz.allow_update_option %}
+              <label class="grant-update-toggle"><input type="checkbox" class="grant-allow-update"> {{ wiz.allow_update_option.label }}</label>
+              {% endif %}
+              <details open><summary>Generated SQL</summary><pre class="grant-preview">Loading…</pre></details>
+              <button class="primary run-grant-apply" type="button">Apply this grant</button><span class="action-status grant-status" aria-live="polite"></span>
+              <details class="action-output grant-output" hidden><summary>SQL*Plus output</summary><pre></pre></details>
+              {% if wiz.allow_update_option %}
+              <div class="grant-test-update">
+                <p class="muted">Once applied, prove it. This runs a real update as Marvin: one attempt on customer_name and one on revenue. Review the SQL*Plus output to see how Oracle rejects the revenue update.</p>
+                <button class="secondary run-grant-test-update" type="button">Test the update privilege</button>
+                <details class="action-output grant-test-output" hidden><summary>SQL*Plus output</summary><pre></pre></details>
+              </div>
+              {% endif %}
+              </div>
             {% elif not action.link_step %}
               {% if step.key == "validate_as_marvin" %}
               <section id="validation-comparison" class="validation-comparison" aria-live="polite">
@@ -80,7 +90,7 @@
               {% endfor %}
             </div>
           {% endif %}
-          {% if step.next_hint %}<p class="action-next"><button class="next-button" type="button" data-next-step="{{ step.next_step_key }}">Next</button><span>{{ step.next_hint }}</span></p>{% endif %}
+          {% if step.next_hint %}<p class="action-next">{% if step.next_step_key %}<button class="next-button" type="button" data-next-step="{{ step.next_step_key }}">Next</button>{% elif step.next_page_path %}<a class="next-button" href="{{ step.next_page_path }}">Next page</a>{% endif %}<span>{{ step.next_hint }}</span></p>{% endif %}
         </article>
         {% endfor %}
       </section>

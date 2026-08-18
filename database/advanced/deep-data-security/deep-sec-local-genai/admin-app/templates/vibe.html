@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   </head>
   <body>
-    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec DEMO Setup</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="header-link" href="/console">Lab actions</a><a class="header-link active" href="/vibe">Vibe Coding</a></nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
+    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>Deep Sec DEMO Setup</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}">{{ page.nav_label }}</a>{% endfor %}</nav><nav class="header-utilities" aria-label="Utilities">{% for util in utility_pages %}<a class="header-link header-link-utility{% if util.key == current_page_key %} active{% endif %}" href="{{ util.path }}">{{ util.nav_label }}</a>{% endfor %}</nav><span class="header-context"><span class="status-dot"></span> ADMIN session</span><button id="logout" class="secondary small">Sign out</button></div></header>
     <main class="page">
       <section class="heading"><div><p class="eyebrow">Oracle Deep Data Security</p><h1>Vibe Coding</h1><p>Run a Vibe request against the live Customer Sales application. Oracle still determines the rows and columns Marvin receives.</p></div></section>
       <section id="vibe-last-run" class="vibe-last-run" hidden>

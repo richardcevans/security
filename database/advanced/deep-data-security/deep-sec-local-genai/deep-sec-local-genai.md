@@ -59,10 +59,13 @@ A data role bundles row and column permissions, much like a database role bundle
 
 2. Run these actions in order:
 
-    1. **Set up database**
-    2. **Create data roles and grant definitions**
-    3. **Create MARVIN**
-    4. **Create EMMA**
+    1. **Create schema**
+    2. **Load data**
+    3. **DB role**
+    4. **Create data roles**
+    5. **Create grants**
+    6. **Create MARVIN**
+    7. **Create EMMA**
 
 3. Confirm Marvin's Oracle result shows `APP_FULL_ACCESS`, **22** rows, and the `credit_limit` and `sensitive_identifier` columns.
 

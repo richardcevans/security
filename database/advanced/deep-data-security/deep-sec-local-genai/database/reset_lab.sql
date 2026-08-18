@@ -23,4 +23,7 @@ begin execute immediate 'drop data role app_full_access'; exception when others 
 prompt SQL> DROP ROLE APP_LOCAL_CONNECT (if it exists)
 begin execute immediate 'drop role app_local_connect'; exception when others then if sqlcode != -1921 then raise; end if; end;
 /
+prompt SQL> DROP ROLE APPLAB_MGR_CTX_ADMIN (if it exists)
+begin execute immediate 'drop role applab_mgr_ctx_admin'; exception when others then if sqlcode != -1921 then raise; end if; end;
+/
 prompt Reset complete: the APPLAB schema, MARVIN, EMMA, and this lab's roles and data roles have been removed.

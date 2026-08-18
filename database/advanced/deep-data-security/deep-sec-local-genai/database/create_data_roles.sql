@@ -14,32 +14,18 @@ create or replace data role app_sales_employee;
 prompt SQL> CREATE OR REPLACE DATA ROLE APP_SALES_MANAGER
 create or replace data role app_sales_manager;
 
--- Direct local end users land in XS$NULL. Bind only CREATE SESSION through a
--- normal database role; table access remains controlled by data grants.
-prompt SQL> CREATE ROLE APP_LOCAL_CONNECT (if needed)
-begin
-  execute immediate 'create role app_local_connect';
-exception
-  when others then
-    if sqlcode != -1921 then raise; end if;
-end;
-/
-prompt SQL> GRANT CREATE SESSION TO APP_LOCAL_CONNECT
-grant create session to app_local_connect;
+-- Direct local end users land in XS$NULL. APP_LOCAL_CONNECT, an ordinary
+-- Oracle role, was created on the previous page. Table access remains
+-- controlled entirely by data grants below, not by this role.
 prompt SQL> GRANT APP_LOCAL_CONNECT TO APP_FULL_ACCESS, APP_SALES_EMPLOYEE, APP_SALES_MANAGER
+prompt A database role like APP_LOCAL_CONNECT cannot be granted straight to an end user.
+prompt It must first be granted to a data role using the standard GRANT statement,
+prompt then that data role can be granted to Marvin or Emma. This is what lets a
+prompt data role carry ordinary Oracle privileges alongside its Deep Sec data grants.
 grant app_local_connect to app_full_access;
 grant app_local_connect to app_sales_employee;
 grant app_local_connect to app_sales_manager;
 
--- Full access: Marvin can request every customer row and every displayed
--- column. Do not use this grant in a production application.
-prompt SQL> CREATE OR REPLACE DATA GRANT APPLAB.MARVIN_FULL_CUSTOMER_ACCESS AS SELECT (... all columns ...) ON APPLAB.CUSTOMERS TO APP_FULL_ACCESS
-prompt This grant deliberately authorizes every customer row and every displayed column for the full-access demonstration.
-create or replace data grant APPLAB.marvin_full_customer_access
-  as select (customer_id, customer_name, region, sales_rep, revenue, credit_limit, sensitive_identifier)
-  on APPLAB.customers
-  to app_full_access;
-
-prompt Full access ready: APP_FULL_ACCESS permits all APPLAB.CUSTOMERS rows and columns.
-prompt Script 05 grants this full-access role to MARVIN for the before-and-after demonstration.
-prompt Do not use this full-access data grant in a production application.
+prompt Data roles ready: APP_FULL_ACCESS, APP_SALES_EMPLOYEE, and APP_SALES_MANAGER
+prompt now each carry CREATE SESSION through APP_LOCAL_CONNECT. None of them
+prompt authorize any table data yet, that comes from the data grants created next.

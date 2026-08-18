@@ -149,6 +149,7 @@ def _action(
     resets_setup: bool = False,
     link_step: bool = False,
     custom_grant_step: bool = False,
+    grant_wizard: Optional[dict] = None,
     internal_secret_script: Optional[str] = None,
     link_url: Optional[str] = None,
     short_label: Optional[str] = None,
@@ -177,6 +178,7 @@ def _action(
         "resets_setup": resets_setup,
         "link_step": link_step,
         "custom_grant_step": custom_grant_step,
+        "grant_wizard": grant_wizard,
         "internal_secret_script": internal_secret_script,
         "link_url": link_url,
         "short_label": short_label or title,
@@ -189,27 +191,35 @@ def _action(
 ACTIONS = {
     action["key"]: action
     for action in (
-        _action("setup_database", "Set up database", "Creates the APPLAB schema and loads the 22 sample customer rows used throughout the lab.", "create_schema.sql", "load_sample_data.sql", destructive=True, internal_secret_script="create_schema.sql", short_label="Set up database", expect="The APPLAB schema is created and 22 customer rows are loaded. Marvin doesn't exist yet, so his Oracle result above stays empty until Create MARVIN runs."),
-        _action("create_roles", "Create data roles and grant definitions", "Creates the full-access, employee, and manager data roles and the full-access data grant.", "create_data_roles.sql", destructive=True, requires=("setup_database",), short_label="Create roles", expect="Three data roles are created: APP_FULL_ACCESS, APP_SALES_EMPLOYEE, and APP_SALES_MANAGER. No visible change yet; Marvin still doesn't exist."),
+        _action("create_schema", "Create schema", "Creates the APPLAB schema that owns the customer table used throughout the lab.", "create_schema.sql", destructive=True, internal_secret_script="create_schema.sql", short_label="Create schema", expect="The APPLAB schema is created, empty. Marvin doesn't exist yet, so his Oracle result above stays empty until later steps run."),
+        _action("load_data", "Load data", "Loads the 22 sample customer rows used throughout the lab.", "load_sample_data.sql", destructive=True, requires=("create_schema",), short_label="Load data", expect="22 customer rows are loaded into APPLAB.CUSTOMERS. Still no visible change for Marvin; he doesn't exist yet."),
+        _action("create_db_roles", "Create roles", "Creates APP_LOCAL_CONNECT, an ordinary Oracle role, isolated from Deep Data Security's data roles created on the next page.", "create_db_roles.sql", destructive=True, requires=("load_data",), short_label="DB role", expect="APP_LOCAL_CONNECT exists with CREATE SESSION. This is standard Oracle security, nothing Deep Sec about it yet."),
+        _action("create_roles", "Create data roles", "Creates the empty full-access, employee, and manager data roles and attaches APP_LOCAL_CONNECT so each can carry ordinary Oracle privileges alongside its Deep Sec data grants.", "create_data_roles.sql", destructive=True, requires=("create_db_roles",), short_label="Create roles", expect="Three empty data roles exist, each holding APP_LOCAL_CONNECT. None of them authorize any table data yet; that's the next step. A database role can never be granted directly to an end user; it has to attach to a data role first. This step is that attachment."),
+        _action("create_data_grants", "Create data grants", "Defines what APP_FULL_ACCESS and APP_SALES_EMPLOYEE can retrieve. APP_SALES_MANAGER's grant comes later, once its end-user context exists.", "create_data_grants.sql", destructive=True, requires=("create_roles",), short_label="Create grants", expect="Both data grants exist and authorize real data immediately, before either data role is ever granted to any end user. Whoever holds that data role next, in any order, sees exactly what its grant defines."),
         _action("create_marvin", "Create MARVIN", "Creates the local end user and grants the full-access role.", "create_lab_users.sql", destructive=True, needs_password=True, requires=("create_roles",), short_label="Create MARVIN", expect="Marvin is created and immediately granted APP_FULL_ACCESS. Marvin's Oracle result above should now show APP_FULL_ACCESS, 22 rows, and both sensitive columns."),
         _action("create_emma", "Create EMMA", "Creates Emma as a fixed comparison user, always APP_SALES_EMPLOYEE, so students can see a stable employee-level view alongside Marvin's changing access.", "create_emma_user.sql", destructive=True, needs_password=True, requires=("create_roles",), short_label="Create EMMA", expect="Emma is created and granted APP_SALES_EMPLOYEE, fixed for the rest of the lab. Sign in as Emma in Customer Sales at any point to see her own 6 WEST rows, with Credit Limit and Sensitive Identifier both Not authorized."),
         _action("enable_full_access", "Enable full access", "Grants APP_FULL_ACCESS so Marvin can request every row and displayed column.", "enable_full_access.sql", destructive=True, requires=("create_marvin",), short_label="Enable full access", expect="Marvin's Oracle result shows APP_FULL_ACCESS, 22 rows, and both sensitive columns. This is his starting state, so nothing changes if you run this again."),
         _action("customer_sales", "Customer Sales", "Navigate to the Oracle Customer Sales application to view Marvin's current access.", requires=("enable_full_access",), link_step=True, short_label="Customer Sales", expect="Sign in as Marvin and select Customer Report. You should see 22 rows, including Apex Treasury, with Credit Limit and Sensitive Identifier both visible."),
         _action("disable_full_access", "Disable full access", "Revokes APP_FULL_ACCESS from Marvin.", "disable_full_access.sql", destructive=True, requires=("create_marvin",), short_label="Disable full access", expect="APP_FULL_ACCESS is revoked. Marvin's Oracle result shows no active data roles until you enable a policy below."),
-        _action("enable_employee", "Enable sales-employee policy", "Replaces the full-access role with APP_SALES_EMPLOYEE.", "implement_deep_sec_policies.sql", destructive=True, requires=("create_marvin",), short_label="Enable sales-employee", expect="Marvin's Oracle result changes to APP_SALES_EMPLOYEE. In Customer Sales, Customer Report should now show 3 rows, with Credit Limit and Sensitive Identifier both reading Not authorized."),
+        _action("enable_employee", "Enable sales-employee policy", "Swaps Marvin from full access to the employee role. The employee data grant already exists.", "enable_employee_policy.sql", destructive=True, requires=("create_data_grants", "create_marvin", "create_emma"), short_label="Enable sales-employee", expect="Marvin's Oracle result changes to APP_SALES_EMPLOYEE. In Customer Sales, Customer Report should now show 3 rows, with Credit Limit and Sensitive Identifier both reading Not authorized."),
         _action("disable_employee", "Disable sales-employee policy", "Revokes APP_SALES_EMPLOYEE from Marvin.", "disable_employee_policy.sql", destructive=True, requires=("create_marvin",), short_label="Disable sales-employee", expect="APP_SALES_EMPLOYEE is revoked. Run Enable sales-employee policy again, or continue to the manager steps below, to give Marvin a role again."),
-        _action("create_manager_context", "Create manager hierarchy", "Creates the sales-rep hierarchy and synchronizes each customer's manager attribute for Oracle's manager data grant.", "create_sales_reps.sql", "create_manager_context.sql", destructive=True, requires=("create_marvin",), short_label="Manager hierarchy", expect="The SALES_REPS hierarchy is created and EMMA's six WEST customer rows are assigned to MARVIN. This prepares the manager policy; Marvin's access does not change yet."),
+        _action("create_manager_context", "Create manager hierarchy", "Creates the sales-rep hierarchy and the session-scoped context Oracle's manager data grant reads.", "create_sales_reps.sql", "create_manager_context.sql", destructive=True, requires=("create_marvin",), short_label="Manager hierarchy", expect="APPLAB.MGR_CTX and its package exist, along with the bridge role and its SYS.END_USER_CONTEXT grant. Nothing about Marvin's or Emma's access changes yet; the manager grant, created next, is what actually reads this context."),
         _action("enable_manager", "Enable sales-manager policy", "Adds APP_SALES_MANAGER while Marvin retains the employee role.", "promote_marvin_to_manager.sql", destructive=True, requires=("create_marvin",), short_label="Enable sales-manager", expect="Marvin's Oracle result adds APP_SALES_MANAGER alongside APP_SALES_EMPLOYEE. In Customer Sales, sign out and back in, then Customer Report should show 9 rows with Credit Limit visible and Sensitive Identifier still Not authorized."),
         _action("disable_manager", "Disable sales-manager policy", "Revokes APP_SALES_MANAGER from Marvin.", "disable_manager_policy.sql", destructive=True, requires=("create_marvin",), short_label="Disable sales-manager", expect="APP_SALES_MANAGER is revoked. Marvin drops back to APP_SALES_EMPLOYEE if that role is still active."),
-        _action("customize_manager_grant", "Customize the manager grant", "Choose exactly which columns Marvin's manager role can see, then apply the change directly to Oracle. sensitive_identifier is never offered, so it remains off-limits.", requires=("create_manager_context", "enable_manager"), custom_grant_step=True, short_label="Customize grant", expect="The grant updates immediately. Reload Customer Report in Customer Sales as Marvin, manager, to see the columns you kept or removed."),
+        _action("customize_employee_grant", "Customize the employee grant", "Choose exactly which columns Marvin's employee data role can retrieve. Optionally allow UPDATE on customer_name only; Oracle still enforces Marvin's row boundary.", requires=("create_data_grants", "create_marvin"), short_label="Customize employee", expect="The employee grant updates immediately. The optional update test runs as Marvin: customer_name is the only update target granted, and Oracle rejects the revenue update. Review the SQL*Plus output for the exact database result.", grant_wizard={"api_prefix": "employee-grant", "title": "Columns Marvin's employee data role can see", "allow_update_option": {"key": "customer_name", "label": "Also allow updating customer_name"}, "columns": [{"key": "customer_id", "label": "customer_id", "required": True, "note": "always included, primary key"}, {"key": "sales_rep", "label": "sales_rep", "required": True, "note": "always included, the row filter depends on it"}, {"key": "customer_name", "label": "customer_name", "required": False, "default": True}, {"key": "region", "label": "region", "required": False, "default": True}, {"key": "revenue", "label": "revenue", "required": False, "default": True}, {"key": "credit_limit", "label": "credit_limit", "required": False, "default": True}, {"key": "sensitive_identifier", "label": "sensitive_identifier", "required": False, "default": True}]}),
+        _action("customize_manager_grant", "Customize the manager grant", "Choose exactly which columns Marvin's manager role can see, then apply the change directly to Oracle. sensitive_identifier is never offered, so it remains off-limits.", requires=("create_manager_context", "enable_manager"), short_label="Customize grant", expect="The grant updates immediately. Reload Customer Report in Customer Sales as Marvin, manager, to see the columns you kept or removed.", grant_wizard={"api_prefix": "manager-grant", "title": "Columns Marvin's manager role can see", "columns": [{"key": "customer_id", "label": "customer_id", "required": True, "note": "always included, primary key"}, {"key": "customer_name", "label": "customer_name", "required": False, "default": True}, {"key": "region", "label": "region", "required": False, "default": True}, {"key": "sales_rep", "label": "sales_rep", "required": False, "default": True}, {"key": "revenue", "label": "revenue", "required": False, "default": True}, {"key": "credit_limit", "label": "credit_limit", "required": False, "default": True}]}),
         _action("validate_as_marvin", "Run Marvin validation queries", "Runs the same validation SQL as Marvin and shows the rows, context, and active data roles.", "validation_queries.sql", database_user="MARVIN", requires=("create_marvin",), short_label="Run validation", expect="The output shows exactly what Marvin's own session sees right now: his rows, end-user context, and active data roles."),
-        _action("reset_lab", "Reset all lab database objects", "Drops only the APPLAB schema, Marvin, and Deep Sec roles. Rebuild the lab afterward.", "reset_lab.sql", destructive=True, resets_setup=True, short_label="Reset all", expect="The APPLAB schema, Marvin, and all Deep Sec roles are dropped. Run Set up database to start over from the beginning."),
+        _action("reset_lab", "Reset all lab database objects", "Drops only the APPLAB schema, Marvin, and Deep Sec roles. Rebuild the lab afterward.", "reset_lab.sql", destructive=True, resets_setup=True, short_label="Reset all", expect="The APPLAB schema, Marvin, and all Deep Sec roles are dropped. Run Create schema to start over from the beginning."),
     )
 }
 
 MANAGER_GRANT_REQUIRED_COLUMNS = ("customer_id",)
 MANAGER_GRANT_OPTIONAL_COLUMNS = ("customer_name", "region", "sales_rep", "revenue", "credit_limit")
 MANAGER_GRANT_ALL_COLUMNS = MANAGER_GRANT_REQUIRED_COLUMNS + MANAGER_GRANT_OPTIONAL_COLUMNS
+
+EMPLOYEE_GRANT_REQUIRED_COLUMNS = ("customer_id", "sales_rep")
+EMPLOYEE_GRANT_OPTIONAL_COLUMNS = ("customer_name", "region", "revenue", "credit_limit", "sensitive_identifier")
+EMPLOYEE_GRANT_ALL_COLUMNS = EMPLOYEE_GRANT_REQUIRED_COLUMNS + EMPLOYEE_GRANT_OPTIONAL_COLUMNS
 
 
 def _build_manager_grant_sql(selected_optional: list) -> str:
@@ -232,8 +242,36 @@ def _build_manager_grant_sql(selected_optional: list) -> str:
     )
 
 
-def _run_manager_grant_sql(password: str, sql_statement: str) -> dict:
-    """Run the server-generated manager grant as ADMIN through SQL*Plus."""
+def _build_employee_grant_sql(selected_optional: list, allow_update: bool = False) -> str:
+    """Build the employee data grant from a whitelisted column selection only.
+
+    customer_id and sales_rep stay required. allow_update adds a separate
+    UPDATE privilege clause scoped to customer_name only.
+    """
+    invalid = set(selected_optional) - set(EMPLOYEE_GRANT_OPTIONAL_COLUMNS)
+    if invalid:
+        raise ValueError(f"Unknown column(s): {', '.join(sorted(invalid))}")
+    ordered = [
+        column
+        for column in EMPLOYEE_GRANT_ALL_COLUMNS
+        if column in EMPLOYEE_GRANT_REQUIRED_COLUMNS or column in selected_optional
+    ]
+    if allow_update and "customer_name" not in ordered:
+        raise ValueError("customer_name must be selected to grant UPDATE on it.")
+    privilege_clause = f"select ({', '.join(ordered)})"
+    if allow_update:
+        privilege_clause += ", update (customer_name)"
+    return (
+        "create or replace data grant APPLAB.marvin_employee_customer_access\n"
+        f"  as {privilege_clause}\n"
+        "  on APPLAB.customers\n"
+        "  where upper(sales_rep) = upper(ora_end_user_context.username)\n"
+        "  to app_sales_employee;"
+    )
+
+
+def _run_data_grant_sql(password: str, sql_statement: str) -> dict:
+    """Run a server-generated data grant as ADMIN through SQL*Plus."""
     quoted_password = password.replace('"', '""')
     script = f'whenever oserror exit failure\nconnect admin/"{quoted_password}"@{settings.dsn}\n{sql_statement}\nexit\n'
     result = subprocess.run(
@@ -252,17 +290,34 @@ for action in ACTIONS.values():
     action["required_titles"] = [ACTIONS[key]["title"] for key in action["requires"]]
 
 STEPS = (
-    {"key": "setup_database", "title": "Set up database", "action_keys": ("setup_database",), "next_hint": "Run Create roles to build the data roles and grants Marvin will use throughout the lab."},
-    {"key": "create_roles", "title": "Create roles", "action_keys": ("create_roles",), "next_hint": "Run Create MARVIN to create the end user and grant his starting role."},
-    {"key": "create_users", "title": "Create users", "action_keys": ("create_marvin", "create_emma"), "next_hint": "Continue to Full access to confirm Marvin's starting state, or go straight to Customer Sales."},
+    {"key": "create_schema", "title": "Create schema", "action_keys": ("create_schema",), "next_hint": "Run Load data to populate the schema with sample customer rows."},
+    {"key": "load_data", "title": "Load data", "action_keys": ("load_data",), "next_hint": "Run Create roles to set up an ordinary Oracle connect role before Deep Sec's data roles come in."},
+    {"key": "create_db_roles", "title": "DB role", "action_keys": ("create_db_roles",), "next_hint": "Continue to Create roles to build Deep Data Security's data roles. This is where Deep Sec actually starts."},
+    {"key": "create_roles", "title": "Create data roles", "action_keys": ("create_roles",), "next_hint": "Run Create data grants to give these data roles something to actually authorize."},
+    {"key": "create_data_grants", "title": "Create grants", "action_keys": ("create_data_grants",), "next_hint": "Run Create end users to create Marvin and Emma. Both data roles already have real data grants attached."},
+    {"key": "create_users", "title": "Create end users", "action_keys": ("create_marvin", "create_emma"), "next_hint": "Continue to Full access to confirm Marvin's starting state, or go straight to Customer Sales."},
     {"key": "full_access", "title": "Full access", "action_keys": ("enable_full_access", "disable_full_access"), "next_hint": "Open Customer Sales to see this access from Marvin's side."},
     {"key": "customer_sales", "title": "Customer Sales", "action_keys": ("customer_sales",), "next_hint": "Return here and run Employee policy to restrict Marvin's access."},
     {"key": "employee_policy", "title": "Employee policy", "action_keys": ("enable_employee", "disable_employee"), "next_hint": "Run Manager hierarchy to prepare the data Marvin's manager promotion depends on."},
+    {"key": "customize_employee_grant", "title": "Customize employee", "action_keys": ("customize_employee_grant",), "next_hint": "Run Manager hierarchy to prepare the data Marvin's manager promotion depends on."},
     {"key": "create_manager_context", "title": "Manager hierarchy", "action_keys": ("create_manager_context",), "next_hint": "Run Manager policy to actually promote Marvin and see his access change."},
     {"key": "manager_policy", "title": "Manager policy", "action_keys": ("enable_manager", "disable_manager"), "next_hint": "Try Customize grant to change which columns Marvin's manager role can see, or open Vibe Coding from the header navigation to try expanding his access with AI-generated code."},
     {"key": "customize_manager_grant", "title": "Customize grant", "action_keys": ("customize_manager_grant",), "next_hint": "Rerun Manager policy at any point to restore the original six-column grant, then continue to Run validation."},
     {"key": "validate_as_marvin", "title": "Run validation", "action_keys": ("validate_as_marvin",), "next_hint": "Use Reset all if you want to start the whole lab over from scratch."},
-    {"key": "reset_lab", "title": "Reset all", "action_keys": ("reset_lab",), "next_hint": "Run Set up database to begin again."},
+    {"key": "reset_lab", "title": "Reset all", "action_keys": ("reset_lab",), "next_hint": "Run Create schema to begin again."},
+)
+
+PAGES = (
+    {"key": "db_setup", "path": "/console", "nav_label": "DB Setup", "step_keys": ("create_schema", "load_data", "create_db_roles")},
+    {"key": "deep_sec_basics", "path": "/deep-sec-basics", "nav_label": "Deep Sec Basics", "step_keys": ("create_roles", "create_data_grants", "create_users", "full_access", "customer_sales")},
+    {"key": "build_grant", "path": "/build-grant", "nav_label": "Build Grant", "step_keys": ("employee_policy", "customize_employee_grant")},
+    {"key": "end_user_context", "path": "/end-user-context", "nav_label": "End User Context", "step_keys": ("create_manager_context", "manager_policy", "customize_manager_grant")},
+    {"key": "vibe", "path": "/vibe", "nav_label": "Vibe Coding"},
+)
+
+UTILITY_PAGES = (
+    {"key": "validate", "path": "/validate", "nav_label": "Run validation", "step_keys": ("validate_as_marvin",)},
+    {"key": "reset", "path": "/reset-lab", "nav_label": "Reset all", "step_keys": ("reset_lab",)},
 )
 
 
@@ -381,9 +436,7 @@ def index():
     return render_template("login.html")
 
 
-@app.get("/console")
-@login_required
-def console():
+def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Optional[str]):
     completed_actions = _completed_actions() | _database_completed_actions()
     action_outputs = _action_outputs()
     customer_sales_url = f"{request.scheme}://{request.host.split(':', 1)[0]}:7777/"
@@ -396,20 +449,66 @@ def console():
         }
         for key, action in ACTIONS.items()
     }
-    steps = [
-        {
-            **step,
-            "actions": [actions[key] for key in step["action_keys"]],
-            "next_step_key": STEPS[index + 1]["key"] if index + 1 < len(STEPS) else STEPS[0]["key"],
-        }
-        for index, step in enumerate(STEPS)
-    ]
+    all_keys_in_order = [step["key"] for step in STEPS]
+    page_steps = sorted(
+        (step for step in STEPS if step["key"] in step_keys),
+        key=lambda step: all_keys_in_order.index(step["key"]),
+    )
+    steps = []
+    for index, step in enumerate(page_steps):
+        entry = {**step, "actions": [actions[key] for key in step["action_keys"]]}
+        if index + 1 < len(page_steps):
+            entry["next_step_key"] = page_steps[index + 1]["key"]
+            entry["next_page_path"] = None
+        else:
+            entry["next_step_key"] = None
+            entry["next_page_path"] = next_page_path
+        steps.append(entry)
     return render_template(
         "console.html",
         actions=actions,
         steps=steps,
         completed_actions=sorted(completed_actions),
+        pages=PAGES,
+        utility_pages=UTILITY_PAGES,
+        current_page_key=page_key,
     )
+
+
+@app.get("/console")
+@login_required
+def console():
+    return _render_stepper_page("db_setup", PAGES[0]["step_keys"], PAGES[1]["path"])
+
+
+@app.get("/deep-sec-basics")
+@login_required
+def deep_sec_basics():
+    return _render_stepper_page("deep_sec_basics", PAGES[1]["step_keys"], PAGES[2]["path"])
+
+
+@app.get("/build-grant")
+@login_required
+def build_grant():
+    return _render_stepper_page("build_grant", PAGES[2]["step_keys"], PAGES[3]["path"])
+
+
+@app.get("/end-user-context")
+@login_required
+def end_user_context():
+    return _render_stepper_page("end_user_context", PAGES[3]["step_keys"], PAGES[4]["path"])
+
+
+@app.get("/validate")
+@login_required
+def validate_page():
+    return _render_stepper_page("validate", UTILITY_PAGES[0]["step_keys"], None)
+
+
+@app.get("/reset-lab")
+@login_required
+def reset_lab_page():
+    return _render_stepper_page("reset", UTILITY_PAGES[1]["step_keys"], None)
 
 
 @app.get("/vibe")
@@ -420,6 +519,9 @@ def vibe():
         "vibe.html",
         prompts=VIBE_PROMPTS,
         ready="create_marvin" in completed_actions,
+        pages=PAGES,
+        utility_pages=UTILITY_PAGES,
+        current_page_key="vibe",
     )
 
 
@@ -538,7 +640,7 @@ def apply_manager_grant():
     if not {"create_manager_context", "enable_manager"}.issubset(completed_actions):
         return jsonify(error="Run Manager hierarchy and Manager policy before customizing this grant."), 409
     try:
-        result = _run_manager_grant_sql(_admin_password(), sql)
+        result = _run_data_grant_sql(_admin_password(), sql)
     except subprocess.TimeoutExpired:
         return jsonify(error="The grant update did not complete within two minutes."), 504
     except Exception:
@@ -546,6 +648,78 @@ def apply_manager_grant():
         return jsonify(error="Could not apply the customized grant. Check the server log."), 502
     status = 200 if result["exit_code"] == 0 else 422
     return jsonify(sql=sql, **result), status
+
+
+@app.post("/api/employee-grant/preview")
+@login_required
+def preview_employee_grant():
+    payload = request.get_json(silent=True) or {}
+    selected = payload.get("columns", [])
+    allow_update = bool(payload.get("allow_update", False))
+    if not isinstance(selected, list) or not all(isinstance(column, str) for column in selected):
+        return jsonify(error="Invalid column selection."), 400
+    try:
+        return jsonify(sql=_build_employee_grant_sql(selected, allow_update))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+
+
+@app.post("/api/employee-grant/apply")
+@login_required
+def apply_employee_grant():
+    payload = request.get_json(silent=True) or {}
+    selected = payload.get("columns", [])
+    allow_update = bool(payload.get("allow_update", False))
+    if not isinstance(selected, list) or not all(isinstance(column, str) for column in selected):
+        return jsonify(error="Invalid column selection."), 400
+    try:
+        sql = _build_employee_grant_sql(selected, allow_update)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    completed_actions = _completed_actions() | _database_completed_actions()
+    if "create_roles" not in completed_actions:
+        return jsonify(error="Run Create data roles before building this grant."), 409
+    try:
+        result = _run_data_grant_sql(_admin_password(), sql)
+    except subprocess.TimeoutExpired:
+        return jsonify(error="The grant update did not complete within two minutes."), 504
+    except Exception:
+        app.logger.exception("Employee grant customization failed before SQL*Plus completed.")
+        return jsonify(error="Could not apply the customized grant. Check the server log."), 502
+    status = 200 if result["exit_code"] == 0 else 422
+    return jsonify(sql=sql, **result), status
+
+
+@app.post("/api/employee-grant/test-update")
+@login_required
+def test_employee_grant_update():
+    quoted_password = _admin_password().replace('"', '""')
+    script = (
+        "whenever oserror exit failure\n"
+        f'connect marvin/"{quoted_password}"@{settings.dsn}\n'
+        "set feedback on\n"
+        "prompt Attempting to update customer_name on a row MARVIN owns...\n"
+        "update APPLAB.customers set customer_name = 'Keystone Energy [update test ok]' where customer_id = 11;\n"
+        "prompt Attempting to update revenue, a column MARVIN was never granted UPDATE on...\n"
+        "update APPLAB.customers set revenue = 999999 where customer_id = 11;\n"
+        "commit;\n"
+        "exit\n"
+    )
+    try:
+        result = subprocess.run(
+            ["sqlplus", "-s", "-L", "/nolog"],
+            input=script,
+            text=True,
+            capture_output=True,
+            timeout=60,
+            env={**os.environ, "TNS_ADMIN": settings.wallet_location},
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return jsonify(error="The update test did not complete within one minute."), 504
+    output = (result.stdout + result.stderr).strip() or "SQL*Plus completed without additional output."
+    status = 200 if result.returncode == 0 else 422
+    return jsonify(exit_code=result.returncode, output=output), status
 
 
 @app.post("/api/vibe/reset")

@@ -259,7 +259,7 @@ STEPS = (
     {"key": "customer_sales", "title": "Customer Sales", "action_keys": ("customer_sales",), "next_hint": "Return here and run Employee policy to restrict Marvin's access."},
     {"key": "employee_policy", "title": "Employee policy", "action_keys": ("enable_employee", "disable_employee"), "next_hint": "Run Manager hierarchy to prepare the data Marvin's manager promotion depends on."},
     {"key": "create_manager_context", "title": "Manager hierarchy", "action_keys": ("create_manager_context",), "next_hint": "Run Manager policy to actually promote Marvin and see his access change."},
-    {"key": "manager_policy", "title": "Manager policy", "action_keys": ("enable_manager", "disable_manager"), "next_hint": "Run Run validation to see Marvin's full state at a glance, or open Vibe Coding from the header navigation to try expanding his access with AI-generated code."},
+    {"key": "manager_policy", "title": "Manager policy", "action_keys": ("enable_manager", "disable_manager"), "next_hint": "Try Customize grant to change which columns Marvin's manager role can see, or open Vibe Coding from the header navigation to try expanding his access with AI-generated code."},
     {"key": "customize_manager_grant", "title": "Customize grant", "action_keys": ("customize_manager_grant",), "next_hint": "Rerun Manager policy at any point to restore the original six-column grant, then continue to Run validation."},
     {"key": "validate_as_marvin", "title": "Run validation", "action_keys": ("validate_as_marvin",), "next_hint": "Use Reset all if you want to start the whole lab over from scratch."},
     {"key": "reset_lab", "title": "Reset all", "action_keys": ("reset_lab",), "next_hint": "Run Set up database to begin again."},
@@ -394,8 +394,12 @@ def console():
         for key, action in ACTIONS.items()
     }
     steps = [
-        {**step, "actions": [actions[key] for key in step["action_keys"]]}
-        for step in STEPS
+        {
+            **step,
+            "actions": [actions[key] for key in step["action_keys"]],
+            "next_step_key": STEPS[index + 1]["key"] if index + 1 < len(STEPS) else STEPS[0]["key"],
+        }
+        for index, step in enumerate(STEPS)
     ]
     return render_template(
         "console.html",

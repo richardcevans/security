@@ -18,7 +18,7 @@
         {% for step in steps %}
           <li class="step-item" data-action-step="{{ step.key }}" data-action-keys="{{ step.action_keys|join(',') }}">
             <button class="step-badge" data-select-action="{{ step.key }}" aria-controls="action-{{ step.key }}" type="button">
-              <span class="step-number">{{ loop.index }}</span>
+              <span class="step-number">{% if step.key == 'reset_lab' %}R{% else %}{{ loop.index }}{% endif %}</span>
               <span class="step-label">{{ step.title }}</span>
             </button>
           </li>
@@ -45,7 +45,7 @@
               </fieldset>
               <details open><summary>Generated SQL</summary><pre id="grant-preview">Loading…</pre></details>
               <button class="primary run-grant-apply" type="button">Apply this grant</button><span class="action-status" id="grant-status" aria-live="polite"></span>
-              <section class="action-output" id="grant-output" hidden><h3>SQL*Plus output</h3><pre></pre></section>
+              <details class="action-output" id="grant-output" hidden><summary>SQL*Plus output</summary><pre></pre></details>
             {% elif not action.link_step %}
               {% if step.key == "validate_as_marvin" %}
               <section id="validation-comparison" class="validation-comparison" aria-live="polite">
@@ -59,11 +59,11 @@
               <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
               <details><summary>View exact script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
               <button class="primary run-action" data-action="{{ action.key }}" data-resets-setup="{{ 'true' if action.resets_setup else 'false' }}" type="button">Run action</button><span class="action-status" aria-live="polite"></span>
-              <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+              <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>Complete SQL*Plus output</summary><pre>{{ action.output or '' }}</pre></details>
             {% else %}
               <p><a href="{{ action.link_url }}" target="_blank" rel="noopener">Oracle Customer Sales</a></p>
               <button class="primary run-action" data-action="{{ action.key }}" type="button">Continue</button><span class="action-status" aria-live="polite"></span>
-              <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Step status</h3><pre>{{ action.output or '' }}</pre></section>
+              <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>Step status</summary><pre>{{ action.output or '' }}</pre></details>
             {% endif %}
           {% else %}
             <div class="action-heading"><div><h2>{{ step.title }}</h2><p>{{ step.actions[0].description }}</p></div><span class="warning">Changes database state</span></div>
@@ -75,12 +75,12 @@
                 <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
                 <details><summary>View exact script</summary>{% for script in action.scripts %}<pre>{{ script.sql }}</pre>{% endfor %}</details>
                 <button class="primary run-action" data-action="{{ action.key }}" type="button">{{ action.title }}</button><span class="action-status" aria-live="polite"></span>
-                <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+                <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>Complete SQL*Plus output</summary><pre>{{ action.output or '' }}</pre></details>
               </div>
               {% endfor %}
             </div>
           {% endif %}
-          {% if step.next_hint %}<p class="action-next"><span class="next-button">Next</span><span>{{ step.next_hint }}</span></p>{% endif %}
+          {% if step.next_hint %}<p class="action-next"><button class="next-button" type="button" data-next-step="{{ step.next_step_key }}">Next</button><span>{{ step.next_hint }}</span></p>{% endif %}
         </article>
         {% endfor %}
       </section>

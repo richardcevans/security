@@ -245,6 +245,15 @@ document.querySelectorAll("[data-select-action]").forEach((button) => {
   button.addEventListener("click", () => selectAction(button.dataset.selectAction));
 });
 
+document.querySelectorAll(".next-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    const nextKey = button.dataset.nextStep;
+    if (!nextKey) return;
+    selectAction(nextKey);
+    document.querySelector(`.step-item[data-action-step="${nextKey}"]`)?.scrollIntoView({behavior: "smooth", block: "nearest", inline: "center"});
+  });
+});
+
 document.querySelectorAll(".run-action").forEach((button) => {
   button.addEventListener("click", async () => {
     const card = button.closest(".action-card");
@@ -262,6 +271,7 @@ document.querySelectorAll(".run-action").forEach((button) => {
       });
       outputText.textContent = payload.output || payload.error || "No output was returned.";
       output.hidden = false;
+      output.open = true;
       status.textContent = response.ok ? "Completed" : "Action did not complete";
       if (response.ok) {
         if (Array.isArray(payload.completed_actions)) {
@@ -279,6 +289,7 @@ document.querySelectorAll(".run-action").forEach((button) => {
       status.textContent = "Action failed";
       outputText.textContent = "Could not contact the administrator console.";
       output.hidden = false;
+      output.open = true;
     } finally {
       updateActionAvailability();
     }
@@ -497,6 +508,7 @@ document.querySelector(".run-grant-apply")?.addEventListener("click", async (eve
     status.textContent = response.ok ? "Applied." : (payload.error || "Failed.");
     if (output) {
       output.hidden = false;
+      output.open = true;
       outputText.textContent = payload.output || payload.error || "No output was returned.";
     }
     if (response.ok) await refreshState();

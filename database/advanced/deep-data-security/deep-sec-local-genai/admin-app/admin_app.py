@@ -273,7 +273,10 @@ def _sqlplus_input(password: str, action: dict) -> str:
         command = f"@{script['path']}"
         if script["name"] == action.get("internal_secret_script"):
             internal_secret = secrets.token_urlsafe(24).replace('"', '')
-            command += f' "{internal_secret}"'
+            lines.append(f'define APPLAB_PASSWORD = "{internal_secret}"')
+            lines.append(command)
+            lines.append("undefine APPLAB_PASSWORD")
+            continue
         elif action["needs_password"]:
             command += f' "{quoted_password}"'
         lines.append(command)

@@ -4,7 +4,7 @@ whenever sqlerror exit sql.sqlcode rollback
 set echo off
 set verify off
 
-define applab_password = &1
+define applab_password = &APPLAB_PASSWORD
 
 prompt Preparing a clean APPLAB schema for the lab data.
 prompt SQL> DROP USER APPLAB CASCADE (if it already exists)
@@ -44,3 +44,4 @@ prompt SQL> CREATE INDEX APPLAB.CUSTOMERS_MANAGER_IX ON APPLAB.CUSTOMERS (MANAGE
 create index APPLAB.customers_manager_ix on APPLAB.customers (manager_name);
 prompt APPLAB schema is ready for sample customer data.
 undefine applab_password
+undefine APPLAB_PASSWORD

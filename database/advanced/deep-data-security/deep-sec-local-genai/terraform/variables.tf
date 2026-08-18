@@ -22,8 +22,8 @@ variable "oci_profile" {
 
 variable "adb_db_name" {
   type        = string
-  description = "Autonomous Database name; use uppercase letters, digits, $, or #."
-  default     = "DEEPSEC"
+  description = "Optional Autonomous Database name override. Leave blank to generate a unique DEEPSEC-prefixed name for this Stack build."
+  default     = ""
 }
 
 variable "adb_display_name" {
@@ -76,11 +76,11 @@ variable "vcn_dns_label" {
 
 variable "allowed_ingress_home_ip_address" {
   type        = string
-  description = "Your public home IPv4 address. Terraform adds /32 and permits this one address into the disposable lab VCN."
+  description = "Your public home IPv4 address or IPv4 CIDR. Terraform treats a bare address as /32 and preserves a supplied CIDR."
 
   validation {
-    condition     = can(cidrhost("${var.allowed_ingress_home_ip_address}/32", 0))
-    error_message = "Enter one valid IPv4 address, for example 203.0.113.10, without a CIDR suffix."
+    condition     = can(cidrhost(var.allowed_ingress_home_ip_address, 0)) || can(cidrhost("${var.allowed_ingress_home_ip_address}/32", 0))
+    error_message = "Enter a valid IPv4 address or IPv4 CIDR, for example 203.0.113.10, 203.0.113.10/32, or 0.0.0.0/0."
   }
 }
 
@@ -127,8 +127,8 @@ variable "assign_public_ip" {
 
 variable "wallet_bucket_name" {
   type        = string
-  description = "Private bucket used only for automatic wallet delivery to the lab compute instance."
-  default     = "deep-sec-wallet"
+  description = "Optional private wallet bucket name override. Leave blank to generate a unique name for this Stack build."
+  default     = ""
 }
 
 variable "wallet_object_name" {

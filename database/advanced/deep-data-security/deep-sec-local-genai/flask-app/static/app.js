@@ -142,8 +142,28 @@ function makeCell(value, className = "") {
   return cell;
 }
 
+let currentRows = [];
+let currentSort = {key: null, direction: "asc"};
+
+function sortRows(rows, key, type, direction) {
+  const sorted = [...rows];
+  sorted.sort((a, b) => {
+    const aVal = a[key];
+    const bVal = b[key];
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+    if (type === "number") return direction === "asc" ? aVal - bVal : bVal - aVal;
+    return direction === "asc"
+      ? String(aVal).localeCompare(String(bVal))
+      : String(bVal).localeCompare(String(aVal));
+  });
+  return sorted;
+}
+
 function renderCustomers(rows) {
-    const results = document.querySelector("#results");
+  currentRows = rows || [];
+  const results = document.querySelector("#results");
   const accountCount = document.querySelector("#account-count");
   accountCount.textContent = `${rows?.length || 0} Customer Account${rows?.length === 1 ? "" : "s"}`;
   results.replaceChildren();
@@ -169,3 +189,15 @@ function renderCustomers(rows) {
     results.append(row);
   }
 }
+
+document.querySelectorAll("th.sortable").forEach((header) => {
+  header.addEventListener("click", () => {
+    const key = header.dataset.sortKey;
+    const type = header.dataset.sortType;
+    const direction = currentSort.key === key && currentSort.direction === "asc" ? "desc" : "asc";
+    currentSort = {key, direction};
+    document.querySelectorAll("th.sortable").forEach((th) => th.classList.remove("sort-asc", "sort-desc"));
+    header.classList.add(direction === "asc" ? "sort-asc" : "sort-desc");
+    renderCustomers(sortRows(currentRows, key, type, direction));
+  });
+});

@@ -57,15 +57,13 @@ def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
             cursor.execute("select count(*) from all_users where username = 'APPLAB'")
             if cursor.fetchone()[0] != 1:
                 return completed
-            completed.add("create_schema")
-
             try:
                 cursor.execute("select count(*) from APPLAB.customers")
                 customer_count = cursor.fetchone()[0]
             except oracledb.DatabaseError:
                 customer_count = 0
             if customer_count >= 22:
-                completed.update({"load_data", "show_architecture"})
+                completed.add("setup_database")
 
     try:
         # CREATE END USER is not consistently represented in ordinary user
@@ -87,7 +85,83 @@ def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
             completed.add("enable_manager")
     except oracledb.DatabaseError:
         pass
+
+    try:
+        # Emma is the fixed comparison user. Authenticate directly because
+        # local end users are not reliably represented in ordinary user views.
+        with database_connection(settings, "EMMA", password) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("select 1 from dual")
+                cursor.fetchone()
+        completed.add("create_emma")
+    except oracledb.DatabaseError:
+        pass
+
+    try:
+        with database_connection(settings, "ADMIN", password) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("select count(*) from all_tables where owner = 'APPLAB' and table_name = 'SALES_REPS'")
+                if cursor.fetchone()[0] == 1:
+                    completed.add("create_manager_context")
+    except oracledb.DatabaseError:
+        pass
     return completed
+
+
+def validation_comparison(settings: AdminSettings, password: str) -> dict:
+    """Return Oracle-derived roles and grants for the Emma/Marvin comparison."""
+    query = "SELECT * FROM APPLAB.customers ORDER BY revenue DESC"
+    with database_connection(settings, "ADMIN", password) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select grant_name,
+                       grantee,
+                       predicate,
+                       listagg(nvl(column_name, 'ALL COLUMNS'), ', ')
+                         within group (order by column_name) as columns
+                  from dba_data_grants
+                 where object_owner = 'APPLAB'
+                   and object_name = 'CUSTOMERS'
+                 group by grant_name, grantee, predicate
+                 order by grantee, grant_name
+                """
+            )
+            grants = [
+                {"name": row[0], "role": row[1], "predicate": row[2] or "All rows", "columns": row[3]}
+                for row in cursor
+            ]
+
+    personas = []
+    for username in ("EMMA", "MARVIN"):
+        try:
+            with database_connection(settings, username, password) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("select role_name from v$end_user_data_role order by role_name")
+                    roles = [row[0] for row in cursor]
+                    cursor.execute("select count(*) from applab.customers")
+                    row_count = cursor.fetchone()[0]
+            personas.append(
+                {
+                    "username": username,
+                    "roles": roles,
+                    "row_count": row_count,
+                    "grants": [grant for grant in grants if grant["role"] in roles],
+                    "available": True,
+                }
+            )
+        except oracledb.DatabaseError as exc:
+            personas.append(
+                {
+                    "username": username,
+                    "roles": [],
+                    "row_count": None,
+                    "grants": [],
+                    "available": False,
+                    "message": str(exc),
+                }
+            )
+    return {"query": query, "personas": personas}
 
 
 def lab_state(settings: AdminSettings, password: str) -> dict:
@@ -99,6 +173,15 @@ def lab_state(settings: AdminSettings, password: str) -> dict:
             row_count = sum(1 for _ in cursor)
             cursor.execute("select ora_end_user_context.username from dual")
             (end_user,) = cursor.fetchone()
+            cursor.execute(
+                """
+                select distinct sales_rep
+                  from applab.customers
+                 where upper(sales_rep) <> upper(ora_end_user_context.username)
+                 order by sales_rep
+                """
+            )
+            direct_reports = [row[0] for row in cursor]
             cursor.execute("select role_name from v$end_user_data_role order by role_name")
             data_roles = [row[0] for row in cursor]
     return {
@@ -106,4 +189,5 @@ def lab_state(settings: AdminSettings, password: str) -> dict:
         "data_roles": data_roles,
         "row_count": row_count,
         "visible_columns": columns,
+        "direct_reports": direct_reports,
     }

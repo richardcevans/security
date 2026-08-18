@@ -6,7 +6,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 requested_user=${1:-}
 provided_password=${2:-}
 dsn=${DB_DSN:-deepsec_low}
-validation_sql="$script_dir/../database/06_validation_queries.sql"
+validation_sql="$script_dir/../database/validation_queries.sql"
 
 usage() {
   echo "Usage: $0 <marvin> [password]" >&2

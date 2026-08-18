@@ -1,6 +1,6 @@
 resource "oci_database_autonomous_database" "lab" {
   compartment_id = var.compartment_ocid
-  db_name        = var.adb_db_name
+  db_name        = local.adb_db_name
   display_name   = var.adb_display_name
   db_version     = "26ai"
   db_workload    = "OLTP"
@@ -15,6 +15,10 @@ resource "oci_database_autonomous_database" "lab" {
 
   freeform_tags = local.common_tags
 
+}
+
+resource "random_id" "adb_name_suffix" {
+  byte_length = 4
 }
 
 # The wallet is generated during the Stack apply, encrypted with the same

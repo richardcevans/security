@@ -182,6 +182,30 @@ write_files:
         echo "Wallet sqlnet.ora does not point to $wallet_directory." >&2
         exit 1
       }
+      actual_service_alias='${adb_actual_service_alias}'
+      lab_service_alias='${adb_service_alias}'
+      tnsnames_file="$wallet_directory/tnsnames.ora"
+      if ! grep -Eq "^[[:space:]]*$lab_service_alias[[:space:]]*=" "$tnsnames_file"; then
+        alias_block=$(awk -v actual="$actual_service_alias" -v alias="$lab_service_alias" '
+          $0 ~ ("^[[:space:]]*" actual "[[:space:]]*=") {
+            capture = 1
+            sub(actual, alias)
+            print
+            next
+          }
+          capture && $0 ~ /^[^[:space:]#][^=]*=/ { exit }
+          capture { print }
+        ' "$tnsnames_file")
+        [[ -n "$alias_block" ]] || {
+          echo "Wallet does not contain the generated service alias: $actual_service_alias" >&2
+          exit 1
+        }
+        printf '\n# Stable Deep Sec lab alias.\n%s\n' "$alias_block" >> "$tnsnames_file"
+      fi
+      grep -Eq "^[[:space:]]*$lab_service_alias[[:space:]]*=" "$tnsnames_file" || {
+        echo "Could not add the stable Deep Sec service alias: $lab_service_alias" >&2
+        exit 1
+      }
       chown -R opc:opc "$wallet_directory"
       chmod 0700 "$wallet_directory"
       find "$wallet_directory" -type f -exec chmod 0600 {} +
@@ -390,6 +414,7 @@ write_files:
       admin_service_file=/etc/systemd/system/deep-sec-admin-console.service
       customer_stage_dir=/var/tmp/deep-sec-customer-sales-stage
       customer_dir=/opt/deep-sec-customer-sales
+      customer_original_dir=/opt/deep-sec-customer-sales-orig-app
       customer_environment_file=/etc/deep-sec/customer-sales.env
       customer_service_file=/etc/systemd/system/deep-sec-customer-sales.service
       vibe_reload_sudoers=/etc/sudoers.d/deep-sec-vibe-reload
@@ -421,7 +446,7 @@ write_files:
       rm -rfv "$admin_database_stage"
       chown -R opc:opc "$admin_database_dir"
 
-      rm -rfv "$customer_stage_dir" "$customer_dir"
+      rm -rfv "$customer_stage_dir" "$customer_dir" "$customer_original_dir"
       mkdir -pv "$customer_stage_dir"
       unzip -q "$package_file" 'flask-app/*' -d "$customer_stage_dir"
       mv -v "$customer_stage_dir/flask-app" "$customer_dir"
@@ -439,6 +464,19 @@ write_files:
       runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip install --disable-pip-version-check --no-input --retries 3 --timeout 30 --upgrade pip
       runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip install --disable-pip-version-check --no-input --retries 3 --timeout 30 -r "$customer_dir/requirements.txt"
       runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip check
+      cp -av "$customer_dir" "$customer_original_dir"
+      chown -R opc:opc "$customer_original_dir"
+      for app_file in app.py config.py db.py requirements.txt run.sh templates/index.html; do
+        cmp -s "$customer_dir/$app_file" "$customer_original_dir/$app_file" || {
+          echo "Original Customer Sales copy does not match installed application: $app_file" >&2
+          exit 1
+        }
+      done
+      [[ -L "$customer_original_dir/tns_admin" ]] || {
+        echo "Original Customer Sales copy is missing its wallet link." >&2
+        exit 1
+      }
+      printf 'Protected original Customer Sales application verified: %s\n' "$customer_original_dir"
 
       install -d -m 0755 /etc/deep-sec
       umask 077
@@ -481,7 +519,7 @@ write_files:
         > "$customer_environment_file"
       chown root:root "$customer_environment_file"
       chmod 0600 "$customer_environment_file"
-      restorecon -RFv "$admin_dir" "$admin_database_dir" "$customer_dir" /etc/deep-sec
+      restorecon -RFv "$admin_dir" "$admin_database_dir" "$customer_dir" "$customer_original_dir" /etc/deep-sec
 
       cat > "$admin_service_file" <<'SERVICE'
       [Unit]

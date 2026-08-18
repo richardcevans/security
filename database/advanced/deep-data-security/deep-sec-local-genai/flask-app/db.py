@@ -19,7 +19,10 @@ def _enable_thick_mode() -> None:
 
 _enable_thick_mode()
 
-PERSONAS = {"MARVIN": {"label": "Marvin — Sales", "role": "Database-managed"}}
+PERSONAS = {
+    "MARVIN": {"label": "Marvin — Sales", "role": "Database-managed"},
+    "EMMA": {"label": "Emma — Sales", "role": "Database-managed"},
+}
 
 QUERY_TEMPLATE = """
     SELECT *
@@ -58,7 +61,7 @@ def _connection(settings: Settings, username: str, password: str):
 def verify_persona_credentials(settings: Settings, persona: str, password: str) -> dict:
     """Authenticate directly as the chosen local database end user."""
     if persona not in PERSONAS:
-        raise ValueError("Choose Marvin")
+        raise ValueError("Choose Marvin or Emma")
     with _connection(settings, persona, password) as connection:
         with connection.cursor() as cursor:
             cursor.execute(END_USER_QUERY)
@@ -71,7 +74,7 @@ def verify_persona_credentials(settings: Settings, persona: str, password: str) 
 def fetch_authorized_customers(settings: Settings, persona: str, password: str) -> tuple[list[dict], dict]:
     """Run the identical query before and after the Deep Sec role change."""
     if persona not in PERSONAS:
-        raise ValueError("Unknown persona")
+        raise ValueError("Choose Marvin or Emma")
     query = QUERY_TEMPLATE.format(schema=settings.db_schema)
     with _connection(settings, persona, password) as connection:
         with connection.cursor() as cursor:

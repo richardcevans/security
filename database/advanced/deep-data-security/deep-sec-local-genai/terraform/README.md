@@ -23,7 +23,7 @@ create Marvin as a local database user.
    - `tenancy_ocid`
    - `compartment_ocid`
    - `ssh_public_key`
-   - `allowed_ingress_home_ip_address` (your public home IPv4 address, without `/32`)
+   - `allowed_ingress_home_ip_address` (your public home IPv4 address or CIDR; a bare address is treated as `/32`)
 
 5. Keep the supplied Ashburn image, BYOL, `My Home IP`,
    `create_genai_iam = true`, and the default on-demand GenAI model
@@ -33,7 +33,7 @@ create Marvin as a local database user.
 
 > **Timing:** Stack provisioning is pre-lab work. It is not part of the 60-minute Deep Data Security hands-on estimate; students begin the timed lab after Apply succeeds.
 
-The outputs provide the ADB OCID, `adb_console_url`, and compute public IP. Terraform generates an Instance Wallet, writes it to the private wallet bucket, and creates a 24-hour, one-object read link that cloud-init uses only on the newly created compute instance. Select **Unlock** and copy the shared ADB `ADMIN`, JupyterLab, and Marvin password before opening either service. The Customer Sales application starts automatically on port 7777. The Admin Console starts automatically on port 7778 and signs in directly as ADB `ADMIN` with that same password. It exposes only fixed, visible SQL*Plus lab actions and shows their output. Jupyter is on port 8888. The VCN permits
+The outputs provide the ADB OCID, `adb_console_url`, and compute public IP. Terraform generates a unique `DEEPSEC`-prefixed database name and a unique private wallet-bucket name for each Stack build unless you explicitly override either value. The generated wallet also receives the stable lab alias `deepsec_low`, so the SQL scripts and applications do not need to know the generated database name. Terraform writes the Instance Wallet to the private bucket and creates a 24-hour, one-object read link that cloud-init uses only on the newly created compute instance. Select **Unlock** and copy the shared ADB `ADMIN`, JupyterLab, and Marvin password before opening either service. The Customer Sales application starts automatically on port 7777. The Admin Console starts automatically on port 7778 and signs in directly as ADB `ADMIN` with that same password. It exposes only fixed, visible SQL*Plus lab actions and shows their output. Jupyter is on port 8888. The VCN permits
 all protocols only from the `allowed_ingress_home_ip_address` you entered.
 
 After an Apply job completes, open the Stack **Application Information** tab.

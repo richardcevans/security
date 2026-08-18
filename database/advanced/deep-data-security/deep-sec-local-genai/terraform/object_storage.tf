@@ -2,10 +2,14 @@ data "oci_objectstorage_namespace" "current" {
   compartment_id = var.compartment_ocid
 }
 
+resource "random_id" "wallet_bucket_suffix" {
+  byte_length = 4
+}
+
 resource "oci_objectstorage_bucket" "wallet" {
   compartment_id = var.compartment_ocid
   namespace      = data.oci_objectstorage_namespace.current.namespace
-  name           = var.wallet_bucket_name
+  name           = local.wallet_bucket_name
   access_type    = "NoPublicAccess"
 
   freeform_tags = local.common_tags

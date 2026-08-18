@@ -15,30 +15,72 @@
       <section class="instructions"><strong>How to use this console:</strong> complete the guided setup actions in order through <em>Create MARVIN</em>. The console reads Oracle state when you sign in, so a logout or page reload does not reset completed setup actions. After Marvin exists, policy and validation actions unlock. Review the exact checked-in SQL*Plus script, then select <em>Run action</em>.</section>
       <section class="stepper" aria-label="Fixed Deep Sec lab actions">
         <ol class="stepper-list">
-        {% for action in actions %}
-          <li class="step-item{% if action.locked %} is-locked{% endif %}" data-action-step="{{ action.key }}">
-            <button class="step-badge" data-select-action="{{ action.key }}" aria-controls="action-{{ action.key }}" type="button"{% if action.locked %} disabled{% endif %}>
+        {% for step in steps %}
+          <li class="step-item" data-action-step="{{ step.key }}" data-action-keys="{{ step.action_keys|join(',') }}">
+            <button class="step-badge" data-select-action="{{ step.key }}" aria-controls="action-{{ step.key }}" type="button">
               <span class="step-number">{{ loop.index }}</span>
-              <span class="step-label">{{ action.short_label }}</span>
+              <span class="step-label">{{ step.title }}</span>
             </button>
           </li>
         {% endfor %}
         </ol>
       </section>
       <section class="action-details" aria-live="polite">
-        {% for action in actions %}
-        <article id="action-{{ action.key }}" class="action-card action-panel{% if action.destructive %} destructive{% endif %}" data-action-panel="{{ action.key }}"{% if not loop.first %} hidden{% endif %}>
-          <div class="action-heading"><div><h2>{{ action.title }}</h2><p>{{ action.description }}</p></div>{% if action.destructive %}<span class="warning">Changes database state</span>{% endif %}</div>
-          {% if not action.link_step %}
-            <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
-            <details><summary>View exact script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
-            <button class="primary run-action" data-action="{{ action.key }}" data-requires="{{ action.requires|join(',') }}" data-resets-setup="{{ 'true' if action.resets_setup else 'false' }}" type="button"{% if action.locked %} disabled{% endif %}>Run action</button><span class="action-status" aria-live="polite">{% if action.locked %}Complete {{ action.required_titles|join(' → ') }} first.{% endif %}</span>
-            <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+        {% for step in steps %}
+        <article id="action-{{ step.key }}" class="action-card action-panel{% if step.actions|selectattr('destructive')|list %} destructive{% endif %}" data-action-panel="{{ step.key }}"{% if not loop.first %} hidden{% endif %}>
+          {% if step.actions|length == 1 %}
+            {% set action = step.actions[0] %}
+            <div class="action-heading"><div><h2>{{ action.title }}</h2><p>{{ action.description }}</p></div>{% if action.destructive %}<span class="warning">Changes database state</span>{% endif %}</div>
+            {% if action.expect %}<p class="action-expect"><strong>What to expect:</strong> {{ action.expect }}</p>{% endif %}
+            {% if action.custom_grant_step %}
+              <fieldset class="grant-columns">
+                <legend>Columns Marvin's manager role can see</legend>
+                <div class="grant-row"><input type="checkbox" id="col-customer-id" checked disabled><label for="col-customer-id">customer_id <span class="muted">(always included, primary key)</span></label></div>
+                <div class="grant-row"><input type="checkbox" id="col-customer-name" class="grant-column" value="customer_name" checked><label for="col-customer-name">customer_name</label></div>
+                <div class="grant-row"><input type="checkbox" id="col-region" class="grant-column" value="region" checked><label for="col-region">region</label></div>
+                <div class="grant-row"><input type="checkbox" id="col-sales-rep" class="grant-column" value="sales_rep" checked><label for="col-sales-rep">sales_rep</label></div>
+                <div class="grant-row"><input type="checkbox" id="col-revenue" class="grant-column" value="revenue" checked><label for="col-revenue">revenue</label></div>
+                <div class="grant-row"><input type="checkbox" id="col-credit-limit" class="grant-column" value="credit_limit" checked><label for="col-credit-limit">credit_limit</label></div>
+                <p class="muted">sensitive_identifier is never offered here, so it remains off-limits.</p>
+              </fieldset>
+              <details open><summary>Generated SQL</summary><pre id="grant-preview">Loading…</pre></details>
+              <button class="primary run-grant-apply" type="button">Apply this grant</button><span class="action-status" id="grant-status" aria-live="polite"></span>
+              <section class="action-output" id="grant-output" hidden><h3>SQL*Plus output</h3><pre></pre></section>
+            {% elif not action.link_step %}
+              {% if step.key == "validate_as_marvin" %}
+              <section id="validation-comparison" class="validation-comparison" aria-live="polite">
+                <h3>Oracle authorization comparison</h3>
+                <p class="muted">Roles and data grants are read directly from Oracle. Emma is shown on the left; Marvin is shown on the right.</p>
+                <div id="validation-personas" class="validation-grid"><p class="muted">Loading Emma and Marvin's Oracle authorization…</p></div>
+                <h3>Customer query sent to Oracle</h3>
+                <pre id="validation-query">SELECT * FROM APPLAB.customers ORDER BY revenue DESC</pre>
+              </section>
+              {% endif %}
+              <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+              <details><summary>View exact script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
+              <button class="primary run-action" data-action="{{ action.key }}" data-resets-setup="{{ 'true' if action.resets_setup else 'false' }}" type="button">Run action</button><span class="action-status" aria-live="polite"></span>
+              <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+            {% else %}
+              <p><a href="{{ action.link_url }}" target="_blank" rel="noopener">Oracle Customer Sales</a></p>
+              <button class="primary run-action" data-action="{{ action.key }}" type="button">Continue</button><span class="action-status" aria-live="polite"></span>
+              <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Step status</h3><pre>{{ action.output or '' }}</pre></section>
+            {% endif %}
           {% else %}
-            <p><a href="{{ action.link_url }}" target="_blank" rel="noopener">Oracle Customer Sales</a></p>
-            <button class="primary run-action" data-action="{{ action.key }}" data-requires="{{ action.requires|join(',') }}" type="button"{% if action.locked %} disabled{% endif %}>Continue</button><span class="action-status" aria-live="polite">{% if action.locked %}Complete {{ action.required_titles|join(' → ') }} first.{% endif %}</span>
-            <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Step status</h3><pre>{{ action.output or '' }}</pre></section>
+            <div class="action-heading"><div><h2>{{ step.title }}</h2><p>{{ step.actions[0].description }}</p></div><span class="warning">Changes database state</span></div>
+            <div class="toggle-pair">
+              {% for action in step.actions %}
+              <div class="toggle-half">
+                <h3>{{ action.title }}</h3>
+                {% if action.expect %}<p class="action-expect"><strong>What to expect:</strong> {{ action.expect }}</p>{% endif %}
+                <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+                <details><summary>View exact script</summary>{% for script in action.scripts %}<pre>{{ script.sql }}</pre>{% endfor %}</details>
+                <button class="primary run-action" data-action="{{ action.key }}" type="button">{{ action.title }}</button><span class="action-status" aria-live="polite"></span>
+                <section class="action-output"{% if not action.output %} hidden{% endif %}><h3>Complete SQL*Plus output</h3><pre>{{ action.output or '' }}</pre></section>
+              </div>
+              {% endfor %}
+            </div>
           {% endif %}
+          {% if step.next_hint %}<p class="action-next"><strong>Next:</strong> {{ step.next_hint }}</p>{% endif %}
         </article>
         {% endfor %}
       </section>

@@ -53,7 +53,8 @@ variables:
     required: true
   adb_db_name:
     type: string
-    title: "ADB database name"
+    title: "ADB database name override"
+    description: "Leave blank to generate a unique DEEPSEC-prefixed database name. The lab still connects through deepsec_low."
     required: false
   adb_display_name:
     type: string
@@ -98,8 +99,8 @@ variables:
     required: true
   allowed_ingress_home_ip_address:
     type: string
-    title: "Home public IPv4 address"
-    description: "Enter the browser public IPv4 address without /32."
+    title: "Home public IPv4 address or CIDR"
+    description: "Enter a browser public IPv4 address or CIDR. A bare address is treated as /32."
     required: true
   allowed_ingress_description:
     type: string

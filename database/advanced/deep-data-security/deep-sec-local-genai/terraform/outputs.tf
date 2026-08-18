@@ -20,8 +20,8 @@ output "lab_admin_jupyter_password" {
 }
 
 output "adb_service_alias" {
-  value       = "${lower(var.adb_db_name)}_low"
-  description = "ADB wallet service alias used by the lab SQL*Plus and Flask configuration."
+  value       = local.adb_service_alias
+  description = "Stable Deep Sec wallet service alias used by the lab SQL*Plus and Flask configuration."
 }
 
 output "adb_console_url" {

@@ -3,7 +3,9 @@ compartment_ocid          = "ocid1.compartment.oc1..replace-me"
 region                    = "us-ashburn-1"
 # OCI profile is normally inherited by terraform.sh from OCI_PROFILE.
 # oci_profile              = "DEFAULT"
-adb_db_name               = "DEEPSEC"
+# Leave blank to generate a unique DEEPSEC-prefixed database name. The lab's
+# stable wallet alias remains deepsec_low regardless of this generated name.
+adb_db_name               = ""
 adb_display_name          = "Deep Sec"
 adb_compute_count         = 2
 adb_storage_tbs           = 1
@@ -18,7 +20,8 @@ compute_display_name      = "deep-sec-app-server"
 ssh_public_key            = "ssh-rsa replace-me"
 
 # Terraform creates and later destroys this VCN and public subnet. Enter your
-# own public home IPv4 address; Terraform adds /32 to permit only that address.
+# own public home IPv4 address or CIDR. Terraform treats a bare address as /32.
+# Examples: "203.0.113.10", "203.0.113.10/32", or "0.0.0.0/0".
 vcn_cidr                  = "10.0.0.0/16"
 public_subnet_cidr        = "10.0.1.0/24"
 allowed_ingress_home_ip_address = "203.0.113.10"
@@ -26,7 +29,9 @@ allowed_ingress_description = "My Home IP"
 
 # Terraform creates this private bucket, uploads the generated wallet, and
 # gives the new compute instance a short-lived, single-object read link.
-wallet_bucket_name        = "deep-sec-wallet"
+# Leave blank to generate a unique bucket for this Stack build. Set a value only
+# when you intentionally need a specific unique bucket name.
+wallet_bucket_name        = ""
 wallet_object_name        = "deep-sec-wallet.zip"
 wallet_par_ttl_hours      = 24
 

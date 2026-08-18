@@ -295,7 +295,7 @@ The database authorization is intentionally too broad.
 After:
 
 ```sql
-@../database/06_implement_deep_sec_policies.sql
+@../database/implement_deep_sec_policies.sql
 ```
 
 Marvin has:
@@ -324,7 +324,7 @@ No Flask code should change.
 After:
 
 ```sql
-@../database/07_promote_marvin_to_manager.sql
+@../database/promote_marvin_to_manager.sql
 ```
 
 Marvin has:
@@ -1004,7 +1004,7 @@ because the full-access database grant permits the Finance row.
 After:
 
 ```sql
-@../database/06_implement_deep_sec_policies.sql
+@../database/implement_deep_sec_policies.sql
 ```
 
 Search:
@@ -1028,7 +1028,7 @@ No Flask authorization change occurs.
 After:
 
 ```sql
-@../database/07_promote_marvin_to_manager.sql
+@../database/promote_marvin_to_manager.sql
 ```
 
 Search:
@@ -1232,7 +1232,7 @@ Active Data Role: APP_FULL_ACCESS
 Apply:
 
 ```sql
-@../database/06_implement_deep_sec_policies.sql
+@../database/implement_deep_sec_policies.sql
 ```
 
 Sign out and sign back in as Marvin.
@@ -1260,7 +1260,7 @@ No Flask source-code change should occur.
 Apply:
 
 ```sql
-@../database/07_promote_marvin_to_manager.sql
+@../database/promote_marvin_to_manager.sql
 ```
 
 Sign out and sign back in.
@@ -1382,8 +1382,8 @@ The task is complete when all of the following are true:
 * No Flask sensitive-column authorization exists.
 * The customer SQL contains no business authorization predicate.
 * Baseline should still produce 22 rows.
-* Employee policy should still produce 14 rows.
-* Manager policy should still produce 20 rows.
+* Employee policy should still produce 3 rows.
+* Manager policy should still produce 9 rows.
 * Database end-user and active data roles remain visible.
 * Rows Returned by Oracle remains visible.
 * SQL sent to Oracle remains available through a less intrusive Lab Details area.

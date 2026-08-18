@@ -25,12 +25,13 @@ resource "oci_core_instance" "flask" {
     # OCI instance metadata is limited to 32 KB. Cloud-init recognizes the
     # decompressed YAML by its gzip header after OCI decodes this value.
     user_data = base64gzip(templatefile("${path.module}/templates/genai-defaults-cloud-init.yaml.tftpl", {
-      genai_compartment_ocid = local.genai_compartment_ocid
-      genai_model_id         = var.genai_model_id
-      jupyter_password       = random_password.lab_admin.result
-      region                 = var.region
-      adb_service_alias      = "${lower(var.adb_db_name)}_low"
-      wallet_par_url         = "https://objectstorage.${var.region}.oraclecloud.com${oci_objectstorage_preauthrequest.lab_wallet_read.access_uri}"
+      genai_compartment_ocid   = local.genai_compartment_ocid
+      genai_model_id           = var.genai_model_id
+      jupyter_password         = random_password.lab_admin.result
+      region                   = var.region
+      adb_service_alias        = local.adb_service_alias
+      adb_actual_service_alias = local.adb_actual_service_alias
+      wallet_par_url           = "https://objectstorage.${var.region}.oraclecloud.com${oci_objectstorage_preauthrequest.lab_wallet_read.access_uri}"
     }))
   }
 

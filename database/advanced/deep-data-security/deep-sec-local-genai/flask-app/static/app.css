@@ -30,5 +30,10 @@ button { border: 1px solid transparent; border-radius: 4px; cursor: pointer; fon
 .header-button { background: transparent; border-color: #a7a19a; color: #fff; min-height: 34px; padding: 5px 10px; }
 .error-text, #error { color: #ae260f; font-weight: 600; }
 .inline-link { display: inline-block; margin-top: 20px; text-decoration: none; }
+th.sortable { cursor: pointer; position: relative; user-select: none; }
+th.sortable:hover { color: var(--focus, #005fb8); }
+th.sortable::after { content: "↕"; font-size: 12px; margin-left: 6px; opacity: .4; }
+th.sortable.sort-asc::after { content: "↑"; opacity: 1; }
+th.sortable.sort-desc::after { content: "↓"; opacity: 1; }
 .insight-card textarea { border: 1px solid #817c76; border-radius: 4px; font: inherit; min-height: 112px; padding: 10px 11px; resize: vertical; width: 100%; }.insight-result { background: #f5f4f2; border-left: 3px solid var(--red); margin-top: 24px; padding: 18px; }.insight-result h3 { font-size: 16px; margin: 0 0 8px; }.insight-result p { margin: 0; white-space: pre-wrap; }.ai-query-list { border-top: 1px solid #d4d0cb; margin: 14px 0; padding-top: 12px; }.ai-query-list p { color: var(--muted); font-size: 13px; font-weight: 700; margin: 0 0 7px; text-transform: uppercase; }.ai-query-list code { display: block; font-size: 13px; margin: 6px 0; overflow-wrap: anywhere; white-space: normal; }
 @media (max-width: 720px) { .app-header { padding: 0 16px; }.header-context { display: none; }.header-nav { display: none; }.page { padding: 24px 16px; }.page-heading { align-items: flex-start; flex-direction: column; gap: 16px; }.sign-in-fields { align-items: stretch; flex-direction: column; }.action-field { flex: auto; }.action-field button { width: 100%; }.card { padding: 20px; }.security-badge { white-space: normal; } }

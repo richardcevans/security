@@ -60,7 +60,7 @@ def load_user(login_id: str):
 @login_manager.unauthorized_handler
 def unauthorized():
     if request.path.startswith("/api/"):
-        return jsonify(error="Sign in as Marvin first"), 401
+        return jsonify(error="Sign in as Marvin or Emma first"), 401
     return redirect(url_for("index"))
 
 
@@ -75,7 +75,7 @@ def _login_credentials() -> tuple[str, str]:
         if not login or login["expires_at"] <= time.monotonic():
             if login_id:
                 _logins.pop(login_id, None)
-            raise ValueError("Sign in as Marvin first")
+            raise ValueError("Sign in as Marvin or Emma first")
         login["expires_at"] = time.monotonic() + LOGIN_TTL_SECONDS
         return login["persona"], login["password"]
 

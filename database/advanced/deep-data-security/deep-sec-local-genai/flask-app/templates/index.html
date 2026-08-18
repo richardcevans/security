@@ -14,8 +14,7 @@
       <section class="card sign-in-card" aria-labelledby="sign-in-title">
         <div class="card-heading"><div><h2 id="sign-in-title">Database credentials</h2><p>Your database password is verified directly by Oracle Database.</p></div></div>
         <form id="login-form" class="sign-in-fields">
-          <input id="persona" type="hidden" value="MARVIN">
-          <div class="field"><span class="field-label">Database user</span><div class="identity-value">Marvin <span>— Sales</span></div></div>
+          <div class="field"><label for="persona">Database user</label><select id="persona"><option value="MARVIN">Marvin — Sales</option><option value="EMMA">Emma — Sales</option></select></div>
           <div class="field"><label for="password">Database password</label><input id="password" type="password" autocomplete="current-password" placeholder="Enter password"></div>
           <div class="field action-field"><button id="login" class="primary" type="submit">Sign in</button></div>
         </form>

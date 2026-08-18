@@ -64,14 +64,15 @@ Start the public web server with:
 | `flask-app/run.sh` | Runs the web server on port 7777. |
 | `flask-app/run_dev.sh` | Optional local Flask development-server launcher. |
 | `admin-app/admin_app.py` | Auto-starting administrator console on port 7778. It accepts only fixed, visible Deep Sec lab actions. |
-| `database/05_create_lab_users.sql` | Prompts for and creates the local Marvin end user. |
-| `database/04_create_full_access.sql` | Creates the full-access data role and grant. |
-| `database/06_implement_deep_sec_policies.sql` | Replaces the full-access role with Marvin's sales-employee data role and grant. |
-| `database/07_promote_marvin_to_manager.sql` | Adds the sales-manager data role and grant while Marvin retains the employee role. |
+| `database/create_lab_users.sql` | Prompts for and creates the local Marvin end user. |
+| `database/create_emma_user.sql` | Creates Emma, a fixed APP_SALES_EMPLOYEE comparison user. |
+| `database/create_data_roles.sql` | Creates the full-access, sales-employee, and sales-manager data roles and grants. |
+| `database/implement_deep_sec_policies.sql` | Replaces the full-access role with Marvin's sales-employee data role and grant. |
+| `database/promote_marvin_to_manager.sql` | Adds the sales-manager data role and grant while Marvin retains the employee role. |
 | `package.sh` | Builds the credential-free compute ZIP. |
 
 The application server needs no OCI CLI or OCI credentials. Terraform's private, short-lived wallet delivery prepares the wallet automatically.
 
 ## Teaching flow
 
-Resource Manager provisioning is pre-lab work and is excluded from the 60-minute hands-on estimate. The timed lab proves this progression: **22 excessive rows**, **14 employee rows**, **20 manager rows**, then broad Vibe-generated application features that still receive only the rows and columns Oracle authorizes for Marvin. The required Vibe changes are global customer search and an admin-style everything page; exact GenAI wording is not a success criterion.
+Resource Manager provisioning is pre-lab work and is excluded from the 60-minute hands-on estimate. The timed lab proves this progression: **22 excessive rows**, **3 employee rows**, **9 manager rows**, then broad Vibe-generated application features that still receive only the rows and columns Oracle authorizes for Marvin. The required Vibe changes are global customer search and an admin-style everything page; exact GenAI wording is not a success criterion.

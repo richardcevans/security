@@ -23,7 +23,7 @@ Estimated Time: 60 minutes after the Stack is ready.
 
 1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Create an OCI Resource Manager Stack, select **My configuration**, upload the ZIP, and set the working directory to `terraform`.
 
-2. Enter `tenancy_ocid`, `compartment_ocid`, `ssh_public_key`, and `allowed_ingress_home_ip_address`. Run **Plan**, then **Apply**.
+2. Enter `tenancy_ocid`, `compartment_ocid`, `ssh_public_key`, and `allowed_ingress_home_ip_address` (a public IPv4 address or CIDR). Run **Plan**, then **Apply**.
 
 3. In **Application Information**, unlock and copy the generated password. Save `admin_console_url`, `jupyter_url`, and `flask_url`.
 
@@ -59,11 +59,10 @@ A data role bundles row and column permissions, much like a database role bundle
 
 2. Run these actions in order:
 
-    1. **Create APPLAB schema**
-    2. **Load customer data**
-    3. **Show authentication model**
-    4. **Create data roles and grant definitions**
-    5. **Create MARVIN**
+    1. **Set up database**
+    2. **Create data roles and grant definitions**
+    3. **Create MARVIN**
+    4. **Create EMMA**
 
 3. Confirm Marvin's Oracle result shows `APP_FULL_ACCESS`, **22** rows, and the `credit_limit` and `sensitive_identifier` columns.
 
@@ -75,7 +74,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 1. Open `flask_url` in a new tab.
 
-2. Sign in as Marvin with the generated password (the same password from the Pre-Lab step, used for both ADMIN and MARVIN).
+2. Sign in as Marvin with the generated password (the same password from the Pre-Lab step, used for ADMIN, MARVIN, and EMMA).
 
 ## Task 5: Observe Full Access
 
@@ -113,19 +112,23 @@ A data role bundles row and column permissions, much like a database role bundle
 
 2. Return to Oracle Customer Sales and select **Load Customers**.
 
-    Expected: **14** rows, `APP_SALES_EMPLOYEE`, and **Not authorized** for Credit Limit and Sensitive Identifier.
+    Expected: **3** rows, `APP_SALES_EMPLOYEE`, and **Not authorized** for Credit Limit and Sensitive Identifier.
 
-3. In **AI Insights**, run both queries from Task 5 again. The answers use only the 14 returned rows and cannot use the sensitive columns.
+3. In **AI Insights**, run both queries from Task 5 again. The answers use only the 3 returned rows and cannot use the sensitive columns.
+
+> **Optional:** Sign out and sign in as Emma from the Database user dropdown. Emma always holds `APP_SALES_EMPLOYEE`, so she is a stable reference point: her result should always show 6 rows with Credit Limit and Sensitive Identifier both **Not authorized**, no matter what step you are on elsewhere in the lab.
 
 ## Task 7: Promote Marvin to Sales Manager
 
 ### **Browser — Deep Sec Admin Console, then Oracle Customer Sales**
 
-1. In the Admin Console, select **Enable sales-manager policy** and run it.
+1. In the Admin Console, select **Create manager hierarchy** and run it. Then select **Enable sales-manager policy** and run it.
 
 2. In Oracle Customer Sales, sign out and sign back in as Marvin. A fresh sign-in picks up the newly added manager role for this session. Select **Load Customers**.
 
-    Expected: **20** rows, `APP_SALES_EMPLOYEE, APP_SALES_MANAGER`, no `FINANCE` customers, and no sensitive columns.
+    Expected: **9** rows, `APP_SALES_EMPLOYEE, APP_SALES_MANAGER`, Credit Limit visible, and **Not authorized** for Sensitive Identifier.
+
+> **Optional:** In the Admin Console, run **Customize the manager grant** to remove Region or Revenue from Marvin's manager access, watch **Load Customers** in Customer Sales reflect the change immediately, then rerun **Enable sales-manager policy** to restore the original six columns.
 
 ## Task 8: Change the Application with Vibe
 
@@ -143,7 +146,7 @@ A data role bundles row and column permissions, much like a database role bundle
 
 4. Return to **Vibe Coding**. Run **Try an all-customer page** and approve the browser confirmation.
 
-    As Marvin, the page must show at most **20** rows, no `FINANCE` customers, and no sensitive columns.
+    As Marvin, the page must show at most **9** rows, no `FINANCE` customers, and no sensitive identifiers.
 
 5. At the bottom, enter a **Custom Vibe request**. For example:
 

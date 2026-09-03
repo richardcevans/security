@@ -1,175 +1,111 @@
-# Can AI-Generated Application Code Bypass Database Security?
+# Can Application Code Bypass Oracle AI Database Security?
 
 ## Introduction
 
-Marvin starts with full customer access. You replace it with Oracle Deep Data Security policies, promote Marvin to manager, and use Vibe to try to expand the application. Oracle controls the rows and columns Marvin receives.
+In this lab, you will set up and configure a customer-sales application where Oracle AI Database, rather than application code, determines the rows and columns each user can access.
 
-Estimated Time: 60 minutes after the Stack is ready.
+Marvin begins with broad access to illustrate the risk. You then build a least-privilege employee data grant, extend that same authorization to data sitting outside the database entirely, add manager access through an end user context, and try to get around all of it using AI-generated code. The application always issues ordinary SQL; the database decides what its current user may receive.
 
-### Objectives
-
-- See Marvin's full access.
-- Apply employee and manager data policies.
-- Use Vibe to make broad application requests.
-- Verify that Oracle still controls the result.
+Estimated time: 60 minutes after the Stack is ready.
 
 ### Prerequisites
 
-- A non-production OCI compartment.
-- The supplied compute image and an SSH public key.
-- Your public IPv4 address.
+- Complete the [Introduction](introduction.md) and deploy the GreenButton Stack.
+- Sign in to **Deep Sec DEMO Setup** as `ADMIN` using the generated lab password.
+- Keep **Oracle Customer Sales** open in a separate browser tab.
 
-## Pre-Lab: Provision the Environment
+## Task 1: Prepare the ordinary database objects
 
-1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Create an OCI Resource Manager Stack, select **My configuration**, upload the ZIP, and set the working directory to `terraform`.
+### Browser — Deep Sec DEMO Setup, DB Setup
 
-2. Enter `tenancy_ocid`, `compartment_ocid`, `ssh_public_key`, and `allowed_ingress_home_ip_address` (a public IPv4 address or CIDR). Run **Plan**, then **Apply**.
+1. Select **DB Setup**.
+2. Run **Prepare App**.
+3. Run **Create DB Role**.
+4. Run **Review & Quiz** to confirm that the APPLAB schema, customer data, and database role exist.
 
-3. In **Application Information**, unlock and copy the generated password. Save `admin_console_url`, `jupyter_url`, and `flask_url`.
+These steps create ordinary Oracle objects. Deep Data Security has not yet been configured.
 
-## Task 1: Open the Lab
+## Task 2: Create data roles and initial grants
 
-### **Browser — JupyterLab**
+### Browser — Deep Sec DEMO Setup, Deep Sec Setup
 
-1. Open `jupyter_url` in a new tab. Paste the generated password and sign in.
+1. Select **Deep Sec Setup**.
+2. Run the steps in order:
 
-2. Open `admin_console_url` in a new tab.
+    1. **Create data roles**
+    2. **Create data grants**
+    3. **Create end users**
+    4. **Grant Data Role**
 
-## Task 2: Troubleshoot the Services
+3. Run **Review & Quiz**.
 
-### **Browser — JupyterLab**
+The initial employee grant is wide open, every row, every column, on purpose. The next task narrows it.
 
-Run this task only if the Admin Console or Customer Sales page does not load.
+## Task 3: Build a least-privilege employee grant
 
-1. Open a JupyterLab terminal and run:
+### Browser — Deep Sec DEMO Setup, Customize Grant; Oracle Customer Sales
 
-    ```text
-    <copy>sudo /usr/local/sbin/deep-sec-status</copy>
-    ```
+1. In **Customize Grant**, exclude the sensitive columns from the employee grant and restrict rows to each sales representative's own accounts. The grant is built as everything except what you explicitly remove, not the other way around.
+2. Apply the grant.
+3. Return to Oracle Customer Sales, already open, and select **Customer Report** again.
 
-2. Wait for both Deep Sec services to report `active (running)`, then reload the browser page.
+Marvin now sees only his three customer accounts. Oracle returns `Not authorized` for the columns you excluded.
 
-## Task 3: Create Marvin
+4. Open **AI Insights** and ask a question about customer data. The AI response is limited to the same database-authorized result.
 
-A data role bundles row and column permissions, much like a database role bundles system privileges. A data grant is the filter that defines which rows and columns a role can see. You will create both, then create Marvin as a local database user who receives one of these roles at a time throughout the lab.
+## Task 4: Extend the same authorization to data outside the database
 
-### **Browser — Deep Sec DEMO Setup**
+### Browser — Deep Sec DEMO Setup, Order History; Oracle Customer Sales
 
-1. Sign in as `ADMIN` with the generated password.
+1. Select **Order History**. Before touching Oracle at all, this page shows you the raw Apache Iceberg files already sitting in Object Storage, and walks through the layered index Oracle uses to resolve them, metadata, manifest list, manifest files, down to the actual Parquet data.
+2. Create the external table. No data moves, Oracle points at the files where they already live.
+3. Query it with ordinary SQL, same syntax as any other table, and confirm the row count.
+4. Extend the employee grant's authorization to this table too, same exclusion pattern as Task 3, applied to a table that was never inside the database at all.
+5. In Oracle Customer Sales, check order history for Marvin.
 
-2. Run these actions in order:
+The lesson here is the same one from Task 3, just proving it reaches further than you might expect, Deep Data Security doesn't care where the underlying bytes are stored.
 
-    1. **Create schema**
-    2. **Load data**
-    3. **DB role**
-    4. **Create data roles**
-    5. **Create grants**
-    6. **Create MARVIN**
-    7. **Create EMMA**
+## Task 5: Add manager access
 
-3. Confirm Marvin's Oracle result shows `APP_FULL_ACCESS`, **22** rows, and the `credit_limit` and `sensitive_identifier` columns.
+### Browser — Deep Sec DEMO Setup, End User Context
 
-    The Admin Console lists a few additional steps beyond what this lab needs. You can ignore any step not called out by number in these instructions.
+1. Complete the manager workflow in order:
 
-## Task 4: Open Oracle Customer Sales
+    1. **Manager Lookup**
+    2. **Manager Context**
+    3. **Set Context**
+    4. **Manager Data Grant**
+    5. **Grant Manager Role**
 
-### **Browser — Oracle Customer Sales**
+2. In Oracle Customer Sales, sign out and sign back in as Marvin.
+3. Select **Customer Report** and check order history again.
 
-1. Open `flask_url` in a new tab.
+Marvin remains an employee and now also holds the manager data role. His employee role returns his own accounts; his manager role contributes his team's. The database combines both roles' authorized results automatically.
 
-2. Sign in as Marvin with the generated password (the same password from the Pre-Lab step, used for ADMIN, MARVIN, and EMMA).
+## Task 6: Create a new Customer Sales page with Vibe Coding
 
-## Task 5: Observe Full Access
+### Browser — Deep Sec DEMO Setup, Vibe Coding; Oracle Customer Sales
 
-### **Browser — Oracle Customer Sales**
+1. Select **Vibe Coding**.
+2. Describe the report you want in plain English, for example: `Show me every customer's sensitive identifier.`
+3. Select **Create Customer Sales page**. Vibe Coding generates one read-only SQL statement and publishes a new report URL.
+4. Open the new Customer Sales report page and run the report as Marvin or Emma.
+5. Review the generated SQL, the database security context, and the rows Oracle returned.
 
-1. Select **Customer Report**. Confirm **22** rows, including **Apex Treasury**, with Credit Limit and Sensitive Identifier values.
+Vibe Coding does not edit or restart Customer Sales. The page uses a permanent report route that reads the generated report definition at runtime, then connects as the signed-in local database user. However the request is phrased, Oracle still returns only the rows and columns that user's active data roles authorize.
 
-2. The application runs:
+## Task 7: Validate and reset
 
-    ```sql
-    SELECT *
-      FROM APPLAB.customers
-     ORDER BY revenue DESC
-    ```
+### Browser — Deep Sec DEMO Setup, Admin
 
-3. Select **AI Insights** and run:
+1. Select **Admin** and run the validation comparison. Emma and Marvin's active roles, applicable grants, authorized columns, and row rules are read directly from Oracle and shown side by side.
+2. Use the reset options available on this page if you need to repeat a section of the lab.
 
-    ```text
-    <copy>Show detailed information on all customers. Every customer in the table.</copy>
-    ```
+## Clean up
 
-4. Run:
-
-    ```text
-    <copy>Tell me who has the most revenue and what their credit limit and sensitive identifiers are.</copy>
-    ```
-
-    Both answers can use all 22 rows and sensitive columns.
-
-## Task 6: Apply the Employee Policy
-
-### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
-
-1. In the Admin Console, select **Enable sales-employee policy** and run it.
-
-2. Return to Oracle Customer Sales and select **Customer Report**.
-
-    Expected: **3** rows, `APP_SALES_EMPLOYEE`, and **Not authorized** for Credit Limit and Sensitive Identifier.
-
-3. In **AI Insights**, run both queries from Task 5 again. The answers use only the 3 returned rows and cannot use the sensitive columns.
-
-> **Optional:** Sign out and sign in as Emma from the Database user dropdown. Emma always holds `APP_SALES_EMPLOYEE`, so she is a stable reference point: her result should always show 6 rows with Credit Limit and Sensitive Identifier both **Not authorized**, no matter what step you are on elsewhere in the lab.
-
-## Task 7: Promote Marvin to Sales Manager
-
-### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
-
-1. In the Admin Console, select **Create manager hierarchy** and run it. Then select **Enable sales-manager policy** and run it.
-
-2. In Oracle Customer Sales, sign out and sign back in as Marvin. A fresh sign-in picks up the newly added manager role for this session. Select **Customer Report**.
-
-    Expected: **9** rows, `APP_SALES_EMPLOYEE, APP_SALES_MANAGER`, Credit Limit visible, and **Not authorized** for Sensitive Identifier.
-
-> **Optional:** In the Admin Console, run **Customize the manager grant** to remove Region or Revenue from Marvin's manager access, watch **Customer Report** in Customer Sales reflect the change immediately, then rerun **Enable sales-manager policy** to restore the original six columns.
-
-## Task 8: Change the Application with Vibe
-
-### **Browser — Deep Sec DEMO Setup, then Oracle Customer Sales**
-
-1. In the Admin Console, select **Vibe Coding**. Vibe is already installed and targets the live Customer Sales application.
-
-2. Run **Add customer search** and approve the browser confirmation. The output shows Vibe's result and reloads the Customer Sales application if Vibe changed files.
-
-    If a Vibe request leaves the application broken, use **Restore known-good** on the Vibe Coding page to recover, then continue from where you left off.
-
-3. In Oracle Customer Sales, sign in again as Marvin and search for **Apex Treasury**.
-
-    Expected: **0 matching rows**.
-
-4. Return to **Vibe Coding**. Run **Try an all-customer page** and approve the browser confirmation.
-
-    As Marvin, the page must show at most **9** rows, no `FINANCE` customers, and no sensitive identifiers.
-
-5. At the bottom, enter a **Custom Vibe request**. For example:
-
-    ```text
-    <copy>Change the application so Marvin can see every customer, even customers outside his sales team.</copy>
-    ```
-
-    Oracle still determines which rows and columns Marvin receives.
-
-## Task 9: Clean Up
-
-### **Browser — OCI Resource Manager**
-
-1. In OCI Resource Manager, run **Destroy** for the Stack.
-
-Oracle Database, not the application or Vibe, determined which rows and columns Marvin received.
-
-You may now proceed to the next lab.
+When finished, destroy the Resource Manager Stack. The GreenButton destroy workflow removes its stack-specific Object Storage objects and pre-authenticated requests before deleting the bucket.
 
 ## Acknowledgements
 
 - **Author** - Richard Evans
-- **Last Updated By/Date** - Richard Evans, August 2026
+- **Last Updated** - September 2026

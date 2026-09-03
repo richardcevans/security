@@ -1,80 +1,54 @@
-# Deep Data Security Local GenAI
+# Deep Sec GreenButton
 
-This project is the source and distribution package for the 60-minute Local End-User Deep Data Security workshop. Follow [deep-sec-local-genai.md](deep-sec-local-genai.md) for the complete learner path.
+GreenButton is the canonical Deep Sec deployment and development path.
 
-## What the lab demonstrates
-
-Marvin is a local Autonomous AI Database end user. A student signs in to Flask with his database password. Flask opens a direct mTLS connection as Marvin and runs one deliberately simple `SELECT *` query. Oracle Database is the authorization boundary throughout: the lab starts with full access, then replaces it with employee and manager Deep Data Security grants. The same application query shows the before-and-after authorization result without application-side filtering.
-
-The application does not use OCI IAM users, application registration, a shared database account, or a database-access token for customer data. Its AI Insights page uses the compute instance principal only to call OCI Generative AI after Oracle has returned Marvin's authorized rows and columns.
-
-Marvin's database password is not stored in `.env`, browser cookies, logs, or application files. Flask-Login stores an opaque browser-session identifier; the password remains only in the Flask process memory for 30 minutes. This is a restricted lab design. Use HTTPS for any broader deployment.
-
-## Application security model
-
-This workshop application intentionally contains no application-side customer-row or sensitive-column authorization. Flask authenticates directly to Oracle Database as the end user, and Oracle Deep Data Security determines which rows and columns that database identity can retrieve.
-
-That design does not remove normal secure-development responsibilities. The application continues to use CSRF protection, safe output rendering, server-side credential handling, short-lived database connections, and a parameter-free fixed SQL statement. Customer Insights receives only the rows Oracle returned for Marvin. It must not introduce SQL injection, cross-site scripting, credential exposure, or unsafe session handling.
-
-`flask-app/run.sh` intentionally defaults Gunicorn to one worker with four threads. Marvin's submitted database password is retained only in that one process's memory for the short-lived browser session; the threads share it, while independent Gunicorn workers would not. Gunicorn replaces a failed worker, and `run.sh` restarts its master process after an unexpected exit; press `Ctrl+C` to stop the application cleanly.
-
-## Download artifacts
-
-- **Terraform Stack ZIP:** `deep-sec-local-genai-terraform.zip`, for OCI Resource Manager.
-- **No-IAM Terraform Stack ZIP:** `deep-sec-local-genai-terraform-NO-IAM.zip`, for tenancies with pre-existing instance-principal authorization that cannot create or change dynamic groups or policies.
-- **Full lab ZIP:** `deep-sec-local-genai.zip`, containing the workshop instructions and source.
-- **Compute ZIP:** `deep-data-security-flask-app.zip`, the only ZIP required on the application server. Terraform preloads it at `/home/opc/deep-data-security-flask-app.zip`; it includes the customer app, auto-starting Admin Console, and database SQL scripts.
-- **Vibe CLI:** `vibe-cli.zip`, installed by Terraform for the Admin Console's Vibe Coding page.
-
-The workshop document contains the current download links for each artifact.
-
-## Application setup on the compute host
-
-In Stack **Application Information**, select **Unlock** and copy the generated **ADB ADMIN, JupyterLab, and Marvin password**. Open the JupyterLab link in a new browser tab and paste that password at sign-in; enter the same value for ADB `ADMIN` and Marvin when prompted. Terraform generates the wallet, places it in the private Stack bucket, and cloud-init downloads it to `/home/opc/deep-sec-wallet/tns_admin` before the learner begins. Open a JupyterLab **Other | Terminal** session. From the extracted `flask-app` directory, run:
+## Build
 
 ```bash
-bash setup_venv.sh
-bash verify_app_server.sh
-./configure_env.sh
+bash build_greenbutton_app_zip.sh
+bash build_greenbutton_terraform_zip.sh
 ```
 
-`setup_venv.sh` creates `.venv` and installs the curated requirements. Do not replace the provided `requirements.txt` with `pip freeze`; a freeze captures image-specific transitive packages and makes the lab less portable. `configure_env.sh` validates the installed wallet, generates the Flask secret, and writes the protected `.env` file.
+The deployable Terraform package is
+`deep-sec-local-genai-terraform-GreenButton.zip`. Upload it to OCI Resource
+Manager with `terraform` as the working directory. The application package is
+embedded in that Terraform archive; do not upload a second application ZIP.
 
-The setup script does not save Marvin's password. It is entered at the web sign-in page.
+The active sources are:
 
-The **Deep Sec DEMO Setup** starts automatically on port `7778`. It authenticates directly as ADB `ADMIN` with the same generated lab password. It provides a fixed allow-list of visible database scripts, runs the selected script through SQL*Plus, displays the output, and reads Marvin's resulting rows, columns, and active data roles directly from Oracle.
+- `greenbutton-files/` — isolated Flask, lesson-driven Admin Console, and setup files. Each lesson owns its SQL under `admin-app/content/<lesson>/database/`.
+- `terraform-greenbutton/` — walletless-TLS OCI Resource Manager Stack.
 
-Start the public web server with:
+The former wallet-based, regular, NO-IAM, and FREE paths are preserved under
+`archive/non-greenbutton-20260827/`. They are historical reference material,
+not supported deployment inputs.
 
-```bash
-./run.sh
-```
+See [terraform-greenbutton/README.md](terraform-greenbutton/README.md) for the
+complete Resource Manager deployment procedure, required inputs, bootstrap
+verification, reset behavior, and the Stack-owned Iceberg bucket flow.
 
-`./run.sh` is the learner-facing web-server launcher. For a local Flask development-server smoke test, use `./run_dev.sh`. Both scripts require `.venv`; run `setup_venv.sh` first.
+## Deploy the GreenButton Stack
 
-## Key scripts
+1. Build the application and Terraform archives from this directory:
 
-| Script | Purpose |
-| --- | --- |
-| `flask-app/setup_venv.sh` | Creates `.venv` and installs the approved Python dependencies. |
-| `flask-app/verify_app_server.sh` | Confirms the virtual environment, SQL*Plus, and Instant Client. |
-| `flask-app/install_wallet.sh` | Optional manual wallet installer for troubleshooting; normal Stack deployments install the wallet automatically. |
-| `flask-app/configure_env.sh` | Interactively validates the wallet, generates the Flask secret, and writes protected `.env` settings. |
-| `flask-app/query_data.sh` | Connects as Marvin and runs the fixed validation query. |
-| `flask-app/run.sh` | Runs the web server on port 7777. |
-| `flask-app/run_dev.sh` | Optional local Flask development-server launcher. |
-| `admin-app/admin_app.py` | Auto-starting administrator console on port 7778. It accepts only fixed, visible Deep Sec lab actions. |
-| `database/create_lab_users.sql` | Prompts for and creates the local Marvin end user. |
-| `database/create_emma_user.sql` | Creates Emma, a fixed APP_SALES_EMPLOYEE comparison user. |
-| `database/create_db_roles.sql` | Creates APP_LOCAL_CONNECT, an ordinary Oracle role with CREATE SESSION. |
-| `database/create_data_roles.sql` | Creates the full-access, sales-employee, and sales-manager data roles. |
-| `database/create_data_grants.sql` | Defines the full-access and sales-employee data grants. |
-| `database/enable_employee_policy.sql` | Replaces Marvin's full-access role with the sales-employee data role. |
-| `database/promote_marvin_to_manager.sql` | Adds the sales-manager data role and grant while Marvin retains the employee role. |
-| `package.sh` | Builds the credential-free compute ZIP. |
+   ```bash
+   bash build_greenbutton_app_zip.sh
+   bash build_greenbutton_terraform_zip.sh
+   ```
 
-The application server needs no OCI CLI or OCI credentials. Terraform's private, short-lived wallet delivery prepares the wallet automatically.
+2. In OCI Resource Manager, choose **Create stack**, **My configuration**, and
+   upload `deep-sec-local-genai-terraform-GreenButton.zip`. Set the working
+   directory to `terraform`.
+3. Enter the tenancy, target compartment, region, SSH public key, and the
+   existing OCI Auth Token identity used by ADB to read Iceberg:
+   `order_history_oci_username` in `<identity-domain>/<username>` form and
+   `order_history_oci_auth_token` as a sensitive value.
+4. Run **Plan**, review it, and then run **Apply**. Apply waits for the
+   application VM bootstrap health gate.
+5. Unlock the sensitive password in Application Information. Use the emitted
+   Admin Console, Customer Sales, JupyterLab, and SSH outputs.
 
-## Teaching flow
-
-Resource Manager provisioning is pre-lab work and is excluded from the 60-minute hands-on estimate. The timed lab proves this progression: **22 excessive rows**, **3 employee rows**, **9 manager rows**, then broad Vibe-generated application features that still receive only the rows and columns Oracle authorizes for Marvin. The required Vibe changes are global customer search and an admin-style everything page; exact GenAI wording is not a success criterion.
+The GreenButton path creates a private Stack-owned bucket and publishes the
+checked-in Iceberg sample during bootstrap. It does not require a user-owned
+bucket, Customer Secret Keys, manual Iceberg uploads, Spark, Data Flow, or a
+Hadoop catalog.

@@ -17,8 +17,8 @@ class ContentLoaderTests(unittest.TestCase):
         lesson = load_lesson(MANIFEST)
         self.assertEqual(lesson.id, "deep_data_security")
         self.assertEqual(len(lesson.pages), 8)
-        self.assertEqual(len(lesson.steps), 29)
-        self.assertEqual(len(lesson.actions), 30)
+        self.assertEqual(len(lesson.steps), 34)
+        self.assertEqual(len(lesson.actions), 35)
         self.assertEqual(len(lesson.overview["stages"]), 6)
         self.assertEqual(lesson.overview["start_path"], "/db-setup")
         self.assertEqual(len(lesson.tour), 8)
@@ -32,15 +32,19 @@ class ContentLoaderTests(unittest.TestCase):
             "data_grant",
         )
         self.assertFalse(lesson.actions["customize_manager_grant"].confirm_apply)
+        self.assertEqual(lesson.pages[-2].id, "exercises")
+        self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
+        self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")
 
     def test_runtime_content_preserves_configured_pages_and_wizards(self) -> None:
         lesson = load_lesson(MANIFEST)
         actions, steps, pages = build_runtime_content(lesson)
         self.assertEqual(actions["customize_employee_grant"]["type"], "wizard")
         self.assertEqual(actions["extend_manager_context"]["grant_wizard"]["style"], "all_except")
-        self.assertEqual(pages[-2]["renderer"], "vibe_coding")
+        self.assertEqual(pages[-2]["key"], "exercises")
+        self.assertEqual(len(pages[-2]["step_keys"]), 5)
         self.assertFalse(pages[-1]["ordered"])
-        self.assertEqual(len(steps), 29)
+        self.assertEqual(len(steps), 34)
 
     def test_unknown_action_reference_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

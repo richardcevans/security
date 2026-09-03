@@ -495,6 +495,46 @@ actions:
     short_label: Review
     output_title: Complete SQL*Plus output
 
+  exercise_persona_compare:
+    type: link
+    title: Compare Emma and Marvin
+    description: Sign in as Emma and run Customer Report, note her rows and columns. Then sign in as Marvin and do the same.
+    link_button_label: Mark as viewed
+    completion: mark_viewed
+    short_label: Compare personas
+
+  exercise_ai_insights:
+    type: link
+    title: Ask AI Insights
+    description: Whoever you're currently signed in as, open AI Insights and ask a broad question, something like "list every customer."
+    link_button_label: Mark as viewed
+    completion: mark_viewed
+    short_label: Ask AI Insights
+
+  exercise_order_history_before_after:
+    type: link
+    title: Order history, before and after
+    description: Check order history for Marvin, then extend customer access if you haven't yet, then check again.
+    link_button_label: Mark as viewed
+    completion: mark_viewed
+    short_label: Order history before/after
+
+  exercise_manager_promotion:
+    type: link
+    title: Promote Marvin, then compare
+    description: Note Marvin's row count as an employee. Grant him the manager role, sign out and back in, check again.
+    link_button_label: Mark as viewed
+    completion: mark_viewed
+    short_label: Compare before/after promotion
+
+  exercise_reset:
+    type: link
+    title: Use a restore option
+    description: On Admin, use Restore to DB Setup or Restore to Deep Sec Setup, then check Customer Sales for Marvin again.
+    link_button_label: Mark as viewed
+    completion: mark_viewed
+    short_label: Try a restore
+
   validate_as_marvin:
     type: sql
     title: Run Marvin validation queries
@@ -899,7 +939,7 @@ steps:
     title: Review & Quiz
     action_ids:
       - review_order_history
-    next_hint: Continue to Vibe Coding.
+    next_hint: Continue to Exercises.
     quiz:
       question: When Oracle creates APPLAB.ORDER_HISTORY, what happens to the Iceberg data?
       options:
@@ -913,6 +953,103 @@ steps:
           label: Oracle deletes the Iceberg files after importing their rows.
       correct_answer: object_storage
       explanation: Correct. ORDER_HISTORY is an external table over the existing Iceberg files; the data remains in Object Storage.
+
+  - id: exercise_persona_compare
+    badge: "1"
+    label: Compare personas
+    title: Compare Emma and Marvin
+    action_ids:
+      - exercise_persona_compare
+    next_hint: Continue to Ask AI Insights.
+    quiz:
+      question: Emma and Marvin both hold the employee data role. Why don't they see the same rows?
+      options:
+        - key: different_role
+          label: They're actually on different data roles.
+        - key: predicate
+          label: The grant's row predicate matches each one's own sales_rep value.
+        - key: app_logic
+          label: The application filters differently per user.
+        - key: random
+          label: Row order is randomized per session.
+      correct_answer: predicate
+      explanation: Correct. Same role, same grant, the predicate resolves against whoever's actually signed in, so each person's own rows are what comes back.
+
+  - id: exercise_ai_insights
+    badge: "2"
+    label: Ask AI Insights
+    title: Ask AI Insights
+    action_ids:
+      - exercise_ai_insights
+    next_hint: Continue to Order history before and after.
+    quiz:
+      question: You asked AI Insights a broad question. Did its answer include anyone outside what Customer Report already showed you?
+      options:
+        - key: yes_more
+          label: "Yes, the AI can see more than the table."
+        - key: no_same
+          label: "No, the AI's answer is bounded by the same authorized result."
+        - key: depends_prompt
+          label: It depends entirely on how the question is phrased.
+      correct_answer: no_same
+      explanation: Correct. The AI only ever sees what Oracle already returned for that session, no phrasing gets around that.
+
+  - id: exercise_order_history_before_after
+    badge: "3"
+    label: Order history before/after
+    title: Order history, before and after
+    action_ids:
+      - exercise_order_history_before_after
+    next_hint: Continue to Promote Marvin, then compare.
+    quiz:
+      question: Before Extend customer access ran, what did Marvin see in order history?
+      options:
+        - key: nothing
+          label: Nothing, not authorized.
+        - key: everything
+          label: Every order, unrestricted.
+        - key: three_rows
+          label: Only his own three customers' orders.
+      correct_answer: nothing
+      explanation: Correct. The external table existed, but nothing authorized any rows on it until the grant was extended.
+
+  - id: exercise_manager_promotion
+    badge: "4"
+    label: Compare before/after promotion
+    title: Promote Marvin, then compare
+    action_ids:
+      - exercise_manager_promotion
+    next_hint: Continue to Try a restore.
+    quiz:
+      question: After promotion, is Marvin's new row count simply his employee rows plus his manager rows added together?
+      options:
+        - key: yes_sum
+          label: "Yes, exactly the sum of both."
+        - key: no_union
+          label: "No, the two grants union together, so any row both would authorize only counts once."
+        - key: manager_only
+          label: Only the manager grant's rows count now.
+      correct_answer: no_union
+      explanation: Correct. Multiple applicable grants combine as a union, not an additive sum, overlapping rows aren't counted twice.
+
+  - id: exercise_reset
+    badge: "5"
+    label: Try a restore
+    title: Use a restore option
+    action_ids:
+      - exercise_reset
+    next_hint: You've now seen this from every angle, the builder side and the user side.
+    quiz:
+      question: After restoring to an earlier stage, what happened to Marvin's access in Customer Sales?
+      options:
+        - key: unchanged
+          label: Nothing changed, restores don't affect the live app.
+        - key: rolled_back
+          label: It rolled back to match whatever state that stage represents.
+        - key: reset_to_zero
+          label: Marvin lost the ability to sign in entirely.
+      correct_answer: rolled_back
+      explanation: Correct. A restore genuinely rewinds the database objects, so the application reflects wherever you rolled back to, not just the console's own display.
 
   - id: validate_as_marvin
     badge: V
@@ -1008,11 +1145,15 @@ pages:
       - extend_manager_context
       - review_order_history
 
-  - id: vibe-coding
-    path: /vibe-coding
-    label: Vibe Coding
-    step_ids: []
-    renderer: vibe_coding
+  - id: exercises
+    path: /exercises
+    label: Exercises
+    step_ids:
+      - exercise_persona_compare
+      - exercise_ai_insights
+      - exercise_order_history_before_after
+      - exercise_manager_promotion
+      - exercise_reset
 
   - id: admin
     path: /admin

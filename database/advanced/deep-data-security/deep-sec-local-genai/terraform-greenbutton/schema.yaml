@@ -38,6 +38,29 @@ variableGroups:
       - order_history_bucket_prefix
       - order_history_oci_username
       - order_history_oci_auth_token
+  # Confirmed unreferenced as of 2026-09-03. Hidden from the deploy UI, not
+  # deleted from variables.tf. Full removal is tracked for the next feature
+  # release; remove this compatibility group when upgraded Stack inputs no
+  # longer need to be preserved.
+  - title: "Deprecated (pending removal)"
+    visible: false
+    variables:
+      - enable_dataflow_iceberg_experiment
+      - dataflow_run_on_apply
+      - dataflow_iceberg_operator_group_name
+      - dataflow_iceberg_operator_identity_domain
+      - dataflow_iceberg_spark_version
+      - dataflow_iceberg_runtime_package
+      - use_shared_order_history_dataset
+      - shared_order_history_bucket
+      - shared_order_history_namespace
+      - shared_order_history_metadata_url
+      - shared_order_history_read_par_url
+      - shared_order_history_metadata_read_par_url
+      - current_user_ocid
+      - create_iceberg_resources
+      - order_history_delivery_mode
+      - order_history_bucket_name
   - title: "OCI Generative AI"
     variables:
       - create_genai_iam
@@ -161,6 +184,108 @@ variables:
     title: "Order History bucket prefix"
     description: "Prefix for the pre-created Iceberg table in the dedicated Stack-created bucket."
     default: "order_history_iceberg"
+    required: false
+  order_history_bucket_name:
+    type: string
+    title: "Retired Order History bucket override"
+    description: "Legacy Resource Manager input retained for upgraded stacks; the GreenButton bundle path ignores it."
+    visible: false
+    required: false
+  order_history_delivery_mode:
+    type: enum
+    title: "Retired Order History delivery mode"
+    description: "Legacy Resource Manager input retained for upgraded stacks; GreenButton always publishes its pre-created bundle."
+    enum: ["auto", "bundle", "sample", "copy", "dataflow"]
+    visible: false
+    required: false
+  use_shared_order_history_dataset:
+    type: boolean
+    title: "Retired shared Order History dataset switch"
+    description: "Legacy Resource Manager input retained for upgraded stacks; GreenButton uses its own pre-created bundle."
+    visible: false
+    required: false
+  shared_order_history_bucket:
+    type: string
+    title: "Retired shared Order History bucket"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored by GreenButton."
+    visible: false
+    required: false
+  shared_order_history_namespace:
+    type: string
+    title: "Retired shared Object Storage namespace"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored by GreenButton."
+    visible: false
+    required: false
+  shared_order_history_metadata_url:
+    type: string
+    title: "Retired shared Iceberg metadata URL"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored by GreenButton."
+    visible: false
+    required: false
+  shared_order_history_read_par_url:
+    type: string
+    title: "Retired shared Order History read PAR"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored by GreenButton."
+    visible: false
+    sensitive: true
+    required: false
+  shared_order_history_metadata_read_par_url:
+    type: string
+    title: "Retired shared metadata read PAR"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored by GreenButton."
+    visible: false
+    sensitive: true
+    required: false
+  current_user_ocid:
+    type: string
+    title: "Retired current user OCID"
+    description: "Legacy Resource Manager input retained for upgraded stacks; not used by GreenButton."
+    visible: false
+    required: false
+  create_iceberg_resources:
+    type: boolean
+    title: "Retired Iceberg resource creation switch"
+    description: "Legacy Resource Manager input retained for upgraded stacks; GreenButton does not create automatic Iceberg credential resources."
+    visible: false
+    required: false
+  enable_dataflow_iceberg_experiment:
+    type: boolean
+    title: "Retired Data Flow Iceberg experiment switch"
+    description: "Legacy Resource Manager input retained for upgraded stacks; Data Flow is not provisioned or used by GreenButton."
+    visible: false
+    required: false
+  dataflow_run_on_apply:
+    type: boolean
+    title: "Retired Data Flow apply switch"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored because Data Flow is not provisioned."
+    visible: false
+    required: false
+  dataflow_iceberg_operator_group_name:
+    type: string
+    title: "Retired Data Flow operator group"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored because Data Flow is not provisioned."
+    visible: false
+    required: false
+  dataflow_iceberg_operator_identity_domain:
+    type: string
+    title: "Retired Data Flow operator identity domain"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored because Data Flow is not provisioned."
+    default: "Oracle-SSO"
+    visible: false
+    required: false
+  dataflow_iceberg_spark_version:
+    type: string
+    title: "Retired Data Flow Spark version"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored because Data Flow is not provisioned."
+    default: "3.5.0"
+    visible: false
+    required: false
+  dataflow_iceberg_runtime_package:
+    type: string
+    title: "Retired Iceberg Spark runtime package"
+    description: "Legacy Resource Manager input retained for upgraded stacks; ignored because Data Flow is not provisioned."
+    default: "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1"
+    visible: false
     required: false
   create_genai_iam:
     type: boolean

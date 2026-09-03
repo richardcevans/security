@@ -52,6 +52,9 @@ tour:
   - selector: '.header-link[href="/order-history"]'
     title: "Order History"
     text: "See an Apache Iceberg table from three angles: raw Object Storage files, an Oracle external table over its metadata, and a cross-table data grant that limits which order rows each user can see."
+  - selector: '.header-link[href="/exercises"]'
+    title: "Exercises"
+    text: "Put what you learned into practice by comparing user access, testing AI and Iceberg queries, promoting Marvin, and trying a restore."
   - selector: '.header-link[href="/vibe-coding"]'
     title: "Vibe Coding"
     text: "Create a new Customer Sales report page. It runs as the local database user who opens it, so Oracle still decides what it can retrieve."
@@ -133,7 +136,7 @@ actions:
   grant_employee_access:
     type: sql
     title: Grant employee access
-    description: Grants HOL_DATAROLE_EMPLOYEE_ACCESS to Marvin. It begins wide open until you customize its data grant.
+    description: Grants HOL_DATAROLE_EMPLOYEE_ACCESS to Marvin and Emma. It begins wide open until you customize its data grant.
     scripts:
       - grant_employee_access.sql
     destructive: true
@@ -248,7 +251,7 @@ actions:
       - create_data_grants
       - create_end_users
     short_label: Customize employee
-    confirm_apply: true
+    confirm_apply: false
     output_title: SQL*Plus output
     config:
       title: Columns Marvin's employee data role can see
@@ -631,6 +634,8 @@ steps:
     action_ids:
       - prepare_applab
     next_hint: Run Create database role to set up ordinary Oracle login plumbing before Deep Sec begins.
+    notes:
+      - "Hi, I'm DeeBee, your Oracle Database assistant! I am here to help you understand the LiveLab and to give you information about Oracle Deep Data Security (Deep Sec). On each page I'll give you instructions, best practices, and tips for completing the lab but also for helping you deploy Deep Sec successfully in your environment."
 
   - id: create_db_roles
     badge: "2"
@@ -639,6 +644,8 @@ steps:
     action_ids:
       - create_db_roles
     next_hint: Continue to Create data roles. This is where Deep Sec starts.
+    notes:
+      - "All you're doing right now is creating basic Oracle Database roles and grants you are probably already familiar with. We'll get to the Deep Sec steps in the next section. One important thing to note is that traditional system grants cannot be granted to Deep Sec data grants, which is why we create this traditional database role, HOL_DBROLE_CONNECT."
 
   - id: review_setup
     badge: "3"
@@ -660,6 +667,8 @@ steps:
           label: CREATE SESSION must be granted directly to each end user by ADMIN.
       correct_answer: database_role
       explanation: Correct. HOL_DBROLE_CONNECT is the standard database-role bridge for CREATE SESSION; the data role carries that database role to the end user.
+    notes:
+      - "Each section ends with a SQL script to show you what you have accomplished, plus a quiz! Don't worry, you aren't being graded... the answers to the questions are available in some of my previous notes. You can guess as many times as you want, or you can just skip it by pressing Next Step."
 
   - id: create_roles
     badge: "1"
@@ -669,8 +678,9 @@ steps:
       - create_roles
     next_hint: Run Create data grants to give these data roles something to actually authorize.
     notes:
-      - The best practice is to grant data roles to standard database roles rather than directly to end users. This approach improves scalability and simplifies administration. Later, you can map the data role to a directory group so that all members automatically inherit the mapped data role.
-      - Note that CREATE OR REPLACE is supported for data roles. Standard database roles do not support the REPLACE option; this is a Deep Sec-specific convenience.
+      - "Data roles are the first new feature of Deep Sec you'll learn about! Data roles are similar to traditional roles, in that you grant privileges to the data role and grant the data role to users, but with these you grant Deep Sec data grants to data roles and grant data roles to End Users. Don't worry, you'll learn more about these in the next step..."
+      - "For now, you just need to know that while you CAN grant data grants to end users, to help you scale it's better to grant them to standard database roles. Like in this example, you grant the traditional database role to the EMPLOYEE_ACCESS data role."
+      - "Note that CREATE OR REPLACE is supported for data roles. Standard database roles do not support the REPLACE option; this is a Deep Sec-specific convenience. Pretty cool, right?"
 
   - id: create_data_grants
     badge: "2"
@@ -680,8 +690,8 @@ steps:
       - create_data_grants
     next_hint: Run Create end users to create Marvin and Emma. The employee data grant starts wide open and can be narrowed later.
     notes:
-      - The data grant authorizes the table. Revoke it and the role remains, but a query returns table or view does not exist rather than access denied.
-      - WHERE is optional on a data grant. Leaving it out authorizes every row, that's Deep Sec's real syntax for no restriction, not a 1=1 workaround. Leaving SELECT bare grants every column.
+      - "This is where you start to see the power of Deep Sec! You're going to grant SELECT on a specific table, CUSTOMERS, to the newly-creaetd data role. See how easy that is? This one is very basic, you're going to learn more soon.."
+      - "Basically, the data grant authorizes the data role to SELECT from the table. Whoever has that data role, can issue a SELECT. There are some optional clauses you can add to a data grant. You'll learn about those optional cuases in the Customize Grant section of the lab."
 
   - id: create_users
     badge: "3"
@@ -691,8 +701,9 @@ steps:
       - create_end_users
     next_hint: The data roles and grants are defined before any people receive them. Continue to Grant Data Role for Marvin's starting state.
     notes:
-      - In an enterprise IAM environment, people sign in as IAM users. Instead of creating Marvin and Emma as local database users, map the Deep Sec data role to an IAM directory group.
-      - When an IAM user such as Marvin belongs to that IAM directory group, they automatically receive the mapped Deep Sec data role when they sign in to the database.
+      - "This is the third new feature in Deep Sec - end users. These are like traditional database users but slightly different, they're schemaless! They don't own any objects in the database because most users don't, right? Most just access data, they don't ever create tables or views. Think of these as similar to application users, they don't exist in the database only in the application. We've taken that concept and brought them into the database so we can secure them with data roles and data grants."
+      - "But - if you're in an enterprise IAM enviornment, you're not going to use local end users like you are in this lab. You'll use your enterprise identity (e.g. dee.bee@oracle.com) to authenticate. Deep Sec will read your token and know who you are and what roles you have in the directory and then Deep Sec data roles and data grants will take care of the security on the tables for you."
+      - "Pretty cool right? Think how easy this would make your life? You wouldn't be managing users anymore, you'd hand that off to the IAM or IDP team. You'd map Directory groups to Deep Sec data roles and let data grants secure the data!"
 
   - id: grant_employee_access
     badge: "4"
@@ -701,6 +712,9 @@ steps:
     action_ids:
       - grant_employee_access
     next_hint: Open Customer Sales Demo to see this access from Marvin's side.
+    notes:
+      - "Remember on the last page where I talked about local end users versus enterprise end users? Because Marvin and Emma are local end users, we have to manually assign them the data roles we want them to have."
+      - "If you are integrated with with a directory, you would do something like 'create data role HOL_DATAROLE_EMPLOYEE_ACCESS mapped to 'azure_role=EMPLOYEES'; and then the mapping would automatically take care of itself when Marvin or Emma logged in."
 
   - id: review
     badge: "5"
@@ -722,6 +736,8 @@ steps:
           label: A manager context must be created for Marvin.
       correct_answer: grant_role
       explanation: Correct. A data role and its grant define possible access, but Marvin receives that access only after the data role is granted to him.
+    notes:
+      - "Now let's see what you built! You should see two data roles, one data grant, a predicate that is wide open (1=1), some data roles and database roles granted to our end users and our data roles, plus the newly creaetd end users Emma and Marvin."
 
   - id: customer_sales
     badge: "1"
@@ -743,6 +759,8 @@ steps:
           label: "0"
       correct_answer: twenty_two
       explanation: Correct. The basic data grant is wide open, so Marvin's Customer Report returns all 22 customer accounts.
+    notes:
+      - "This is where you get to see what you built! Open Customer Sales Demo, use the same password you used to login to this app and run the Customer Report. Check your understanding with the quiz, did you get it right???"
 
   - id: customize_employee_grant
     badge: "1"
@@ -752,7 +770,9 @@ steps:
       - customize_employee_grant
     next_hint: Continue to Check Customer Sales to confirm the change took effect.
     notes:
-      - Create a data grant that excludes the credit_limit and sensitive_identifier columns and restricts the rows to only the sales rep's own rows.
+      - "Now we're getting into the really good stuff! In this section, you will modify that basic data grant you created and choose columns to exclude from SELECT or include for UPDATE. This is the power of Deep Sec - control to the column level!"
+      - "But it doesn't stop there, you'll scroll down and restrict the rows returned to the specific sales rep that is running the query. You're not hardcoding anything here for Marvin or Emma, you're using their identity information (ora_end_user_context.username) and matching it to the column data."
+      - "For this data grant, create it so it excludes the credit_limit and sensitive_identifier columns and restricts the rows to only the sales rep's own rows. As you toggle between included and excluded, restrictx rows and allow deleting, you can see the Generated SQL window change to match your choices."
 
   - id: verify_employee_grant
     badge: "2"
@@ -774,6 +794,8 @@ steps:
           label: "0"
       correct_answer: three
       explanation: Correct. The restricted data grant returns the three customer accounts assigned to Marvin's sales rep.
+    notes:
+      - "Now check out the Customer Sales app... you should see a change in the number of rows Marvin sees! You can go back to the Customize Data Grants page and change them again to prove to yourself that it works or if you made a mistake and y ou're still seeing Credit Limit or Sensitive Identifier. When you're satisified... answer the check your understanding question."
 
   - id: review_grant
     badge: "3"
@@ -795,6 +817,8 @@ steps:
           label: A different password for the restricted user.
       correct_answer: database
       explanation: Correct. The database enforces the data grant, so changing or bypassing the application cannot reveal rows or columns that Oracle did not authorize.
+    notes:
+      - "Let's see what you built in the database! You should see 2 data roles, hopefully 5 columns where the EMPLOYEE_ACCESS data grant is the grantee for SELECT, you can see the new predicate where you match the sales_rep to the user's end user identity (ora_end_user_context.username) and you can see whether the end users can SELECXT, UPDATE, or DELETE on the 8 columns in the CUSTOMERS table. Plus the data roles and database roles and end user information we saw when we build this grant in the last section. You'll see a section that is empty, end user context definitions, that you'llw ork on in the next section!"
 
   - id: create_managers
     badge: "1"
@@ -803,6 +827,8 @@ steps:
     action_ids:
       - create_managers
     next_hint: Run Manager context to build the session-scoped context that reads this lookup.
+    notes:
+      - "Now you're going to create a small lookup table to identify who is the manager of which sales rep. In our small data set, we're only going to be working with Marvin and Emma. Marvin is Emma's manager. We create Priya but we're not going to use her in this lab."
 
   - id: create_manager_context
     badge: "2"
@@ -811,6 +837,10 @@ steps:
     action_ids:
       - create_manager_context
     next_hint: Run Set Context to wire up the bridge role and context access.
+    notes:
+      - "Ok, this is yet another really cool thing about Deep Sec - the ability to create and set end user context! While it may look like it's a table, the UPDATE END_USER_CONTEXT is really updating the context in the user's session memory. It stores it in memory for the life of the session, or until it's overwritten or destroyed. This allows Deep Sec to quickly identify any end user context information set for that end user."
+      - "Remember, the end user doesn't have to exist in the database - it can exist only in the enteprise directory provider. We set this in memory for their session, so we can build these relationships like who's their manager, maybe where they're located, what their application roles are, and much more."
+      - "Traditionally, you might have done this with a user context or an after logon trigger. Not with Deep Sec, it does it automatically and sets it for the end user on your behalf."
 
   - id: set_context
     badge: "3"
@@ -819,6 +849,8 @@ steps:
     action_ids:
       - set_context
     next_hint: Run Manager Data Grant to define what a manager can see, before granting the role itself.
+    notes:
+      - "Now you need to give APPLAB and the users themselves the ability to read and set the context. They can't change it manually, APPLAB and the Deep Sec will set it for them in their individual end user session."
 
   - id: customize_manager_grant
     badge: "4"
@@ -828,7 +860,9 @@ steps:
       - customize_manager_grant
     next_hint: Run Grant Manager Role to promote Marvin now that his grant is defined.
     notes:
-      - Create the data grant so the manager can see every column except Sensitive Identifier. The manager should also be able to update Customer Name, Region, and Sales Rep. Do not allow the manager to delete rows.
+      - "Now that we've created the relationship between employees and managers, we want to decide which columns end users with the manager data role should be allowed to SELECT or UDPATE, and if they should be allowed to DELETE rows."
+      - "For this data grant, managers should NOT be able to SELECT sensitive_identifier. Managers SHOULD be able to UPDATE customer_name, region, and sales_rep. Manager's should NOT be allowed to delete rows."
+      - "Notice the Generated SQL updates based on what you toggle to include or exclude or check or uncheck allow deleting rows."
 
   - id: grant_manager_role
     badge: "5"
@@ -838,6 +872,8 @@ steps:
       - enable_manager
       - disable_manager
     next_hint: Open Customer Sales as Marvin to see manager access apply, or Vibe Coding to try querying beyond it.
+    notes:
+      - "Now give this new role to Marvin, make him a manager! If you switch tabs to the Customer Sales app and re-run the Customer Report, what happens to the data? Answer the check your understanding question and tell me how many rows you now see. Are there any columns that are hidden? Can you guess why?"
     quiz:
       question: Now that Marvin is both an employee and a manager, how many rows are returned?
       options:
@@ -872,6 +908,10 @@ steps:
           label: A private copy of the customer table for each manager.
       correct_answer: context
       explanation: Correct. The data grant reads the authenticated user's context and the manager lookup to decide which rows Oracle returns.
+    notes:
+      - "This screen is your confirmation for the database steps. You'll see the two data roles, you'll see two data grants and the various columns that they have privileges on, either SELECT or UPDATE privileges."
+      - "You'll see the new predicate for the manager's data grant, notice it uses the new context you created, ora_end_user_context.APPLAB.MGR_CTX.id, to get the manager's ID. And you'll see which columns each data grant has SELECT or DELETE on and whether it can DELETE entire rows."
+      - "Now when you scroll to the bottom of the script output, you'll see we have a row in the end user context definitions view and it is valid. Check your knowledge and move to the next section!"
 
   - id: explain_iceberg_architecture
     badge: "1"
@@ -880,6 +920,9 @@ steps:
     action_ids:
       - explain_iceberg_architecture
     next_hint: Continue to See the raw data to look at the actual files this diagram describes.
+    notes:
+      - "If you've made it this far, congrats! You've quickly learned the power of Deep Data Security! But now it's time to build on that a little more by protecting data that doesn't even reside in the Oracle Database but in an Apache Iceberg data set on an OCI Object Storage Bucket."
+      - "In this step, you'll demonstrate that Deep Sec isn't just for traditional data but your modern data stack! You'll show how you can protect Apache Iceberg data with the same Deep Sec controls you used to protect a tradition, relational, database table."
 
   - id: show_iceberg_files
     badge: "2"
@@ -900,6 +943,7 @@ steps:
     next_hint: Continue to See the data to query it with ordinary SQL.
     notes:
       - "The published Iceberg metadata graph remains in Object Storage. One statement points Oracle at it and turns it into a queryable object: no ETL or copy into Oracle."
+      - "Now you'll ensure APPLAB has the proper Data Pump, network ACL privileges, and create the external table. In the external table creation statement, you'll see that it uses a credential taht was created for this lab that grants APPLAB access to the bucket and the files in the file_uri_list."
 
   - id: show_order_history_data
     badge: "4"
@@ -908,6 +952,9 @@ steps:
     action_ids:
       - show_order_history_data
     next_hint: Continue to Extend customer access to authorize what you just saw.
+    notes:
+      - "The first test is to query it as the ADB's ADMIN user. This is a very powerful user and only here to demonstrate that the external table data is accessible by a standard SQL query."
+      - "You should see 1500 rows, the 5 most recent orders, and a list of how many orders each sales rep has. Emma has 395 and Marvin has 223. What does that equal? Keep that in mind as you continue :)"
 
   - id: extend_manager_context
     badge: "5"
@@ -917,8 +964,10 @@ steps:
       - extend_manager_context
     next_hint: Continue to Review to confirm the grant.
     notes:
-      - AMOUNT starts included here on purpose. Revenue and financial figures are exactly the kind of column that shouldn't ride along just because it's technically available, the exercise is noticing it and checking it to exclude it, the same instinct as excluding CREDIT_LIMIT on the employee grant.
-      - This is a cross-table data grant. It authorizes an ORDER_HISTORY row only when that row's CUSTOMER_ID matches a CUSTOMERS row the end user can already SELECT. Oracle applies the CUSTOMER grants first, then follows the matching CUSTOMER_ID to the related Iceberg order rows. The relationship is fixed; you choose only which Order History columns to include.
+      - "Ok, if you thought Deep Sec was already cool, wait until you see this new feature! Now you're going to create a data grant based on the access a sales rep has to the CUSTOMERS table. Yes, you're creating a parent/child relationship here between ORDER_HISTORY and CUSTOMERS through Deep Sec data grants. This is what we call a cross table data grant. The predicate (e.g. WHERE) of the data grant doesn't look at the sales_rep name or the manager end-user context you created, it looks at the customer_id on the CUSTOMERS table and matches it to the customer_id in the ORDER_HISTORY table."
+      - "If you can see all the rows in CUSTOMERS, you can see all the rows that match in ORDER_HISTORY. If you can only see a limited number of rows in CUSTOMERS, you can only see a limited number of rows in ORDER_HISTORY. Do you remember how many rows Marvin could see? Do you remember how many he could see once he became Emma's manager? That's how this gets narrowed down!"
+      - "And one more cool thing, you'll see that we have an except clause Deep Sec data grants. For this data grant, exclude the amount column from being shown. Once you check that box you'll see how the Generated SQL changes."
+      - "After applying this data grant, check your understanding with the question below...."
     quiz:
       question: Run the Order History Report. How many rows are returned?
       options:
@@ -926,12 +975,12 @@ steps:
           label: "1500"
         - key: nine_hundred_forty_five
           label: "945"
-        - key: six_hundred_seventeen
-          label: "617"
+        - key: six_hundred_eighteen
+          label: "618"
         - key: zero
           label: "0"
-      correct_answer: six_hundred_seventeen
-      explanation: Correct. Oracle returns the Order History rows related to the customer accounts Marvin can access through his employee and manager data roles.
+      correct_answer: six_hundred_eighteen
+      explanation: Correct. Marvin can see 618 Apache Iceberg records through his sales-rep access and Emma's manager access.
 
   - id: review_order_history
     badge: "6"
@@ -940,6 +989,8 @@ steps:
     action_ids:
       - review_order_history
     next_hint: Continue to Exercises.
+    notes:
+      - "Run the SQL script to see the additions to the data grants and data roles within the database. You have learned how external tables can be accessed using SQL and protected by Deep Sec. Take a shot at the check your understanding question and then move on to the next section..."
     quiz:
       question: When Oracle creates APPLAB.ORDER_HISTORY, what happens to the Iceberg data?
       options:

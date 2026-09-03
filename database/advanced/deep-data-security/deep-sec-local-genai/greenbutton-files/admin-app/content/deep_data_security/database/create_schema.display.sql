@@ -8,13 +8,8 @@ DROP USER APPLAB CASCADE;
 --    lesson begins; it owns the lab objects and can create external objects
 --    such as the Iceberg table.
 CREATE USER APPLAB IDENTIFIED BY <protected setup password>;
-PROMPT Grant ADMIN and APPLAB outbound HTTPS access to Object Storage
-PROMPT This lives here, not with the Iceberg/Order History steps later, because
-PROMPT Oracle ties this grant to APPLAB by username, not by the underlying user
-PROMPT object. If APPLAB is ever dropped and recreated, restoring to this step
-PROMPT or resetting the lab, the old grant is orphaned and does not carry over.
-PROMPT Issuing it here means every path that (re)creates APPLAB re-grants it
-PROMPT automatically, nothing extra to remember or re-run.
+PROMPT Grant ADMIN and APPLAB outbound HTTPS access to Object Storage.
+PROMPT This will be used when Apache Iceberg is configured as an external table.
 DECLARE
   PROCEDURE grant_oraclecloud_https(p_host VARCHAR2, p_principal VARCHAR2) IS
   BEGIN

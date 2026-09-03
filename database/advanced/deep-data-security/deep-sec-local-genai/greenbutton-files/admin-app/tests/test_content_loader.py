@@ -21,7 +21,7 @@ class ContentLoaderTests(unittest.TestCase):
         self.assertEqual(len(lesson.actions), 35)
         self.assertEqual(len(lesson.overview["stages"]), 6)
         self.assertEqual(lesson.overview["start_path"], "/db-setup")
-        self.assertEqual(len(lesson.tour), 8)
+        self.assertEqual(len(lesson.tour), 9)
         self.assertEqual(lesson.tour[0]["title"], "DB Setup")
         self.assertEqual(
             sum(len(action.scripts) for action in lesson.actions.values()),

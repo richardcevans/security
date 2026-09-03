@@ -18,13 +18,8 @@ end;
 
 prompt SQL> CREATE USER APPLAB IDENTIFIED BY "<protected setup password, never displayed>"
 create user APPLAB identified by "&applab_password";
-prompt SQL> Grant ADMIN and APPLAB outbound HTTPS access to Object Storage
-prompt This lives here, not with the Iceberg/Order History steps later, because
-prompt Oracle ties this grant to APPLAB by username, not by the underlying user
-prompt object. If APPLAB is ever dropped and recreated, restoring to this step
-prompt or resetting the lab, the old grant is orphaned and does not carry over.
-prompt Issuing it here means every path that (re)creates APPLAB re-grants it
-prompt automatically, nothing extra to remember or re-run.
+PROMPT Grant ADMIN and APPLAB outbound HTTPS access to Object Storage.
+PROMPT This will be used when Apache Iceberg is configured as an external table.
 declare
   procedure grant_oraclecloud_https(p_host varchar2, p_principal varchar2) is
   begin
@@ -50,8 +45,9 @@ end;
 prompt SQL> GRANT CREATE SESSION, CREATE TABLE, CREATE PROCEDURE, CREATE SEQUENCE TO APPLAB
 prompt APPLAB is the pre-created lab schema used to own and create lesson objects.
 grant create session, create table, create procedure, create sequence to APPLAB;
-prompt SQL> GRANT DWROLE and EXECUTE ON DBMS_CLOUD TO APPLAB
+prompt SQL> GRANT DWROLE TO APPLAB
 grant dwrole to APPLAB;
+prompt SQL> GRANT EXECUTE ON DBMS_CLOUD TO APPLAB
 grant execute on dbms_cloud to APPLAB;
 prompt SQL> GRANT READ, WRITE ON DIRECTORY DATA_PUMP_DIR TO APPLAB
 grant read, write on directory data_pump_dir to APPLAB;

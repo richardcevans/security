@@ -559,7 +559,7 @@ function showDeebeePopup() {
   popup.innerHTML = `
     <img src="/static/images/DeeBee.png" alt="DeeBee" class="deebee-icon deebee-icon-large">
     <div>
-      <p class="deebee-greeting">Hi, I'm DeeBee. I'll have tips for you along the way. Start by pressing the ? to learn about the menu items.</p>
+      <p class="deebee-greeting">Hi, I'm DeeBee, your Oracle LiveLabs assistant! I am here to help you understand the lab and to give you information about Oracle Deep Data Security (Deep Sec). On each page I'll give you instructions, best practices, and tips for completing the lab but also for helping you deploy Deep Sec successfully in your environment.</p>
       <button class="primary small deebee-popup-dismiss" type="button">Got it</button>
     </div>
   `;

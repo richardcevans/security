@@ -13,8 +13,18 @@ import pyarrow as pa
 from pyiceberg.catalog import load_catalog
 from pyiceberg.io.pyarrow import PyArrowFileIO
 
-CUSTOMER_IDS = list(range(1, 23))
-SALES_REPS = ["MARVIN", "EMMA", "PRIYA"]
+# Must match database/load_sample_data.sql exactly. Customers 21-22 are
+# FINANCE and are excluded here, they're never authorized to any sales
+# rep or manager anywhere in this lab, so they never get sample orders.
+CUSTOMER_SALES_REP = {
+    1: "PRIYA", 2: "PRIYA", 3: "PRIYA", 4: "PRIYA", 5: "PRIYA",
+    6: "EMMA", 7: "EMMA", 8: "EMMA", 9: "EMMA", 10: "EMMA",
+    11: "MARVIN", 12: "MARVIN", 13: "MARVIN",
+    14: "PRIYA", 15: "PRIYA", 16: "PRIYA", 17: "PRIYA", 18: "PRIYA",
+    19: "EMMA",
+    20: "PRIYA",
+}
+CUSTOMER_IDS = list(CUSTOMER_SALES_REP.keys())
 PRODUCT_CATEGORIES = ["Software", "Hardware", "Services", "Support"]
 NAMESPACE = "default"
 TABLE_NAME = "order_history"
@@ -29,17 +39,20 @@ CATALOG_DIRECTORY = Path("/home/opc/.deep-sec-order-history")
 def generate_orders(n=1500, start=date(2025, 1, 1), end=date(2026, 12, 31)):
     random.seed(20260820)
     span = (end - start).days
-    return [
-        {
-            "order_id": order_id,
-            "customer_id": random.choice(CUSTOMER_IDS),
-            "order_date": start + timedelta(days=random.randint(0, span)),
-            "sales_rep": random.choice(SALES_REPS),
-            "product_category": random.choice(PRODUCT_CATEGORIES),
-            "amount": round(random.uniform(500, 25000), 2),
-        }
-        for order_id in range(1, n + 1)
-    ]
+    orders = []
+    for order_id in range(1, n + 1):
+        customer_id = random.choice(CUSTOMER_IDS)
+        orders.append(
+            {
+                "order_id": order_id,
+                "customer_id": customer_id,
+                "order_date": start + timedelta(days=random.randint(0, span)),
+                "sales_rep": CUSTOMER_SALES_REP[customer_id],
+                "product_category": random.choice(PRODUCT_CATEGORIES),
+                "amount": round(random.uniform(500, 25000), 2),
+            }
+        )
+    return orders
 
 
 def ensure_empty_warehouse(catalog_properties: dict[str, str], bucket: str) -> None:

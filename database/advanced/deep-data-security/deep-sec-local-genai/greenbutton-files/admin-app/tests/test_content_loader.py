@@ -32,6 +32,7 @@ class ContentLoaderTests(unittest.TestCase):
             "data_grant",
         )
         self.assertFalse(lesson.actions["customize_manager_grant"].confirm_apply)
+        self.assertFalse(lesson.actions["extend_manager_context"].confirm_apply)
         self.assertEqual(lesson.pages[-2].id, "exercises")
         self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
         self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")

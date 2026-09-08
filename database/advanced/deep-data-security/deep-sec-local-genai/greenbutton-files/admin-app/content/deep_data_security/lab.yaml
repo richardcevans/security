@@ -646,7 +646,7 @@ steps:
       - create_db_roles
     next_hint: Continue to Create data roles. This is where Deep Sec starts.
     notes:
-      - "Right now you are just creating basic Oracle Database roles and grants you are probably already familiar with. You will get to the Deep Sec steps in the next section."
+      - "Right now you are just creating basic Oracle Database roles and grants you are probably already familiar with."
       - "One important thing to note: traditional system privileges cannot be granted directly to Deep Sec data roles. That is why you create this traditional database role, HOL_DBROLE_CONNECT, first."
 
   - id: review_setup

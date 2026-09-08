@@ -33,6 +33,8 @@ overview:
       description: "Inspect Iceberg files in Object Storage, create the external table, and extend the data grant."
     - label: "Exercises"
       description: "Put Deep Sec to work through hands-on exercises."
+    - label: "Best Practices"
+      description: "Apply Deep Sec principles at enterprise scale with trusted identity, least privilege, controlled context, and policy lifecycle management."
   note: "Use the navigation links at any time. The Review steps provide a read-only snapshot of the database objects created so far."
   start_path: /db-setup
   start_label: "Start DB Setup"
@@ -59,6 +61,9 @@ tour:
   - selector: '.header-link[href="/exercises"]'
     title: "Exercises"
     text: "Go back and forth between here and the Customer Sales App, confirming what you built actually holds up from the user's side, AI Insights included."
+  - selector: '.header-link[href="/best-practices"]'
+    title: "Best Practices"
+    text: "See how the patterns in this lab extend to enterprise applications: trusted identity, minimally privileged connections, precise grants, controlled context, and policy lifecycle management."
   - selector: '.header-link[href="/admin"]'
     title: "Admin"
     text: "Run validation queries, or reset the whole lab back to nothing and start over."
@@ -538,6 +543,84 @@ actions:
     link_button_label: Mark as viewed
     completion: mark_viewed
     short_label: Try a restore
+
+  best_practice_authorization_model:
+    type: explanation
+    title: Design the authorization model before implementing policies
+    description: "Define who can access what data, which operations they can perform, and under what conditions. Translate those requirements into data roles and data grants so policies stay aligned with business rules instead of becoming one-off grants."
+    completion: mark_viewed
+    short_label: Design the model
+    output_title: Step status
+    config:
+      asset: best-practice-authorization-model.svg
+      asset_alt: "Business requirements flow into an authorization model and then into Deep Data Security data roles, data grants, and tests."
+      asset_caption: "Start with the business authorization model, then implement and test it with Deep Data Security."
+      button_label: Mark as viewed
+
+  best_practice_trusted_identity:
+    type: explanation
+    title: Use trusted identity and propagate the real end user to the database
+    description: "Prefer enterprise IAM such as Entra ID or OCI IAM for production applications, and propagate the authenticated user's identity, roles, and attributes through the end-user security context. Authorization should be based on the actual user, not only the shared connection-pool account."
+    completion: mark_viewed
+    short_label: Trusted identity
+    output_title: Step status
+    config:
+      asset: best-practice-trusted-identity.svg
+      asset_alt: "Marvin authenticates through enterprise IAM, the Customer Sales App uses its registered application identity, and the database receives Marvin's end-user security context over a pooled connection."
+      asset_caption: "Application identity identifies the calling application; the end-user security context tells Oracle that this request is for Marvin."
+      button_label: Mark as viewed
+
+  best_practice_minimal_connections:
+    type: explanation
+    title: Keep application connections minimally privileged
+    description: "Avoid broadly privileged service accounts. For user-mediated requests, the application connection should have only the privileges needed to connect and establish the end-user security context; access to application data should come from the user's data roles and data grants."
+    completion: mark_viewed
+    short_label: Minimize connections
+    output_title: Step status
+    config:
+      asset: best-practice-minimal-connections.svg
+      asset_alt: "A broad service account exposes all customer data, while a minimally privileged application connection establishes identity and lets Deep Data Security return only authorized data."
+      asset_caption: "Keep the connection narrow and put data authorization in Deep Data Security."
+      button_label: Mark as viewed
+
+  best_practice_least_privilege:
+    type: explanation
+    title: Apply least privilege at the row, column, and cell level
+    description: "Make data grants as precise as the business requirement: specify which rows, which columns, and which operations such as SELECT, UPDATE, INSERT, or DELETE. Multiple applicable data grants are additive, so evaluate their combined effect."
+    completion: mark_viewed
+    short_label: Fine-grained access
+    output_title: Step status
+    config:
+      asset: best-practice-least-privilege.svg
+      asset_alt: "A Customer Sales table shows row, column, cell, and operation-level authorization, with sensitive cells excluded from the result."
+      asset_caption: "Deep Data Security can express the exact rows, columns, cells, and operations the business rule allows."
+      button_label: Mark as viewed
+
+  best_practice_trusted_context:
+    type: explanation
+    title: Use trusted context and controlled elevation for complex authorization
+    description: "Put business attributes such as employee ID, organization, or territory into protected end-user contexts when policies need them. For sensitive workflows, use controlled privilege elevation rather than permanently granting broad access to users or agents."
+    completion: mark_viewed
+    short_label: Trusted context
+    output_title: Step status
+    config:
+      asset: best-practice-trusted-context.svg
+      asset_alt: "Trusted employee and territory attributes flow into a protected end-user context, which a Deep Data Security predicate evaluates before a controlled elevation is approved."
+      asset_caption: "Use trusted attributes for dynamic policy decisions and make exceptional elevation explicit, temporary, and auditable."
+      button_label: Mark as viewed
+
+  best_practice_policy_lifecycle:
+    type: explanation
+    title: Test, audit, and manage policies as code
+    description: "Test authorized and unauthorized access, multi-role users, role changes, pooled connections, and different access paths. Version and deploy Deep Data Security policies through CI/CD, inspect them through dictionary views, and configure auditing so activity is attributable to the actual end user or agent."
+    completion: mark_viewed
+    short_label: Test and govern
+    output_title: Step status
+    config:
+      asset: best-practice-policy-lifecycle.svg
+      asset_alt: "Deep Data Security policy definitions move from version control through CI/CD and testing into runtime enforcement, dictionary inspection, and audit evidence."
+      asset_caption: "Enterprise authorization is a lifecycle: define, test, deploy, observe, and improve."
+      button_label: Mark as viewed
 
   validate_as_marvin:
     type: sql
@@ -1129,6 +1212,72 @@ steps:
       correct_answer: real_objects
       explanation: "Correct. Everything in this lab, roles, grants, end users, context, is a real object living in the database. A restore is SQL running again, not a UI trick, so the application faithfully reflects wherever you rolled back to."
 
+  - id: best_practice_authorization_model
+    badge: "1"
+    label: Authorization model
+    title: Design the authorization model
+    action_ids:
+      - best_practice_authorization_model
+    next_hint: Continue to Trusted identity and application identity.
+    notes:
+      - "Start with a decision table: who is the subject, what object is protected, which operation is allowed, which rows and columns are in scope, and what trusted attributes affect the decision."
+      - "In this lab, that model becomes an employee data role, a row predicate based on the signed-in salesperson, and column-level choices for CUSTOMERS."
+
+  - id: best_practice_trusted_identity
+    badge: "2"
+    label: Trusted identity
+    title: Propagate the real end user
+    action_ids:
+      - best_practice_trusted_identity
+    next_hint: Continue to Minimally privileged connections.
+    notes:
+      - "Application identity and end-user identity are related but distinct. The application identity identifies the calling application; Marvin's end-user security context identifies the person whose request Oracle must authorize."
+      - "The lab uses local Marvin and Emma accounts to make the result visible. In production, map enterprise IAM users and roles, then propagate the trusted end-user security context through the connection pool."
+
+  - id: best_practice_minimal_connections
+    badge: "3"
+    label: Minimal connections
+    title: Keep application connections narrow
+    action_ids:
+      - best_practice_minimal_connections
+    next_hint: Continue to Row, column, and cell least privilege.
+    notes:
+      - "A connection pool is an efficiency mechanism, not an authorization model. Do not make the pooled account a back door to every application table."
+      - "For requests on behalf of a user, let the application establish trusted identity and context, while Deep Sec data roles and grants decide which data the user can read or change."
+
+  - id: best_practice_least_privilege
+    badge: "4"
+    label: Fine-grained access
+    title: Apply row, column, and cell least privilege
+    action_ids:
+      - best_practice_least_privilege
+    next_hint: Continue to Trusted context and controlled elevation.
+    notes:
+      - "Treat SELECT, UPDATE, INSERT, and DELETE as separate business decisions. An employee may be able to read a row without being able to update every column in it."
+      - "Multiple applicable data grants are additive. Review the union of grants, not each grant in isolation, especially when users hold more than one data role."
+
+  - id: best_practice_trusted_context
+    badge: "5"
+    label: Trusted context
+    title: Use trusted context and controlled elevation
+    action_ids:
+      - best_practice_trusted_context
+    next_hint: Continue to Test, audit, and manage policies as code.
+    notes:
+      - "Never treat an arbitrary browser field as a trusted authorization attribute. Validate identity and business attributes before placing them in the protected end-user context."
+      - "The lab's MGR_CTX demonstrates context-driven manager access. At enterprise scale, sensitive elevation should be approved, scoped to the operation, time-limited, and auditable."
+
+  - id: best_practice_policy_lifecycle
+    badge: "6"
+    label: Test and govern
+    title: Test, audit, and manage policies as code
+    action_ids:
+      - best_practice_policy_lifecycle
+    next_hint: Continue to Admin when you are ready.
+    notes:
+      - "Test both sides of every policy: authorized and unauthorized users, multiple roles, role changes, pooled connections, direct access paths, and agent-assisted workflows."
+      - "Treat data grants and context definitions as deployable policy. Review dictionary views and audit records so every decision can be traced to the end user, application, or agent that made the request."
+
   - id: validate_as_marvin
     badge: V
     label: Run validation
@@ -1247,6 +1396,17 @@ pages:
       - exercise_order_history_before_after
       - exercise_manager_promotion
       - exercise_reset
+
+  - id: best_practices
+    path: /best-practices
+    label: Best Practices
+    step_ids:
+      - best_practice_authorization_model
+      - best_practice_trusted_identity
+      - best_practice_minimal_connections
+      - best_practice_least_privilege
+      - best_practice_trusted_context
+      - best_practice_policy_lifecycle
 
   - id: admin
     path: /admin

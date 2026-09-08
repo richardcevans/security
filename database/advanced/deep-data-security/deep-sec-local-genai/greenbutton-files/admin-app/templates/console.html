@@ -94,7 +94,7 @@
               <details class="action-output grant-output" hidden><summary>{{ action.output_title or "SQL*Plus output" }}</summary><pre></pre></details>
               </div>
             {% elif action.explain_step %}
-              <figure class="iceberg-explanation"><img src="{{ url_for('static', filename='images/' ~ action.config.asset) }}" alt="Oracle resolves an Iceberg query through metadata JSON, a manifest list, manifest files, and Parquet data files."><figcaption>Oracle follows this metadata chain; only the final layer contains actual order rows.</figcaption></figure>
+              <figure class="explanation-figure"><img src="{{ url_for('static', filename='images/' ~ action.config.asset) }}" alt="{{ action.config.asset_alt or 'Deep Data Security explanation diagram' }}"><figcaption>{{ action.config.asset_caption or 'Deep Data Security explanation.' }}</figcaption></figure>
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" type="button">{{ action.button_label or action.config.button_label or "Mark as viewed" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% elif action.type == "object_storage" %}

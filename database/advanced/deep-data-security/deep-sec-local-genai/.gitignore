@@ -8,6 +8,8 @@ cloudshell/__pycache__/
 flask-app/logs/
 dist/*.zip
 dist/*.sha256
+!dist/deep-data-security-flask-app-GreenButton.zip
+!dist/deep-data-security-flask-app-GreenButton.zip.sha256
 terraform/.deep-sec-generated-wallet.zip
 
 # Local/editor and downloaded-file artifacts.

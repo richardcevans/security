@@ -95,6 +95,18 @@
               </div>
             {% elif action.explain_step %}
               <figure class="explanation-figure"><img src="{{ url_for('static', filename='images/' ~ action.config.asset) }}" alt="{{ action.config.asset_alt or 'Deep Data Security explanation diagram' }}"><figcaption>{{ action.config.asset_caption or 'Deep Data Security explanation.' }}</figcaption></figure>
+              {% if action.config.examples %}
+              <section class="code-examples" aria-labelledby="examples-{{ action.key }}-title">
+                <h3 id="examples-{{ action.key }}-title">Sample code</h3>
+                {% for example in action.config.examples %}
+                <details class="code-example">
+                  <summary>{{ example.title }}{% if example.language %} <span class="code-language">{{ example.language }}</span>{% endif %}</summary>
+                  {% if example.description %}<p>{{ example.description }}</p>{% endif %}
+                  <pre><code>{{ example.code }}</code></pre>
+                </details>
+                {% endfor %}
+              </section>
+              {% endif %}
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" type="button">{{ action.button_label or action.config.button_label or "Mark as viewed" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% elif action.type == "object_storage" %}

@@ -569,6 +569,31 @@ actions:
       asset_alt: "Marvin authenticates through enterprise IAM, the Customer Sales App uses its registered application identity, and the database receives Marvin's end-user security context over a pooled connection."
       asset_caption: "Application identity identifies the calling application; the end-user security context tells Oracle that this request is for Marvin."
       button_label: Mark as viewed
+      examples:
+        - title: Remove the local lab end user
+          language: SQL
+          description: "After moving to IAM-managed users and ending any local Marvin session, remove the local Deep Sec end user. This does not delete Marvin from Entra ID or OCI IAM."
+          code: |
+            -- Run as an authorized Deep Sec administrator.
+            DROP END USER marvin;
+        - title: "Microsoft Entra ID: map both application roles"
+          language: SQL
+          description: "Create application roles named employee and manager in Microsoft Entra ID, assign them to Marvin, then create the database-side mappings below."
+          code: |
+            CREATE DATA ROLE employee_role
+              MAPPED TO 'AZURE_ROLE=employee';
+
+            CREATE DATA ROLE manager_role
+              MAPPED TO 'AZURE_ROLE=manager';
+        - title: "OCI IAM: map both groups"
+          language: SQL
+          description: "Create OCI IAM groups named employee and manager, add Marvin to the appropriate groups, then create the database-side mappings below."
+          code: |
+            CREATE DATA ROLE employee_role
+              MAPPED TO 'IAM_OAUTH_GROUP=employee';
+
+            CREATE DATA ROLE manager_role
+              MAPPED TO 'IAM_OAUTH_GROUP=manager';
 
   best_practice_minimal_connections:
     type: explanation
@@ -582,6 +607,32 @@ actions:
       asset_alt: "A broad service account exposes all customer data, while a minimally privileged application connection establishes identity and lets Deep Data Security return only authorized data."
       asset_caption: "Keep the connection narrow and put data authorization in Deep Data Security."
       button_label: Mark as viewed
+      examples:
+        - title: "Microsoft Entra ID: register the Customer Sales App"
+          language: SQL
+          description: "Map the database application identity to the Entra application client ID. The placeholder is not a secret."
+          code: |
+            CREATE APPLICATION IDENTITY sales_app
+              MAPPED TO 'AZURE_CLIENT_ID=<entra-sales-app-client-id>';
+        - title: "OCI IAM: register the Customer Sales App"
+          language: SQL
+          description: "Map the database application identity to the OCI IAM OAuth client ID."
+          code: |
+            CREATE APPLICATION IDENTITY sales_app
+              MAPPED TO 'IAM_OAUTH_CLIENT_ID=<oci-sales-app-client-id>';
+        - title: Connection rule for user-mediated requests
+          language: SQL
+          description: "For a request on behalf of Marvin, the app establishes the end-user security context on the connection. The externally mapped employee and manager data roles come from Marvin's IAM claims; they are not granted to the local user."
+          code: |
+            -- Keep the connection role limited to connection and context setup.
+            CREATE ROLE sales_app_connect_role;
+            GRANT CREATE SESSION, CREATE END USER SECURITY CONTEXT
+              TO sales_app_connect_role;
+
+            -- Give the application identity only this local data role.
+            CREATE DATA ROLE sales_app_logon_role;
+            GRANT sales_app_connect_role TO sales_app_logon_role;
+            GRANT DATA ROLE sales_app_logon_role TO sales_app;
 
   best_practice_least_privilege:
     type: explanation
@@ -595,6 +646,34 @@ actions:
       asset_alt: "A Customer Sales table shows row, column, cell, and operation-level authorization, with sensitive cells excluded from the result."
       asset_caption: "Deep Data Security can express the exact rows, columns, cells, and operations the business rule allows."
       button_label: Mark as viewed
+      examples:
+        - title: "Employee access: own rows and no sensitive columns"
+          language: SQL
+          description: "The employee role can read Marvin's own salesperson rows, while credit_limit and sensitive_identifier are excluded."
+          code: |
+            CREATE DATA GRANT employee_customer_access
+              AS SELECT (ALL COLUMNS EXCEPT credit_limit, sensitive_identifier)
+              ON APPLAB.customers
+              WHERE UPPER(sales_rep) = UPPER(ORA_END_USER_CONTEXT.username)
+              TO employee_role;
+        - title: "Manager access: context-driven rows"
+          language: SQL
+          description: "The manager role can read rows selected by the protected manager context."
+          code: |
+            CREATE DATA GRANT manager_customer_access
+              AS SELECT
+              ON APPLAB.customers
+              WHERE manager_id = ORA_END_USER_CONTEXT.APPLAB.MGR_CTX.id
+              TO manager_role;
+        - title: Separate update authority from read authority
+          language: SQL
+          description: "If the business permits an employee to update revenue, grant that operation explicitly and keep it scoped to the same authorized rows."
+          code: |
+            CREATE DATA GRANT employee_customer_update
+              AS UPDATE (revenue)
+              ON APPLAB.customers
+              WHERE UPPER(sales_rep) = UPPER(ORA_END_USER_CONTEXT.username)
+              TO employee_role;
 
   best_practice_trusted_context:
     type: explanation
@@ -608,6 +687,22 @@ actions:
       asset_alt: "Trusted employee and territory attributes flow into a protected end-user context, which a Deep Data Security predicate evaluates before a controlled elevation is approved."
       asset_caption: "Use trusted attributes for dynamic policy decisions and make exceptional elevation explicit, temporary, and auditable."
       button_label: Mark as viewed
+      examples:
+        - title: Use a trusted context attribute in a predicate
+          language: SQL
+          description: "The application supplies validated context attributes through the end-user security context; the data grant evaluates them in Oracle."
+          code: |
+            CREATE DATA GRANT manager_customer_access
+              AS SELECT
+              ON APPLAB.customers
+              WHERE manager_id = ORA_END_USER_CONTEXT.APPLAB.MGR_CTX.id
+              TO manager_role;
+        - title: Keep elevation separate from ordinary access
+          language: SQL
+          description: "If an application needs a common, locally managed elevation role, grant only that narrowly defined role to the application identity and expose it through an approved workflow. Do not make it a permanent replacement for user authorization."
+          code: |
+            -- Illustrative: sales_approved_elevation is locally managed.
+            GRANT DATA ROLE sales_approved_elevation TO sales_app;
 
   best_practice_policy_lifecycle:
     type: explanation
@@ -621,6 +716,30 @@ actions:
       asset_alt: "Deep Data Security policy definitions move from version control through CI/CD and testing into runtime enforcement, dictionary inspection, and audit evidence."
       asset_caption: "Enterprise authorization is a lifecycle: define, test, deploy, observe, and improve."
       button_label: Mark as viewed
+      examples:
+        - title: Review mapped data roles
+          language: SQL
+          description: "Confirm which database data roles are mapped to external IAM claims."
+          code: |
+            SELECT data_role, mapped_to
+            FROM dba_data_roles
+            WHERE data_role IN ('EMPLOYEE_ROLE', 'MANAGER_ROLE')
+            ORDER BY data_role;
+        - title: Review data grants
+          language: SQL
+          description: "Inspect the row, column, and operation-level grants deployed to the application schema."
+          code: |
+            SELECT grant_name, object_name, privilege, column_name
+            FROM dba_data_grants
+            WHERE object_owner = 'APPLAB'
+            ORDER BY object_name, grant_name, column_name;
+        - title: Test the authorization contract
+          language: text
+          description: "Automate both allowed and denied paths for Marvin, Emma, multiple roles, role changes, pooled connections, and agent-assisted requests."
+          code: |
+            allowed:  Marvin reads his rows and approved columns
+            denied:   Marvin cannot read excluded columns or other rows
+            compare:  Emma's result remains independently attributable
 
   validate_as_marvin:
     type: sql

@@ -42,6 +42,17 @@ class ContentLoaderTests(unittest.TestCase):
             lesson.actions["best_practice_trusted_identity"].config["asset"],
             "best-practice-trusted-identity.svg",
         )
+        identity_examples = lesson.actions["best_practice_trusted_identity"].config["examples"]
+        self.assertEqual(len(identity_examples), 3)
+        self.assertIn("DROP END USER marvin;", identity_examples[0]["code"])
+        self.assertEqual(
+            lesson.actions["best_practice_minimal_connections"].config["examples"][0]["language"],
+            "SQL",
+        )
+        self.assertIn(
+            "ORA_END_USER_CONTEXT.username",
+            lesson.actions["best_practice_least_privilege"].config["examples"][0]["code"],
+        )
         self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
         self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")
 

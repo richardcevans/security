@@ -47,6 +47,7 @@ label { display: block; font-size: 14px; font-weight: 650; margin: 18px 0 6px; }
 .toggle-action { align-items: center; display: flex; min-height: 42px; }
 .toggle-half .action-output { margin-top: 24px; }
 .explanation-figure { margin: 18px 0; }.explanation-figure img { display: block; height: auto; margin: 0 auto; max-width: 900px; width: 100%; }.explanation-figure figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; text-align: center; }
+.code-examples { margin: 24px 0 18px; }.code-examples > h3 { margin: 0 0 8px; }.code-example { margin: 10px 0; padding-top: 10px; }.code-example summary { align-items: center; display: flex; gap: 8px; justify-content: space-between; }.code-example p { color: var(--muted); font-size: 14px; margin: 8px 0; }.code-language { color: var(--muted); font-size: 12px; font-weight: 600; margin-left: auto; text-transform: uppercase; }
 .action-next { align-items: center; background: #f1f8f1; display: flex; font-size: 14px; gap: 10px; margin: 14px 0 0; padding: 8px 0; }
 .run-action, .action-next .next-button { border-radius: 4px; font-size: 14px; font-weight: 700; line-height: 20px; min-height: 38px; padding: 8px 16px; }
 .action-next .next-button { background: var(--focus, #005fb8); border: none; color: #fff; cursor: pointer; flex: 0 0 auto; margin-right: 8px; min-width: 140px; }

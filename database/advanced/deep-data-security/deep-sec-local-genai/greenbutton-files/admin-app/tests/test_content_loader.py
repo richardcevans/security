@@ -39,6 +39,17 @@ class ContentLoaderTests(unittest.TestCase):
         self.assertEqual(lesson.pages[-2].id, "best_practices")
         self.assertEqual(len(lesson.pages[-2].step_ids), 6)
         self.assertEqual(
+            [lesson.step_by_id[step_id].title for step_id in lesson.pages[-2].step_ids],
+            [
+                "Authorization Mode",
+                "End User Context",
+                "Application Connections",
+                "Least Privilege",
+                "Privilege Elevation",
+                "Audit Policies",
+            ],
+        )
+        self.assertEqual(
             lesson.actions["best_practice_trusted_identity"].config["asset"],
             "best-practice-trusted-identity.svg",
         )
@@ -53,6 +64,11 @@ class ContentLoaderTests(unittest.TestCase):
             "ORA_END_USER_CONTEXT.username",
             lesson.actions["best_practice_least_privilege"].config["examples"][0]["code"],
         )
+        audit_examples = lesson.actions["best_practice_policy_lifecycle"].config["examples"]
+        self.assertIn("CREATE DATA ROLE", audit_examples[2]["code"])
+        self.assertIn("CREATE DATA GRANT", audit_examples[2]["code"])
+        self.assertIn("UNIFIED_AUDIT_TRAIL", audit_examples[3]["code"].upper())
+        self.assertIn("DBA_DATA_ROLE_GRANTS", audit_examples[3]["code"].upper())
         self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
         self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")
 

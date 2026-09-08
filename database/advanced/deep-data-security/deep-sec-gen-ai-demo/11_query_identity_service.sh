@@ -3,6 +3,8 @@
 
 set -Eeuo pipefail
 
+red_error() { printf '\n\n\033[0;31mERROR: %s\033[0m\n' "$*" >&2; }
+
 usage() {
   cat <<'EOF'
 Usage: ./11_query_identity_service.sh TOOL [options]
@@ -25,7 +27,7 @@ tool=${1:-}
 case "$tool" in
   employee_count|employees_by_department|employees_by_job_code|list_employees) shift ;;
   -h|--help|'') usage; exit 0 ;;
-  *) echo "ERROR: Unknown tool: ${tool}" >&2; usage >&2; exit 2 ;;
+  *) red_error "Unknown tool: ${tool}"; usage >&2; exit 2 ;;
 esac
 
 department_id=''
@@ -37,12 +39,12 @@ while [[ $# -gt 0 ]]; do
     --job-code) [[ $# -ge 2 ]] || { usage >&2; exit 2; }; job_code=$2; shift 2 ;;
     --limit) [[ $# -ge 2 ]] || { usage >&2; exit 2; }; limit=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "ERROR: Unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *) red_error "Unknown option: $1"; usage >&2; exit 2 ;;
   esac
 done
 
 if [[ "$tool" != list_employees && ( -n "$department_id" || -n "$job_code" || -n "$limit" ) ]]; then
-  echo 'ERROR: --department-id, --job-code, and --limit are valid only with list_employees.' >&2
+  red_error '--department-id, --job-code, and --limit are valid only with list_employees.'
   exit 2
 fi
 
@@ -70,14 +72,14 @@ if department_id:
     try:
         arguments["department_id"] = int(department_id)
     except ValueError:
-        raise SystemExit("ERROR: --department-id must be an integer")
+        raise SystemExit("\033[0;31mERROR: --department-id must be an integer\033[0m")
 if job_code:
     arguments["job_code"] = job_code
 if limit:
     try:
         arguments["limit"] = int(limit)
     except ValueError:
-        raise SystemExit("ERROR: --limit must be an integer")
+        raise SystemExit("\033[0;31mERROR: --limit must be an integer\033[0m")
 print(json.dumps({"tool": tool, "arguments": arguments}, separators=(",", ":")))
 PY
 )
@@ -97,7 +99,7 @@ if ! curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer ${token}" \
   --header 'Content-Type: application/json' \
   --data "$payload" >"$response_file"; then
-  printf '\nERROR: The query service did not return a successful response.\n' >&2
+  error 'The query service did not return a successful response.'
   [[ -s "$response_file" ]] && { printf 'Response body:\n' >&2; cat "$response_file" >&2; printf '\n' >&2; }
   exit 1
 fi

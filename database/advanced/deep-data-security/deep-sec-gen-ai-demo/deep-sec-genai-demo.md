@@ -101,6 +101,16 @@ Complete and verify `../adb-oci-iam` first. This extension expects
 You also need `oci`, `sqlplus`, `curl`, and Python 3. The scripts honor one OCI
 profile selector: `OCI_PROFILE_NAME`, `OCI_PROFILE`, or `OCI_CLI_PROFILE`.
 
+Load the completed base-lab environment before running this extension:
+
+```bash
+<copy>
+cd ../adb-oci-iam
+source ./.adb-oci-iam.env
+cd ../deep-sec-gen-ai-demo
+</copy>
+```
+
 Inspect the inherited environment without changing OCI resources:
 
 ```bash

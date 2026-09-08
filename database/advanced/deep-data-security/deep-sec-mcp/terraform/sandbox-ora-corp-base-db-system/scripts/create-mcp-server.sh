@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+source "${SCRIPT_DIR}/../../../../lib_oci_profile.sh"
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -55,9 +58,8 @@ if [[ -z "${COMPARTMENT_ID}" || -z "${CONNECTION_ID}" || -z "${DISPLAY_NAME}" ||
   exit 1
 fi
 
-oci dbtools mcp-server create-mcp-server-default \
+oci_with_profile dbtools mcp-server create-mcp-server-default \
   --compartment-id "${COMPARTMENT_ID}" \
   --connection-id "${CONNECTION_ID}" \
   --display-name "${DISPLAY_NAME}" \
   --domain-id "${DOMAIN_ID}"
-

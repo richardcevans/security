@@ -21,6 +21,24 @@ echo
 echo -e "${CYAN}Executing as ADMIN on ${ADB_SERVICE}${NC}"
 require_wallet_files
 
+if [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" = "1" ]; then
+  echo -e "${CYAN}OCI IAM is already configured on this reused ADB; preserving its existing database credential and OAuth association.${NC}"
+  echo -e "${CYAN}Set OCI_RECONFIGURE_REUSED_OAUTH_APPS=1 and rerun Task 0 only when you intentionally need to replace that configuration.${NC}"
+  admin_sqlplus <<'SQL'
+set echo off
+set lines 180
+col name format a35
+col value format a120
+SELECT name, value
+  FROM v$parameter
+ WHERE name IN ('identity_provider_type', 'identity_provider_oauth_config');
+exit;
+SQL
+  echo
+  echo -e "${GREEN}Task 1 skipped: existing OCI IAM authentication retained. Next: run ./02_create_hr_schema.sh${NC}"
+  exit 0
+fi
+
 for var in OCI_DB_APP_ID OCI_DOMAIN_URL OCI_DB_CLIENT_ID OCI_DB_CLIENT_SECRET; do
   if [ -z "${!var:-}" ]; then
     echo -e "${RED}ERROR: ${var} is not set.${NC}"

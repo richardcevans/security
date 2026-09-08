@@ -3,6 +3,8 @@
 
 set -Eeuo pipefail
 
+red_error() { printf '\n\n\033[0;31mERROR: %s\033[0m\n' "$*" >&2; }
+
 usage() {
   cat <<'EOF'
 Usage: ./08_llm_query_hr_as_current_user.sh --prompt TEXT [options]
@@ -39,8 +41,8 @@ while [[ $# -gt 0 ]]; do
     *) usage >&2; exit 2 ;;
   esac
 done
-[[ -n "$prompt" ]] || { echo 'ERROR: --prompt is required.' >&2; exit 2; }
-[[ "$max_tokens" =~ ^[1-9][0-9]*$ ]] || { echo 'ERROR: --max-tokens must be a positive integer.' >&2; exit 2; }
+[[ -n "$prompt" ]] || { red_error '--prompt is required.'; exit 2; }
+[[ "$max_tokens" =~ ^[1-9][0-9]*$ ]] || { red_error '--max-tokens must be a positive integer.'; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${script_dir}/lab_common.sh"
@@ -109,7 +111,7 @@ try:
     text = response["data"]["chat-response"]["choices"][0]["message"]["content"][0]["text"].strip()
     tool = json.loads(text)["tool"]
 except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
-    raise SystemExit(f"ERROR: LLM returned an invalid tool selection: {exc}")
+    raise SystemExit(f"\033[0;31mERROR: LLM returned an invalid tool selection: {exc}\033[0m")
 
 allowed = {
     "employee_count",
@@ -119,7 +121,7 @@ allowed = {
     "unsupported",
 }
 if tool not in allowed:
-    raise SystemExit(f"ERROR: LLM selected disallowed tool: {tool!r}")
+    raise SystemExit(f"\033[0;31mERROR: LLM selected disallowed tool: {tool!r}\033[0m")
 print(tool)
 PY
 )

@@ -15,6 +15,7 @@ ENV_FILE="${SCRIPT_DIR}/.adb-oci-iam.env"
 INSTANCE_FILE="${SCRIPT_DIR}/.adb-oci-iam.instance"
 WORK_DIR="${SCRIPT_DIR}/.oci-iam-setup"
 source "${SCRIPT_DIR}/lib_lab_instance.sh"
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
   echo "ERROR: This lab requires Bash 4.x or later." >&2
@@ -24,7 +25,7 @@ fi
 usage() {
   cat <<'EOF'
 Usage:
-  ./00_setup_adb.sh [compartment-name|compartment-ocid|root]
+  ./00_setup_adb.sh [--accept] [compartment-name|compartment-ocid|root]
 
 Compartment selection:
   ROOT_COMP_ID       Direct compartment OCID. Highest priority.
@@ -32,13 +33,39 @@ Compartment selection:
   argument           Same as OCI_COMPARTMENT.
 
 If none is provided, the script uses the root compartment.
+
+Options:
+  --accept           Acknowledge the non-production warning without prompting.
 EOF
 }
 
-if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-  usage
-  exit 0
-fi
+ACCEPT_NON_PRODUCTION=false
+SETUP_COMPARTMENT_ARGUMENT=''
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --accept)
+      ACCEPT_NON_PRODUCTION=true
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "ERROR: Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [ -n "$SETUP_COMPARTMENT_ARGUMENT" ]; then
+        echo "ERROR: Only one compartment argument is allowed." >&2
+        usage >&2
+        exit 2
+      fi
+      SETUP_COMPARTMENT_ARGUMENT="$1"
+      ;;
+  esac
+  shift
+done
 
 show_cmd() {
   printf '  $'
@@ -62,6 +89,10 @@ require_non_production_acknowledgement() {
     echo -e "${CYAN}Demo users          = skipped because CREATE_DEMO_USERS=0${NC}"
   fi
   echo
+  if [ "$ACCEPT_NON_PRODUCTION" = true ]; then
+    echo -e "${YELLOW}Non-production acknowledgement accepted with --accept.${NC}"
+    return 0
+  fi
   printf 'Type NON-PRODUCTION to confirm this is not a production environment: '
 
   local answer
@@ -83,6 +114,7 @@ ADB_OCI_IAM_LAB_INSTANCE_SHORT=$(short_lab_instance_id "$ADB_OCI_IAM_LAB_INSTANC
 export ADB_OCI_IAM_LAB_INSTANCE_SHORT
 
 export DB_NAME="${DB_NAME:-deepsec1${ADB_OCI_IAM_LAB_INSTANCE_SHORT}}"
+export DB_NAME_REUSE_PREFIX="${DB_NAME_REUSE_PREFIX:-deepsec1}"
 export DB_DISPLAY_NAME="${DB_DISPLAY_NAME:-${DB_NAME}}"
 if [ "$DB_NAME" != "deepsec1" ] && [ "$DB_DISPLAY_NAME" = "deepsec1" ]; then
   DB_DISPLAY_NAME="$DB_NAME"
@@ -123,8 +155,18 @@ export MARVIN_USERNAME="${MARVIN_USERNAME:-marvin}"
 export EMMA_USERNAME="${EMMA_USERNAME:-emma}"
 export CREATE_DEMO_USERS="${CREATE_DEMO_USERS:-1}"
 export TENANCY_OCID="${TENANCY_OCID:-${OCI_TENANCY:-}}"
-export OCI_COMPARTMENT="${1:-${OCI_COMPARTMENT:-root}}"
+export OCI_COMPARTMENT="${SETUP_COMPARTMENT_ARGUMENT:-${OCI_COMPARTMENT:-root}}"
 export OCI_DOMAIN_NAME="${OCI_DOMAIN_NAME:-Default}"
+# A reused ADB may already be connected to a resource application.  Do not
+# rewrite that application's audience, scopes, or secret unless the operator
+# explicitly asks to repair/reconfigure it.
+export OCI_RECONFIGURE_REUSED_OAUTH_APPS="${OCI_RECONFIGURE_REUSED_OAUTH_APPS:-0}"
+if [ "$OCI_RECONFIGURE_REUSED_OAUTH_APPS" != "0" ] && [ "$OCI_RECONFIGURE_REUSED_OAUTH_APPS" != "1" ]; then
+  echo -e "${RED}ERROR: OCI_RECONFIGURE_REUSED_OAUTH_APPS must be 0 or 1.${NC}" >&2
+  exit 1
+fi
+export OCI_IAM_ALREADY_CONFIGURED=0
+export REUSED_ADB_OAUTH_APP_ID=""
 legacy_oci_db_app_name="${DB_NAME} ADB OCI IAM DB Resource"
 legacy_oci_client_app_name="${DB_NAME} ADB OCI IAM Public Client"
 if [ -z "${OCI_DB_APP_NAME:-}" ] || [ "$OCI_DB_APP_NAME" = "$legacy_oci_db_app_name" ] || [ "$OCI_DB_APP_NAME" = "ADB OCI IAM DB Resource" ]; then
@@ -164,20 +206,20 @@ if ! command -v oci >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! oci iam region list >/dev/null 2>&1; then
-  echo -e "${RED}ERROR: OCI CLI cannot call OCI. In Cloud Shell, refresh the session or check your tenancy.${NC}"
+oci_global_args=()
+[ -n "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}" ] && oci_global_args+=(--config-file "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}")
+[ -n "${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}}" ] && oci_global_args+=(--profile "${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}}")
+
+if ! oci iam region list "${oci_global_args[@]}" >/dev/null 2>&1; then
+  echo -e "${RED}ERROR: OCI CLI cannot call OCI with profile ${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}}. In Cloud Shell, refresh the session or check your tenancy.${NC}"
   exit 1
 fi
 
 mkdir -p "$WORK_DIR"
 
-oci_global_args=()
-[ -n "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}" ] && oci_global_args+=(--config-file "${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-}}")
-[ -n "${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}" ] && oci_global_args+=(--profile "${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}")
-
 read_oci_config_value() {
   local key="$1"
-  local profile="${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}"
+  local profile="${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}}"
   local config_file="${OCI_CONFIG_FILE:-${OCI_CLI_CONFIG_FILE:-$HOME/.oci/config}}"
 
   if [ ! -f "$config_file" ]; then
@@ -269,10 +311,77 @@ first_query() {
 
 find_domain_app_id() {
   local name="$1"
-  first_query \
+  local app_id
+  app_id=$(first_query \
     "domain_cmd apps list --all --attribute-sets all --filter 'displayName eq \"${name}\"'" \
     'data.Resources[0].id' \
-    'data.resources[0].id'
+    'data.resources[0].id')
+  if [ -z "$app_id" ] && [[ "$name" == *" ADB OCI IAM "* ]]; then
+    app_id=$(first_query \
+      "domain_cmd apps list --all --attribute-sets all --filter 'displayName sw \"${name}\"'" \
+      'data.Resources[0].id' \
+      'data.resources[0].id')
+  fi
+  printf '%s' "$app_id"
+}
+
+find_latest_adb_by_prefix() {
+  local prefix="$1"
+  local response
+  response=$(oci db autonomous-database list \
+    --compartment-id "$ROOT_COMP_ID" \
+    --lifecycle-state AVAILABLE \
+    --all \
+    "${oci_global_args[@]}" \
+    --output json 2>/dev/null || true)
+  ADB_LIST_RESPONSE="$response" ADB_NAME_PREFIX="$prefix" python3 - <<'PY'
+import json
+import os
+
+try:
+    resources = json.loads(os.environ.get("ADB_LIST_RESPONSE", "{}")).get("data", [])
+except (json.JSONDecodeError, AttributeError):
+    raise SystemExit(0)
+
+prefix = os.environ["ADB_NAME_PREFIX"]
+matches = [item for item in resources if str(item.get("db-name", "")).startswith(prefix)]
+matches.sort(key=lambda item: str(item.get("time-created", "")), reverse=True)
+if matches:
+    print(matches[0].get("db-name", ""))
+PY
+}
+
+find_adb_in_other_accessible_compartment() {
+  local database_name="$1"
+  local compartment_id result
+  local -a compartment_ids
+
+  [ -n "${TENANCY_OCID:-}" ] || return 0
+  compartment_ids=("$TENANCY_OCID")
+  while IFS= read -r compartment_id; do
+    [ -n "$compartment_id" ] && compartment_ids+=("$compartment_id")
+  done < <(oci iam compartment list \
+    --compartment-id "$TENANCY_OCID" \
+    --compartment-id-in-subtree true \
+    --lifecycle-state ACTIVE \
+    --all \
+    --raw-output \
+    "${oci_global_args[@]}" \
+    --query 'data[].id' 2>/dev/null || true)
+
+  for compartment_id in "${compartment_ids[@]}"; do
+    [ "$compartment_id" = "$ROOT_COMP_ID" ] && continue
+    result=$(oci db autonomous-database list \
+      --compartment-id "$compartment_id" \
+      --all \
+      --raw-output \
+      "${oci_global_args[@]}" \
+      --query "data[?\"db-name\"=='${database_name}'] | [0].{id:id,compartmentId:\"compartment-id\",lifecycle:\"lifecycle-state\",dbVersion:\"db-version\"}" 2>/dev/null || true)
+    if [ -n "$result" ] && [ "$result" != "null" ]; then
+      printf '%s' "$result"
+      return 0
+    fi
+  done
 }
 
 find_domain_group_id() {
@@ -336,6 +445,158 @@ for key in aliases.get(field, [field]):
         print(value)
         break
 PY
+}
+
+get_domain_app_scope_fqs() {
+  local app_id="$1"
+  local scope_value="$2"
+  local response
+  response=$(domain_cmd app get --app-id "$app_id" --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  APP_RESPONSE="$response" APP_SCOPE_VALUE="$scope_value" python3 - <<'PY'
+import json
+import os
+
+try:
+    data = json.loads(os.environ.get("APP_RESPONSE", "{}")).get("data") or {}
+except Exception:
+    raise SystemExit(0)
+
+for scope in data.get("scopes") or []:
+    if scope.get("value") == os.environ["APP_SCOPE_VALUE"] and scope.get("fqs"):
+        print(scope["fqs"])
+        break
+PY
+}
+
+get_domain_app_oauth_metadata() {
+  local app_id="$1"
+  local response
+  response=$(domain_cmd app get --app-id "$app_id" --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return
+
+  APP_RESPONSE="$response" python3 - <<'PY'
+import json
+import os
+
+try:
+    data = json.loads(os.environ.get("APP_RESPONSE", "{}")).get("data") or {}
+except Exception:
+    raise SystemExit(0)
+
+for scope in data.get("scopes") or []:
+    if scope.get("value") and scope.get("fqs"):
+        print("{}|{}|{}".format(data.get("audience", ""), scope["value"], scope["fqs"]))
+        break
+PY
+}
+
+find_public_client_for_scope() {
+  local scope="$1"
+
+  # Keep the potentially large application inventory on stdin. Exporting it
+  # through APP_RESPONSE can exceed the operating-system argument-size limit.
+  { domain_cmd apps list --all --attribute-sets all --output json 2>/dev/null || printf '{}\n'; } \
+    | APP_SCOPE="$scope" python3 -c '
+import json
+import os
+import sys
+
+try:
+    data = json.load(sys.stdin).get("data", {})
+    resources = data.get("Resources") or data.get("resources") or []
+except Exception:
+    resources = []
+
+for app in resources:
+    allowed = app.get("allowedScopes") or app.get("allowed-scopes") or []
+    grants = app.get("allowedGrants") or app.get("allowed-grants") or []
+    client_type = (app.get("clientType") or app.get("client-type") or "").lower()
+    if (app.get("active", True) and client_type == "public" and "authorization_code" in grants
+            and any(item.get("fqs") == os.environ["APP_SCOPE"] for item in allowed)):
+        print(app.get("id", ""))
+        break
+'
+}
+
+public_client_supports_scope() {
+  local app_id="$1"
+  local scope="$2"
+  local response
+  response=$(domain_cmd app get --app-id "$app_id" --attribute-sets all 2>/dev/null || true)
+  [ -z "$response" ] && return 1
+
+  APP_RESPONSE="$response" APP_SCOPE="$scope" python3 - <<'PY'
+import json
+import os
+import sys
+
+try:
+    app = json.loads(os.environ.get("APP_RESPONSE", "{}")).get("data") or {}
+except Exception:
+    raise SystemExit(1)
+
+allowed = app.get("allowedScopes") or app.get("allowed-scopes") or []
+grants = app.get("allowedGrants") or app.get("allowed-grants") or []
+client_type = (app.get("clientType") or app.get("client-type") or "").lower()
+if client_type == "public" and "authorization_code" in grants and any(
+    item.get("fqs") == os.environ["APP_SCOPE"] for item in allowed
+):
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+read_existing_adb_oauth_config() {
+  local config rc
+  set +e
+  config=$(TNS_ADMIN="$WALLET_DIR" sqlplus -L -s "admin/${ADMIN_PWD}@${ADB_SERVICE}" <<'SQL' 2>/dev/null
+whenever oserror exit failure
+whenever sqlerror exit sql.sqlcode
+set heading off feedback off pages 0 verify off echo off
+select json_value(value, '$.app_id') || '|' || json_value(value, '$.domain_url')
+  from v$parameter
+ where name = 'identity_provider_oauth_config'
+   and json_exists(value, '$.app_id' false on error);
+exit
+SQL
+)
+  rc=$?
+  set -e
+  [ "$rc" -eq 0 ] || return "$rc"
+  config=$(printf '%s\n' "$config" | awk 'NF {print; exit}')
+  case "$config" in
+    *'|'*) printf '%s' "$config" ;;
+  esac
+}
+
+adopt_reused_adb_oauth_app() {
+  local config="$1"
+  local app_id domain_url metadata audience scope_value scope
+
+  app_id="${config%%|*}"
+  domain_url="${config#*|}"
+  [ -n "$app_id" ] && [ "$app_id" != "$config" ] || return 1
+
+  if [ -n "$domain_url" ] && [ "$domain_url" != "null" ]; then
+    OCI_DOMAIN_URL="$domain_url"
+    export OCI_DOMAIN_URL
+  fi
+  metadata=$(get_domain_app_oauth_metadata "$app_id")
+  [ -n "$metadata" ] || return 1
+  IFS='|' read -r audience scope_value scope <<< "$metadata"
+  [ -n "$audience" ] && [ -n "$scope_value" ] && [ -n "$scope" ] || return 1
+
+  REUSED_ADB_OAUTH_APP_ID="$app_id"
+  OCI_DB_APP_ID="$app_id"
+  OCI_DB_AUDIENCE="$audience"
+  OCI_DB_SCOPE_VALUE="$scope_value"
+  OCI_SCOPE="$scope"
+  OCI_IAM_ALREADY_CONFIGURED=1
+  export REUSED_ADB_OAUTH_APP_ID OCI_DB_APP_ID OCI_DB_AUDIENCE OCI_DB_SCOPE_VALUE OCI_SCOPE OCI_IAM_ALREADY_CONFIGURED
+  echo -e "${CYAN}  Reusing the OAuth resource app already configured on ADB: ${app_id}${NC}"
+  echo -e "${CYAN}  Preserving its audience, scope, and client secret.${NC}"
 }
 
 generate_secret() {
@@ -463,7 +724,16 @@ create_or_reuse_public_client_app() {
   local app_id
   local redirect_json
   redirect_json=$(redirect_uris_json)
-  app_id=$(find_domain_app_id "$OCI_CLIENT_APP_NAME")
+  app_id=$(find_public_client_for_scope "$OCI_SCOPE")
+  if [ -n "$app_id" ]; then
+    echo -e "${CYAN}  Reusing public client already authorized for the ADB scope: ${app_id}${NC}" >&2
+  else
+    app_id=$(find_domain_app_id "$OCI_CLIENT_APP_NAME")
+    if [ -n "$app_id" ] && ! public_client_supports_scope "$app_id" "$OCI_SCOPE"; then
+      echo -e "${YELLOW}  Named public client ${app_id} is not authorized for the reused ADB scope; leaving it unchanged.${NC}" >&2
+      app_id=""
+    fi
+  fi
   if [ -n "$app_id" ]; then
     echo -e "${CYAN}  Reusing public client app ${OCI_CLIENT_APP_NAME}: ${app_id}${NC}" >&2
   else
@@ -476,7 +746,7 @@ create_or_reuse_public_client_app() {
       --allowed-scopes "[{\"fqs\":\"${OCI_SCOPE}\"}]" >&2
     app_id=$(domain_cmd app create \
       --schemas '["urn:ietf:params:scim:schemas:oracle:idcs:App"]' \
-      --based-on-template '{"value":"CustomWebAppTemplateId","wellKnownId":"CustomWebAppTemplateId"}' \
+      --based-on-template '{"value":"CustomBrowserMobileTemplateId","wellKnownId":"CustomBrowserMobileTemplateId"}' \
       --display-name "$OCI_CLIENT_APP_NAME" \
       --description "Public interactive OAuth client for the ADB OCI IAM Deep Data Security lab" \
       --active true \
@@ -492,7 +762,11 @@ create_or_reuse_public_client_app() {
     echo -e "${CYAN}  Created public client app: ${app_id}${NC}" >&2
   fi
 
-  configure_public_client_app "$app_id"
+  if [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" = "1" ] && [ "$OCI_RECONFIGURE_REUSED_OAUTH_APPS" != "1" ]; then
+    echo -e "${CYAN}  Leaving the reused public client's redirect URIs and grants unchanged.${NC}" >&2
+  else
+    configure_public_client_app "$app_id"
+  fi
   printf '%s' "$app_id"
 }
 
@@ -621,17 +895,32 @@ setup_oauth_apps() {
   echo -e "${CYAN}  OCI_SCOPE         = ${OCI_SCOPE}${NC}"
   echo -e "${CYAN}  OCI_REDIRECT_URIS = ${OCI_REDIRECT_URIS}${NC}"
 
-  OCI_DB_APP_ID=$(create_or_reuse_db_resource_app)
-  configure_db_resource_app "$OCI_DB_APP_ID"
+  if [ -n "$REUSED_ADB_OAUTH_APP_ID" ]; then
+    OCI_DB_APP_ID="$REUSED_ADB_OAUTH_APP_ID"
+  else
+    OCI_DB_APP_ID=$(create_or_reuse_db_resource_app)
+    configure_db_resource_app "$OCI_DB_APP_ID"
+    OCI_SCOPE=""
+    for _ in 1 2 3 4 5; do
+      OCI_SCOPE=$(get_domain_app_scope_fqs "$OCI_DB_APP_ID" "$OCI_DB_SCOPE_VALUE")
+      [ -n "$OCI_SCOPE" ] && break
+      sleep 2
+    done
+  fi
+  if [ -z "$OCI_SCOPE" ]; then
+    echo -e "${RED}ERROR: Could not read the fully qualified OAuth scope from DB resource app ${OCI_DB_APP_ID}.${NC}"
+    exit 1
+  fi
+  export OCI_SCOPE
   OCI_DB_CLIENT_ID=$(get_domain_app_field "$OCI_DB_APP_ID" client_id)
-  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ] && [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" != "1" ]; then
     OCI_DB_CLIENT_SECRET=$(get_domain_app_field "$OCI_DB_APP_ID" client_secret)
   fi
-  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ] && [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" != "1" ]; then
     echo -e "${CYAN}  Resetting DB resource app secret for database-side OAuth validation...${NC}"
     OCI_DB_CLIENT_SECRET=$(regenerate_app_client_secret "$OCI_DB_APP_ID")
   fi
-  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ]; then
+  if [ -z "${OCI_DB_CLIENT_SECRET:-}" ] && [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" != "1" ]; then
     echo -e "${YELLOW}  Could not read regenerated secret; setting a new secret directly...${NC}"
     OCI_DB_CLIENT_SECRET=$(generate_secret)
     if [ -z "$OCI_DB_CLIENT_SECRET" ]; then
@@ -649,7 +938,7 @@ setup_oauth_apps() {
     echo "  oci identity-domains app get --endpoint '${OCI_DOMAIN_URL}' --app-id '${OCI_DB_APP_ID}' --attribute-sets all"
     exit 1
   fi
-  if [ -z "$OCI_DB_CLIENT_SECRET" ]; then
+  if [ -z "$OCI_DB_CLIENT_SECRET" ] && [ "${OCI_IAM_ALREADY_CONFIGURED:-0}" != "1" ]; then
     echo -e "${RED}ERROR: Could not determine or reset the DB resource app client secret for ${OCI_DB_APP_ID}.${NC}"
     exit 1
   fi
@@ -692,6 +981,7 @@ if [ -z "${ROOT_COMP_ID:-}" ]; then
       --lifecycle-state ACTIVE \
       --all \
       --raw-output \
+      "${oci_global_args[@]}" \
       --query "data[?name=='${OCI_COMPARTMENT}'].id | [0]")
 
     if [ -z "$ROOT_COMP_ID" ] || [ "$ROOT_COMP_ID" = "null" ]; then
@@ -709,9 +999,19 @@ export ROOT_COMP_ID
 
 OCI_DOMAIN_URL=$(discover_domain_url)
 export OCI_DOMAIN_URL
-require_non_production_acknowledgement
 
-setup_oauth_apps
+reused_db_name=$(find_latest_adb_by_prefix "$DB_NAME_REUSE_PREFIX")
+if [ -n "$reused_db_name" ] && [ "$reused_db_name" != "$DB_NAME" ]; then
+  echo -e "${YELLOW}Reusing newest available ADB matching ${DB_NAME_REUSE_PREFIX}*: ${reused_db_name}${NC}"
+  DB_NAME="$reused_db_name"
+  DB_DISPLAY_NAME="$reused_db_name"
+  ADB_SERVICE="${DB_NAME}_low"
+  WALLET_DIR="$HOME/adb_wallet/${DB_NAME}"
+  OCI_DB_APP_NAME="${DB_NAME} ADB OCI IAM DB Resource"
+  OCI_CLIENT_APP_NAME="${DB_NAME} ADB OCI IAM Public Client"
+  export DB_NAME DB_DISPLAY_NAME ADB_SERVICE WALLET_DIR OCI_DB_APP_NAME OCI_CLIENT_APP_NAME
+fi
+require_non_production_acknowledgement
 
 echo -e "${CYAN}Configuration:${NC}"
 echo -e "${CYAN}  OCI_COMPARTMENT = ${OCI_COMPARTMENT}${NC}"
@@ -730,7 +1030,6 @@ fi
 echo -e "${CYAN}  ADB_SERVICE     = ${ADB_SERVICE}${NC}"
 echo -e "${CYAN}  WALLET_DIR      = ${WALLET_DIR}${NC}"
 echo -e "${CYAN}  IAM groups      = ${OCI_IAM_EMPLOYEE_GROUP}, ${OCI_IAM_MANAGER_GROUP}${NC}"
-echo -e "${CYAN}  OAuth client    = ${OCI_CLIENT_ID}${NC}"
 echo -e "${CYAN}  Deep Data Security end-user context grants require Autonomous AI Database 26ai.${NC}"
 echo
 
@@ -741,23 +1040,27 @@ show_cmd oci db autonomous-database list \
   --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
+  "${oci_global_args[@]}" \
   --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]"
 ADB_OCID=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
   --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
+  "${oci_global_args[@]}" \
   --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
 ADB_DB_VERSION=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
   --lifecycle-state AVAILABLE \
   --all \
   --raw-output \
+  "${oci_global_args[@]}" \
   --query "data[?\"db-name\"=='${DB_NAME}'].\"db-version\" | [0]")
 ADB_ANY_STATE=$(oci db autonomous-database list \
   --compartment-id "$ROOT_COMP_ID" \
   --all \
   --raw-output \
+  "${oci_global_args[@]}" \
   --query "data[?\"db-name\"=='${DB_NAME}'].\"lifecycle-state\" | [0]")
 adb_maintenance_args=()
 if [ -n "$ADB_MAINTENANCE_SCHEDULE_TYPE" ]; then
@@ -769,6 +1072,31 @@ if [ "$ADB_IS_FREE_TIER" = "false" ]; then
 fi
 
 if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
+  existing_adb_elsewhere=$(find_adb_in_other_accessible_compartment "$DB_NAME")
+  if [ -n "$existing_adb_elsewhere" ]; then
+    existing_adb_details=$(ADB_DETAILS="$existing_adb_elsewhere" python3 - <<'PY'
+import json
+import os
+
+try:
+    value = json.loads(os.environ["ADB_DETAILS"])
+except Exception:
+    print(os.environ["ADB_DETAILS"])
+else:
+    print("OCID: {id}\n  Compartment: {compartment}\n  Lifecycle: {state}\n  Version: {version}".format(
+        id=value.get("id", "unknown"),
+        compartment=value.get("compartmentId", "unknown"),
+        state=value.get("lifecycle", "unknown"),
+        version=value.get("dbVersion", "unknown"),
+    ))
+PY
+)
+    echo -e "${RED}ERROR: An Autonomous AI Database named ${DB_NAME} already exists in another accessible compartment in this tenancy/region.${NC}"
+    echo "  ${existing_adb_details}"
+    echo -e "${YELLOW}No database was created in ${ROOT_COMP_ID}.${NC}"
+    echo -e "${YELLOW}To reuse that ADB, set ROOT_COMP_ID to its compartment and rerun. To create in ${OCI_COMPARTMENT}, set a new DB_NAME and rerun.${NC}"
+    exit 1
+  fi
   if [ -n "$ADB_ANY_STATE" ] && [ "$ADB_ANY_STATE" != "null" ]; then
     echo -e "${YELLOW}  Found ${DB_NAME} in lifecycle state ${ADB_ANY_STATE}; it is not reusable for this lab.${NC}"
   fi
@@ -781,6 +1109,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --is-free-tier "$ADB_IS_FREE_TIER" \
     "${adb_license_args[@]}" \
     "${adb_maintenance_args[@]}" \
+    "${oci_global_args[@]}" \
     --admin-password '<hidden>' \
     --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
@@ -793,6 +1122,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --is-free-tier "$ADB_IS_FREE_TIER" \
     "${adb_license_args[@]}" \
     "${adb_maintenance_args[@]}" \
+    "${oci_global_args[@]}" \
     --admin-password "$ADMIN_PWD" \
     --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
@@ -804,12 +1134,14 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --lifecycle-state AVAILABLE \
     --all \
     --raw-output \
+    "${oci_global_args[@]}" \
     --query "data[?\"db-name\"=='${DB_NAME}'].id | [0]")
   ADB_DB_VERSION=$(oci db autonomous-database list \
     --compartment-id "$ROOT_COMP_ID" \
     --lifecycle-state AVAILABLE \
     --all \
     --raw-output \
+    "${oci_global_args[@]}" \
     --query "data[?\"db-name\"=='${DB_NAME}'].\"db-version\" | [0]")
   echo -e "${CYAN}  Created ADB: ${ADB_OCID}${NC}"
   echo -e "${CYAN}  Created ADB version: ${ADB_DB_VERSION}${NC}"
@@ -830,10 +1162,12 @@ mkdir -p "$WALLET_DIR"
 show_cmd oci db autonomous-database generate-wallet \
   --autonomous-database-id "$ADB_OCID" \
   --password '<hidden>' \
+  "${oci_global_args[@]}" \
   --file "${WALLET_DIR}/${DB_NAME}_wallet.zip"
 oci db autonomous-database generate-wallet \
   --autonomous-database-id "$ADB_OCID" \
   --password "$WALLET_PWD" \
+  "${oci_global_args[@]}" \
   --file "${WALLET_DIR}/${DB_NAME}_wallet.zip" \
   >/dev/null
 
@@ -849,7 +1183,29 @@ if [ -f "${WALLET_DIR}/sqlnet.ora" ]; then
 fi
 
 echo
-echo -e "${YELLOW}Step 5: Creating or reusing OCI IAM domain groups and demo users...${NC}"
+echo -e "${YELLOW}Step 5: Inspecting OCI IAM configuration on the reused ADB...${NC}"
+if [ -n "${ADB_OCID:-}" ]; then
+  if ! existing_oauth_config=$(read_existing_adb_oauth_config); then
+    echo -e "${RED}ERROR: Could not inspect OCI IAM configuration on ${ADB_SERVICE}.${NC}"
+    echo -e "${YELLOW}The script will not create or reconfigure OAuth applications while the ADB state is unknown.${NC}"
+    exit 1
+  fi
+  if [ -n "$existing_oauth_config" ]; then
+    if ! adopt_reused_adb_oauth_app "$existing_oauth_config"; then
+      echo -e "${YELLOW}  ADB reports OCI IAM configuration, but its resource app could not be read from this Identity Domain.${NC}"
+      echo -e "${YELLOW}  The script will not overwrite it. Check OCI_DOMAIN_URL and access, then rerun.${NC}"
+      exit 1
+    fi
+  else
+    echo -e "${CYAN}  No existing OCI IAM configuration detected; a lab resource app will be created or reused by name.${NC}"
+  fi
+fi
+
+setup_oauth_apps
+echo -e "${CYAN}  OAuth client    = ${OCI_CLIENT_ID}${NC}"
+
+echo
+echo -e "${YELLOW}Step 6: Creating or reusing OCI IAM domain groups and demo users...${NC}"
 EMPLOYEES_OCID=$(create_or_reuse_domain_group "$OCI_IAM_EMPLOYEE_GROUP")
 MANAGERS_OCID=$(create_or_reuse_domain_group "$OCI_IAM_MANAGER_GROUP")
 
@@ -869,6 +1225,7 @@ fi
 
 cat > "$ENV_FILE" <<EOF
 export OCI_COMPARTMENT='${OCI_COMPARTMENT}'
+export OCI_PROFILE_NAME='${OCI_PROFILE_SELECTED}'
 export ROOT_COMP_ID='${ROOT_COMP_ID}'
 export DB_NAME='${DB_NAME}'
 export DB_DISPLAY_NAME='${DB_DISPLAY_NAME}'
@@ -897,6 +1254,8 @@ export OCI_REDIRECT_URIS='${OCI_REDIRECT_URIS}'
 export ADB_OCI_IAM_LAB_INSTANCE_ID='${ADB_OCI_IAM_LAB_INSTANCE_ID}'
 export OCI_DB_APP_NAME='${OCI_DB_APP_NAME}'
 export OCI_CLIENT_APP_NAME='${OCI_CLIENT_APP_NAME}'
+export OCI_IAM_ALREADY_CONFIGURED='${OCI_IAM_ALREADY_CONFIGURED}'
+export OCI_RECONFIGURE_REUSED_OAUTH_APPS='${OCI_RECONFIGURE_REUSED_OAUTH_APPS}'
 export OCI_IAM_EMPLOYEE_GROUP='${OCI_IAM_EMPLOYEE_GROUP}'
 export OCI_IAM_MANAGER_GROUP='${OCI_IAM_MANAGER_GROUP}'
 export EMPLOYEES_OCID='${EMPLOYEES_OCID}'

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web HR App</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p>Oracle Deep Data Security</p>
+          <h1>OCI IAM Web HR App</h1>
+        </div>
+        <div id="userBox" class="user-box"></div>
+      </header>
+
+      <section class="actions">
+        <a class="button" href="/login" id="ociLogin">Sign In With OCI IAM</a>
+        <a class="button secondary" href="/switch-account">Switch OCI IAM User</a>
+        <a class="button ghost" href="/debug">Diagnostics</a>
+        <a class="button ghost" href="/logout">Sign Out</a>
+      </section>
+
+      <section id="modeBanner" class="mode-banner"></section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Normal Employee Query</h2>
+          <p class="small">Uses the signed-in end user security context. The salary buttons call DBA demo procedures that recreate the HRAPP_MANAGER_ACCESS data grant.</p>
+          <div class="button-row">
+            <button id="employeesButton">Load Employees</button>
+            <button id="disableSalaryButton" class="button secondary" type="button">Disable Salary Edits</button>
+            <button id="enableSalaryButton" class="button secondary" type="button">Restore Salary Edits</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+	                  <th>ID</th>
+	                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Salary</th>
+                  <th>SSN</th>
+                  <th>Dept</th>
+                  <th>Manager</th>
+                </tr>
+              </thead>
+              <tbody id="employeeRows"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h2>Elevated Salary Summary</h2>
+          <p class="small">Requests HRAPP_COMPENSATION_ANALYST for this action only.</p>
+          <button id="summaryButton">Run Elevated Action</button>
+          <dl id="summary"></dl>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>Raw Response</h2>
+        <pre id="raw"></pre>
+      </section>
+
+      <section class="panel">
+        <h2>Unified Audit Trail</h2>
+        <p class="small">Shows recent SELECT and UPDATE audit records for HR.EMPLOYEES.</p>
+        <button id="auditButton" type="button">Refresh Audit Events</button>
+        <div class="table-wrap">
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Action</th>
+                <th>End User</th>
+                <th>Database User</th>
+                <th>Host / Client</th>
+                <th>SQL Text</th>
+                <th>Return</th>
+              </tr>
+            </thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

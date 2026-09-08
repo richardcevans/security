@@ -4,6 +4,7 @@ import logging
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFError, CSRFProtect
+from markupsafe import Markup, escape
 from werkzeug.exceptions import HTTPException
 
 from admin_config import load_admin_settings
@@ -31,6 +33,66 @@ from vibe import generate_report_query
 load_dotenv()
 settings = load_admin_settings()
 app = Flask(__name__)
+
+
+_ALLOWED_NOTE_TAGS = (
+    "b",
+    "br",
+    "code",
+    "em",
+    "i",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "strong",
+    "sub",
+    "sup",
+    "u",
+    "ul",
+)
+_NOTE_TAG_PATTERN = re.compile(
+    rf"</?(?:{'|'.join(_ALLOWED_NOTE_TAGS)})(?:\s*/?)?>",
+    re.IGNORECASE,
+)
+_HTML_TAG_PATTERN = re.compile(r"</?[A-Za-z][^>]*>")
+_NOTE_TAG_PARTS = re.compile(r"<(/?)([A-Za-z][A-Za-z0-9]*)(?:\s*/?)?>")
+_VOID_NOTE_TAGS = {"br"}
+
+
+def render_note(value: object) -> Markup:
+    """Render common note formatting while escaping all other markup."""
+    text = "" if value is None else str(value)
+    chunks = []
+    cursor = 0
+    open_tags = []
+    for match in _HTML_TAG_PATTERN.finditer(text):
+        chunks.append(str(escape(text[cursor : match.start()])))
+        candidate = match.group()
+        note_tag = _NOTE_TAG_PATTERN.fullmatch(candidate)
+        parts = _NOTE_TAG_PARTS.fullmatch(candidate) if note_tag else None
+        if not parts:
+            chunks.append(str(escape(candidate)))
+        else:
+            closing, tag = parts.groups()
+            tag = tag.lower()
+            self_closing = candidate.rstrip().endswith("/>") or tag in _VOID_NOTE_TAGS
+            if closing:
+                if open_tags and open_tags[-1] == tag:
+                    chunks.append(candidate)
+                    open_tags.pop()
+                else:
+                    chunks.append(str(escape(candidate)))
+            else:
+                chunks.append(candidate)
+                if not self_closing:
+                    open_tags.append(tag)
+        cursor = match.end()
+    chunks.append(str(escape(text[cursor:])))
+    return Markup("".join(chunks))
+
+
+app.jinja_env.filters["render_note"] = render_note
 app.config["SECRET_KEY"] = settings.secret_key
 app.config["SESSION_COOKIE_NAME"] = "deep_sec_admin_session"
 app.config["SESSION_COOKIE_HTTPONLY"] = True

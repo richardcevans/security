@@ -81,12 +81,21 @@ UPDATE hr.employees
        END;
 COMMIT;
 
+CREATE TABLE hr.managers AS
+SELECT *
+  FROM hr.employees;
+
+COMMIT;
+
 col first_name format a12
 col last_name format a12
 col user_name format a45
 SELECT employee_id, first_name, last_name, user_name, manager_id
 FROM hr.employees
 ORDER BY employee_id;
+
+SELECT COUNT(*) AS manager_table_rows
+  FROM hr.managers;
 
 exit;
 SQL

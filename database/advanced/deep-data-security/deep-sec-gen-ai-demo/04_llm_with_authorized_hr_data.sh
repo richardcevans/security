@@ -3,6 +3,8 @@
 
 set -Eeuo pipefail
 
+red_error() { printf '\n\n\033[0;31mERROR: %s\033[0m\n' "$*" >&2; }
+
 usage() {
   cat <<'EOF'
 Usage: ./04_llm_with_authorized_hr_data.sh --prompt TEXT [options]
@@ -33,8 +35,8 @@ while [[ $# -gt 0 ]]; do
     *) usage >&2; exit 2 ;;
   esac
 done
-[[ -n "$prompt" ]] || { echo 'ERROR: --prompt is required.' >&2; exit 2; }
-[[ "$max_tokens" =~ ^[1-9][0-9]*$ ]] || { echo 'ERROR: --max-tokens must be a positive integer.' >&2; exit 2; }
+[[ -n "$prompt" ]] || { red_error '--prompt is required.'; exit 2; }
+[[ "$max_tokens" =~ ^[1-9][0-9]*$ ]] || { red_error '--max-tokens must be a positive integer.'; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${script_dir}/lab_common.sh"

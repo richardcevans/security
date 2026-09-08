@@ -1,4 +1,6 @@
 .deep-sec-mcp.env
+.deep-sec-mcp.genai-baseline.env
+cline_mcp_settings.generated.json
 *.log
 *.lst
 *.zip

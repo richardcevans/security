@@ -177,6 +177,7 @@ python3 - <<'PY'
 import base64
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -187,6 +188,29 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 domain = os.environ["OCI_DOMAIN_URL"].rstrip("/")
+
+def oauth_domain_url(configured_domain):
+    """Use the public Identity Domain host for browser OAuth endpoints.
+
+    OCI CLI uses a regional Identity Domains administration endpoint such as
+    ``https://idcs-<id>.us-sanjose-idcs-1.identity.us-sanjose-1.oci.oraclecloud.com``.
+    Browser OAuth and the token endpoint must use the domain's canonical
+    authentication host, ``https://idcs-<id>.identity.oraclecloud.com``.
+    Keeping the two roles separate prevents a SAML response from returning to
+    a different host than the one that created the authorization request.
+    """
+    parsed = urllib.parse.urlparse(configured_domain)
+    host = parsed.hostname or ""
+    match = re.fullmatch(
+        r"(idcs-[^.]+)\.[^.]+\.identity\.[^.]+\.oci\.oraclecloud\.com",
+        host,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        return f"{parsed.scheme}://{match.group(1)}.identity.oraclecloud.com"
+    return configured_domain
+
+oauth_domain = oauth_domain_url(domain)
 client_id = os.environ["OCI_CLIENT_ID"]
 client_secret = os.environ.get("OCI_CLIENT_SECRET", "")
 scope = os.environ["OCI_SCOPE"]
@@ -331,7 +355,10 @@ if not redirect_uri:
     else:
         print("Continuing in manual callback mode.")
 
-auth_url = f"{domain}/oauth2/v1/authorize?" + urllib.parse.urlencode({
+if oauth_domain != domain:
+    print(f"Using canonical Identity Domain OAuth host: {oauth_domain}")
+
+auth_url = f"{oauth_domain}/oauth2/v1/authorize?" + urllib.parse.urlencode({
     "client_id": client_id,
     "response_type": "code",
     "redirect_uri": redirect_uri,
@@ -426,7 +453,7 @@ def request_token(strip_padding=False):
         headers["Authorization"] = f"Basic {basic}"
 
     request = urllib.request.Request(
-        f"{domain}/oauth2/v1/token",
+        f"{oauth_domain}/oauth2/v1/token",
         data=urllib.parse.urlencode(form).encode("utf-8"),
         headers=headers,
         method="POST",

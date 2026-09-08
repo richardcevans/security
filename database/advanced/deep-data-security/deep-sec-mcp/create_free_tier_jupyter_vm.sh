@@ -62,7 +62,7 @@ if [[ -r "$LAB_ENV_FILE" ]]; then
   COMPARTMENT_ID="${COMPARTMENT_ID:-$saved_compartment_id}"
   OCI_PROFILE_NAME="${OCI_PROFILE_NAME:-$(read_lab_env_value OCI_PROFILE_NAME)}"
 fi
-source "${SCRIPT_DIR}/../lib_oci_profile.sh"
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 # OCI CLI profiles record the tenancy OCID.  Read the active profile directly:
 # OCI CLI 3.x no longer exposes the older `oci configure list` command.

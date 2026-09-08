@@ -1,8 +1,10 @@
-# Optional Lab 2: Connect Cursor to the MCP Server
+# Optional Lab 2: Connect Cline to the MCP Server
 
 ## Introduction
 
-Connect an external MCP client to the OCI Database Tools MCP server created in Lab 2. This optional lab uses Cursor so you can sign in through OCI IAM, inspect MCP tools, and approve tool calls.
+Connect Cline to the OCI Database Tools MCP server created in Lab 2. This lab
+uses `mcp-remote` and a registered OCI IAM public client so Cline can complete
+the OAuth browser flow without relying on dynamic client registration.
 
 Estimated Time: 25 minutes
 
@@ -12,16 +14,16 @@ In this lab, you will:
 
 - Confirm the MCP server endpoint and toolset values.
 - Register a public MCP client in the OCI identity domain.
-- Configure Cursor with a local or approved model provider.
-- Add the OCI Database Tools MCP server as a remote MCP server.
-- Use OAuth with the registered Cursor client ID instead of a bearer token.
+- Register a Cline public OAuth client through the lab script.
+- Generate a Cline `mcp-remote` configuration with that client ID.
+- Complete OCI IAM OAuth without placing an access token in Cline settings.
 - Run controlled prompt tests and review each tool call before approval.
 
 ### Prerequisites
 
 - Completed Lab 2.
-- Cursor installed on your workstation.
-- A Cursor model provider configured. For workshop use, prefer a local or approved provider when available.
+- Cline installed in VS Code on your workstation.
+- Node.js 20 or later and `npx` available where the VS Code Server runs Cline.
 - Permission to register MCP clients for the MCP server identity domain.
 
 ## Task 1: Confirm MCP Server Values
@@ -66,127 +68,77 @@ In this lab, you will:
     </copy>
     ```
 
-## Task 2: Register a Cursor MCP Client
+## Task 2: Register the Cline Public Client
 
-1. In the OCI Console, open **Developer Services**, then **Database Tools**, then **Model Context Protocol Servers**.
-
-2. Open the MCP server named by `MCP_SERVER_NAME`.
-
-3. Open the **Clients** tab.
-
-4. Click **Register Model Context Protocol client**.
-
-5. Use these values.
-
-    | Field | Value |
-    | --- | --- |
-    | Name | `deep-sec-mcp-cursor` |
-    | Description | `Cursor client for DeepSec MCP workshop` |
-    | Type | `Public` |
-    | Allowed grant types | Confirm the page shows `authorization_code` and `refresh_token` |
-    | Scope | Use the scope displayed by the registration page |
-    | Redirect URI | `cursor://anysphere.cursor-mcp/oauth/callback` |
-
-    The scope can be server-specific. For example, the page may display a value in this shape:
-
-    ```text
-    <copy>
-    urn:opc:dbtools:mcpserver:<mcp_server_ocid>:mcp:all
-    </copy>
-    ```
-
-    Copy the value shown by your page instead of typing a generic scope.
-
-6. Add Cursor's OAuth callback URI.
-
-    ```text
-    <copy>
-    cursor://anysphere.cursor-mcp/oauth/callback
-    </copy>
-    ```
-
-    Cursor sends this redirect URI during the OCI IAM browser login. The value must be registered exactly. If OCI later returns `invalid_redirect_uri`, edit or recreate the MCP client registration and add the redirect URI named in the error message.
-
-7. Complete the registration.
-
-8. Copy the **Client ID** shown on the registration details page.
-
-    You will use this value in Cursor's `mcp.json` file. This is not an access token and it is not a client secret.
-
-9. Save the values in the current shell if you want to generate the Cursor configuration from Cloud Shell.
+1. Run the registration script. It discovers the scope from the actual MCP
+    resource application, previews the public-client configuration, and asks
+    for `CREATE` only after showing the redirect URI.
 
     ```bash
     <copy>
-    export CURSOR_MCP_CLIENT_ID="<client_id_from_registration_page>"
+    ./02_register_cline_mcp_client.sh
     </copy>
     ```
 
-10. Do not generate a personal access token for this path.
+2. The script registers this exact redirect URI for Cline through
+    `mcp-remote`:
 
-    Cursor will start an OAuth browser sign-in flow when it connects to the MCP server.
-
-## Task 3: Configure Cursor's Model Provider
-
-1. Open Cursor.
-
-2. Open **Settings**.
-
-3. Configure a model provider.
-
-    For a workshop environment that should not require new external model accounts, use a local runtime when available:
-
-    - **Ollama** with base URL `http://localhost:11434`
-    - **LM Studio** with base URL `http://localhost:1234`
-
-4. Verify the model connection in Cursor before adding the MCP server.
-
-    Keep the first prompts small. Local models can be slower than hosted models, especially on small laptops.
-
-## Task 4: Add the OCI MCP Server to Cursor
-
-1. In Cursor, open **Settings**.
-
-2. Open **MCP**.
-
-3. Open your global `mcp.json` file.
-
-4. Add the OCI Database Tools MCP server entry.
-
-    Do not add an `Authorization` header. Cursor should prompt you to sign in through OCI IAM.
-
-    Use the **Client ID** from the OCI registration details page. Without the static client ID, Cursor can try dynamic client registration and fail with an error such as `Incompatible auth server: does not support dynamic client registration`.
-
-    ```json
+    ```text
     <copy>
-    {
-      "mcpServers": {
-        "deep-sec-mcp": {
-          "type": "http",
-          "url": "<mcp_server_endpoint_url>",
-          "auth": {
-            "CLIENT_ID": "<client_id_from_registration_page>"
-          }
-        }
-      }
-    }
+    http://localhost:8080/oauth/callback
     </copy>
     ```
 
-5. Save `mcp.json`.
+    The script sets the Identity Domains `all-url-schemes-allowed` option for
+    this public client. That is required when a domain otherwise rejects the
+    localhost HTTP callback. It still registers only the URI shown above.
 
-6. Restart Cursor or reload the Cursor window.
+3. Generate the Cline settings entry. This creates a local file only; it does
+    not alter VS Code settings.
 
-7. In Cursor **Settings**, open **MCP** and connect to `deep-sec-mcp`.
+    ```bash
+    <copy>
+    ./create_cline_mcp_config.sh
+    </copy>
+    ```
 
-8. Complete the OCI IAM browser sign-in when Cursor prompts you.
+## Task 3: Add the MCP Server to Cline
 
-9. Confirm that Cursor lists the OCI Database Tools MCP tools.
+1. On the workstation that runs Cline, install the `mcp-remote` helper if it
+    is not already available.
 
-    Keep `autoApprove` empty for this workshop. Manual approval is part of the security demonstration because it shows which SQL or tool action the client is about to run.
+    ```bash
+    <copy>
+    npm install -g mcp-remote
+    </copy>
+    ```
 
-## Task 5: Test Controlled Tool Calls
+2. Verify the VS Code Server has Node.js 20 or later. Current `mcp-remote`
+    releases require Node.js 20 or later.
 
-1. In Cursor, ask for available MCP tools.
+    ```bash
+    <copy>
+    ./03_verify_cline_runtime.sh
+    </copy>
+    ```
+
+3. Open Cline's `cline_mcp_settings.json` file and merge the `deep-sec-mcp`
+    entry from `cline_mcp_settings.generated.json`.
+
+4. Close every VS Code window, then reopen the Remote/WSL workspace and
+    connect to `deep-sec-mcp` in Cline. This ensures Cline inherits the Node.js
+    runtime selected for the remote environment.
+
+5. Complete the OCI IAM browser sign-in as the intended test user. The local
+    callback must remain on port `8080`, which is the port registered in the
+    public client.
+
+6. Confirm that Cline lists the OCI Database Tools MCP tools. Keep manual
+    tool approval enabled for this workshop.
+
+## Task 4: Test Controlled Tool Calls
+
+1. In Cline, ask for available MCP tools.
 
     ```text
     <copy>
@@ -204,7 +156,10 @@ In this lab, you will:
 
 3. Review the proposed MCP tool call before approving it.
 
-4. Run an employee-access prompt that matches the workshop validation matrix.
+4. Treat the first protected-data request as an identity-propagation test, not
+    as proof that the interactive OCI IAM identity reached ADB. Before approving
+    it, note the signed-in OCI IAM user and run the GenAI audit report in a
+    separate Cloud Shell tab after the request completes.
 
     ```text
     <copy>
@@ -212,21 +167,25 @@ In this lab, you will:
     </copy>
     ```
 
-5. Compare the Cursor result with the Lab 5 expected result.
+5. Compare the MCP result and the new audit event with the direct GenAI
+    baseline. The audit entry must be evaluated for database user, client
+    program, and Deep Data Security end user.
 
-    | User Context | Expected Result After Controls |
+    | Test result | Meaning |
     | --- | --- |
-    | Employee | Own row only, with sensitive data controlled by policy |
-    | Manager | Self and direct reports, with sensitive data controlled by policy |
-    | Overprivileged administrative path | Not used for least-privilege validation |
+    | The expected OCI IAM end user is recorded and the visible rows match the direct GenAI baseline | Record the result; the managed MCP path has evidence for this tested configuration. |
+    | The end user is absent, different, or the visible rows differ from the direct GenAI baseline | Stop the protected-data exercise. Do not claim Deep Data Security identity propagation for this MCP configuration. |
 
-6. If Cursor proposes a broad query, inspect it before approval.
+6. If Cline proposes a broad query, inspect it before approval.
 
-    The database policy should still enforce the data-layer rules, but the review step shows why client-side prompts and approval dialogs are not a substitute for database authorization.
+    Client-side prompts and approval dialogs are not a substitute for database
+    authorization. The dedicated test above is required because the Database
+    Tools MCP runtime identity is configured separately from the interactive
+    OCI IAM user identity.
 
-## Task 6: Troubleshoot Cursor Connectivity
+## Task 5: Troubleshoot Cline Connectivity
 
-1. If Cursor cannot connect to the MCP server, confirm the endpoint.
+1. If Cline cannot connect to the MCP server, confirm the endpoint.
 
     ```bash
     <copy>
@@ -234,23 +193,43 @@ In this lab, you will:
     </copy>
     ```
 
-2. If Cursor reports `Incompatible auth server: does not support dynamic client registration`, confirm that the `deep-sec-mcp` entry in `mcp.json` includes the `auth.CLIENT_ID` value copied from the OCI registration details page.
+2. If Cline reports an OAuth or redirect error, regenerate the settings file
+    with `./create_cline_mcp_config.sh`. Confirm the entry uses `mcp-remote`
+    and that the public client was registered with the localhost port `8080`.
 
-3. If OCI reports `invalid_redirect_uri`, edit or recreate the MCP client registration and add the exact redirect URI from the error message.
+    Then run the read-only diagnostic report. Pass the ECID shown on an OCI IAM
+    error page when available.
 
-    For Cursor, this is normally:
-
-    ```text
+    ```bash
     <copy>
-    cursor://anysphere.cursor-mcp/oauth/callback
+    ./04_troubleshoot_cline_oauth.sh --minutes 120 --ecid '<ecid-from-browser-error>'
     </copy>
     ```
 
-    After you update or recreate the registration, reconnect the MCP server in Cursor. If you created a new registration, update `auth.CLIENT_ID` in `mcp.json` with the new Client ID.
+    The report summarizes the MCP server, Cline public-client registration,
+    local generated configuration, and relevant OCI Audit events. It does not
+    print OAuth tokens, refresh tokens, client secrets, or wallet passwords.
 
-4. If Cursor reports an authorization error after the client ID and redirect URI are configured, remove and reconnect the `deep-sec-mcp` server from Cursor **Settings**, then complete the OCI IAM browser sign-in again.
+3. If OCI reports `invalid_redirect_uri`, the Cline public client's registered
+    redirect URI must be:
 
-5. If Cursor reports `Missing required permissions`, confirm the signed-in user is a member of the IAM domain group used by the MCP server policies.
+    ```text
+    <copy>
+    http://localhost:8080/oauth/callback
+    </copy>
+    ```
+
+    The script sets the Identity Domains `all-url-schemes-allowed` option for
+    this public client. That is required when a domain otherwise rejects the
+    localhost HTTP callback. It still registers only the URI shown above.
+
+    Rerun `./02_register_cline_mcp_client.sh` if you need a new app, then
+    regenerate and merge the settings file.
+
+4. If Cline reports an authorization error after browser sign-in, remove and
+    reconnect `deep-sec-mcp` in Cline, then complete sign-in again.
+
+5. If Cline reports `Missing required permissions`, confirm the signed-in user is a member of the IAM domain group used by the MCP server policies.
 
     The OAuth consent page confirms authentication. It does not grant OCI permissions by itself. The user, such as Marvin or Emma, must be in the domain group that is allowed to invoke the MCP server and use the supporting Database Tools resources.
 
@@ -258,7 +237,7 @@ In this lab, you will:
 
     ```bash
     <copy>
-    ./troubleshoot_mcp_request.sh '<opc-request-id-from-cursor>'
+    ./troubleshoot_mcp_request.sh '<opc-request-id-from-cline>'
     </copy>
     ```
 
@@ -280,7 +259,7 @@ In this lab, you will:
     </copy>
     ```
 
-    If the MCP toolset uses extra features, add the matching service-specific policy required by your toolset. After policy or group membership changes, sign out and reconnect the MCP server in Cursor.
+    If the MCP toolset uses extra features, add the matching service-specific policy required by your toolset. After policy or group membership changes, sign out and reconnect the MCP server in Cline.
 
 6. If the tools do not appear, confirm the MCP server and built-in SQL toolset are active.
 
@@ -300,25 +279,25 @@ In this lab, you will:
     </copy>
     ```
 
-7. If Cursor connects but the model does not respond, verify the Cursor model provider separately from the MCP server.
+7. If Cline connects but the model does not respond, verify the Cline model provider separately from the MCP server.
 
 8. If a query returns more or less data than expected, repeat the same SQL from Lab 5 using SQL*Plus and compare the authenticated identity and database roles.
 
-## Task 7: Review the Security Boundary
+## Task 6: Review the Security Boundary
 
-1. Confirm the result of the optional Cursor test.
+1. Confirm the result of the optional Cline test.
 
     | Boundary | What It Proves |
     | --- | --- |
-    | Cursor model provider | Generates the request and chooses whether to call a tool |
-    | Cursor MCP approval | Gives the user a chance to inspect a proposed tool call |
+    | Cline model provider | Generates the request and chooses whether to call a tool |
+    | Cline MCP approval | Gives the user a chance to inspect a proposed tool call |
     | OCI Database Tools MCP server | Exposes database tools through an MCP resource path |
     | Autonomous Database | Evaluates the active database identity and data roles |
     | Deep Data Security | Enforces row and sensitive-attribute access at the data layer |
 
-2. Keep Cursor manual approvals enabled for any later testing.
+2. Keep Cline manual approvals enabled for any later testing.
 
-3. Remove the MCP server from Cursor settings when you no longer need the client connection.
+3. Remove the MCP server from Cline settings when you no longer need the client connection.
 
     You may now proceed to the cleanup lab.
 
@@ -326,7 +305,7 @@ In this lab, you will:
 
 - [Creating a Database Tools MCP Server](https://docs.oracle.com/en-us/iaas/database-tools/doc/creating-mcp-server.html)
 - [Registering an MCP Client](https://docs.oracle.com/en-us/iaas/database-tools/doc/registering-mcp-client.html)
-- [Cursor MCP configuration](https://docs.cursor.com/context/model-context-protocol)
+- [Connect an MCP Server Using Token-Based Authentication](https://docs.oracle.com/en-us/iaas/database-tools/doc/tutorial-connect-mcp-server-using-token-based-authentication.html)
 
 ## Acknowledgements
 

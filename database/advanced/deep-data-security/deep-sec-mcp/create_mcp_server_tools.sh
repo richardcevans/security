@@ -19,7 +19,7 @@ else
   echo -e "${RED}ERROR: .deep-sec-mcp.env not found. Run ./00_configure_lab_env.sh first.${NC}" >&2
   exit 1
 fi
-source "${SCRIPT_DIR}/../lib_oci_profile.sh"
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -33,6 +33,35 @@ require_var() {
     echo -e "${RED}ERROR: $1 is required in .deep-sec-mcp.env.${NC}" >&2
     exit 1
   fi
+}
+
+require_genai_baseline() {
+  local baseline_file="${GENAI_BASELINE_FILE:-${SCRIPT_DIR}/.deep-sec-mcp.genai-baseline.env}"
+
+  if [ ! -r "$baseline_file" ]; then
+    echo -e "${RED}ERROR: GenAI baseline evidence is not available: ${baseline_file}${NC}" >&2
+    echo "Run ./01_verify_genai_baseline.sh with a current OCI IAM token before creating MCP resources." >&2
+    exit 1
+  fi
+
+  # shellcheck disable=SC1090
+  source "$baseline_file"
+
+  if [ -z "${GENAI_BASELINE_VERIFIED_AT:-}" ] || [ -z "${GENAI_BASELINE_ADB_OCID:-}" ]; then
+    echo -e "${RED}ERROR: GenAI baseline evidence is incomplete: ${baseline_file}${NC}" >&2
+    echo "Rerun ./01_verify_genai_baseline.sh before creating MCP resources." >&2
+    exit 1
+  fi
+
+  if [ "${GENAI_BASELINE_ADB_OCID}" != "${ADB_OCID:-}" ]; then
+    echo -e "${RED}ERROR: GenAI baseline ADB does not match this MCP environment.${NC}" >&2
+    echo "  Baseline ADB: ${GENAI_BASELINE_ADB_OCID}" >&2
+    echo "  MCP ADB     : ${ADB_OCID:-<unset>}" >&2
+    echo "Rerun ./01_verify_genai_baseline.sh after configuring this MCP environment." >&2
+    exit 1
+  fi
+
+  echo -e "${GREEN}GenAI baseline verified for this ADB at ${GENAI_BASELINE_VERIFIED_AT}.${NC}"
 }
 
 oci_query() {
@@ -80,12 +109,39 @@ lookup_domain_by_name() {
 
 lookup_domain_by_url() {
   [ -z "${TENANCY_OCID:-}" ] || [ -z "${OCI_DOMAIN_URL:-}" ] && return
-  oci_query iam domain list \
+  local domains
+  domains=$(oci_query iam domain list \
     --compartment-id "$TENANCY_OCID" \
     --lifecycle-state ACTIVE \
     --all \
-    --query "data[?url=='${OCI_DOMAIN_URL}' || \"home-region-url\"=='${OCI_DOMAIN_URL}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --output json || true)
+  [ -z "$domains" ] && return
+
+  printf '%s' "$domains" | python3 -c '
+import json
+import sys
+from urllib.parse import urlparse
+
+def host(value):
+    try:
+        return (urlparse(value).hostname or "").lower()
+    except ValueError:
+        return ""
+
+target = host(sys.argv[1])
+try:
+    data = json.load(sys.stdin).get("data") or []
+except (json.JSONDecodeError, AttributeError):
+    raise SystemExit(0)
+
+matches = [
+    item.get("id", "")
+    for item in data
+    if target and target in {host(item.get("url", "")), host(item.get("home-region-url", ""))}
+]
+if len(matches) == 1:
+    print(matches[0])
+' "$OCI_DOMAIN_URL"
 }
 
 lookup_single_domain() {
@@ -192,12 +248,22 @@ PY
 }
 
 lookup_connection_id() {
-  oci_query dbtools connection list \
+  local connection_id
+  connection_id=$(oci_query dbtools connection list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
     --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --raw-output 2>/dev/null || true)
+  if [ -z "$connection_id" ] || [ "$connection_id" = "null" ]; then
+    connection_id=$(oci_query dbtools connection list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --type ORACLE_DATABASE \
+      --all \
+      --query "data[?\"related-resource-identifier\"=='${ADB_OCID}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
+      --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$connection_id"
 }
 
 get_connection_state() {
@@ -288,11 +354,20 @@ validate_existing_connection_id() {
 }
 
 lookup_mcp_server_id() {
-  oci_query dbtools mcp-server list \
+  local server_id
+  server_id=$(oci_query dbtools mcp-server list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --all \
     --query "data[?\"display-name\"=='${MCP_SERVER_NAME}' && \"database-tools-connection-id\"=='${DATABASE_TOOLS_CONNECTION_ID}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --raw-output 2>/dev/null || true)
+  if [ -z "$server_id" ] || [ "$server_id" = "null" ]; then
+    server_id=$(oci_query dbtools mcp-server list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --all \
+      --query "data[?\"database-tools-connection-id\"=='${DATABASE_TOOLS_CONNECTION_ID}'].id | [0]" \
+      --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$server_id"
 }
 
 get_mcp_server_state() {
@@ -328,12 +403,22 @@ wait_for_mcp_server_active() {
 }
 
 lookup_toolset_id() {
-  oci_query dbtools mcp-toolset list \
+  local toolset_id
+  toolset_id=$(oci_query dbtools mcp-toolset list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type BUILT_IN_SQL_TOOLS \
     --all \
-    --query "data[?\"display-name\"=='${MCP_BUILT_IN_SQL_TOOLSET_NAME}' && \"mcp-server-id\"=='${MCP_SERVER_ID}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --query "data[?\"display-name\"=='${MCP_BUILT_IN_SQL_TOOLSET_NAME}' && \"database-tools-mcp-server-id\"=='${MCP_SERVER_ID}'].id | [0]" \
+    --raw-output 2>/dev/null || true)
+  if [ -z "$toolset_id" ] || [ "$toolset_id" = "null" ]; then
+    toolset_id=$(oci_query dbtools mcp-toolset list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --type BUILT_IN_SQL_TOOLS \
+      --all \
+      --query "data[?\"database-tools-mcp-server-id\"=='${MCP_SERVER_ID}'].id | [0]" \
+      --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$toolset_id"
 }
 
 wait_for_lookup() {
@@ -368,11 +453,16 @@ trap 'rm -rf "$tmpdir"' EXIT
 require_cmd oci
 require_cmd perl
 require_cmd python3
+require_genai_baseline
 
 resource_suffix="${DEEPSEC_MCP_LAB_INSTANCE_SHORT:-${USER:-user}}"
 DATABASE_TOOLS_CONNECTION_NAME="${DATABASE_TOOLS_CONNECTION_NAME:-deep-sec-mcp-${resource_suffix}-connection}"
 DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE="${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE:-TOKEN}"
 DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE=$(printf '%s' "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" | tr '[:lower:]' '[:upper:]')
+if [ "${DATABASE_TOOLS_RELATED_RESOURCE_TYPE:-}" = "AUTONOMOUS_DATABASE" ]; then
+  echo -e "${YELLOW}Updating legacy related-resource type AUTONOMOUS_DATABASE to AUTONOMOUSDATABASE.${NC}"
+  DATABASE_TOOLS_RELATED_RESOURCE_TYPE="AUTONOMOUSDATABASE"
+fi
 MCP_SERVER_NAME="${MCP_SERVER_NAME:-deep-sec-mcp-${resource_suffix}}"
 if [ "$DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE" = "TOKEN" ]; then
   DATABASE_TOOLS_RUNTIME_IDENTITY="${DATABASE_TOOLS_RUNTIME_IDENTITY:-RESOURCE_PRINCIPAL}"

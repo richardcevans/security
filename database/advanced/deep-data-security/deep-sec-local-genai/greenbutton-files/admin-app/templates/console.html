@@ -157,7 +157,7 @@
         <aside class="step-notes">
           <div class="step-notes-header"><img src="{{ url_for('static', filename='images/DeeBee.png') }}" alt="DeeBee" class="deebee-icon"><span>DeeBee's Notes</span></div>
           {% if step.notes %}
-          <ul>{% for note in step.notes %}<li>{{ note }}</li>{% endfor %}</ul>
+          <ul>{% for note in step.notes %}<li>{{ note|render_note }}</li>{% endfor %}</ul>
           {% else %}
           <p class="step-notes-empty">Notes for this step are coming soon.</p>
           {% endif %}

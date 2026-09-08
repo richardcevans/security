@@ -3,6 +3,8 @@
 
 set -Eeuo pipefail
 
+red_error() { printf '\n\n\033[0;31mERROR: %s\033[0m\n' "$*" >&2; }
+
 usage() {
   cat <<'EOF'
 Usage: ./12_ask_llm_service.sh --question TEXT
@@ -22,7 +24,7 @@ while [[ $# -gt 0 ]]; do
     *) usage >&2; exit 2 ;;
   esac
 done
-[[ -n "$question" ]] || { echo 'ERROR: --question is required.' >&2; exit 2; }
+[[ -n "$question" ]] || { red_error '--question is required.'; exit 2; }
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "${script_dir}/lab_common.sh"
@@ -59,7 +61,7 @@ if ! curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer ${token}" \
   --header 'Content-Type: application/json' \
   --data "$payload" >"$response_file"; then
-  printf '\nERROR: The LLM service did not return a successful response.\n' >&2
+  error 'The LLM service did not return a successful response.'
   [[ -s "$response_file" ]] && { printf 'Response body:\n' >&2; cat "$response_file" >&2; printf '\n' >&2; }
   exit 1
 fi

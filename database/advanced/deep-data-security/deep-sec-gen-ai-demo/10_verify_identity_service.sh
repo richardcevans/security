@@ -34,7 +34,7 @@ if ! curl --fail-with-body --silent --show-error \
   --header "Authorization: Bearer ${token}" \
   --header 'Content-Type: application/json' \
   --data '{}' >"$response_file"; then
-  printf '\nERROR: The identity-proof API did not return a successful response.\n' >&2
+  error 'The identity-proof API did not return a successful response.'
   if [[ -s "$response_file" ]]; then
     printf 'Response body:\n' >&2
     cat "$response_file" >&2

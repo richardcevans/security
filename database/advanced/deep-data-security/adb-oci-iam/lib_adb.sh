@@ -1,6 +1,8 @@
 #!/bin/bash
 # Shared helpers for the ADB OCI IAM lab.
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib_oci_profile.sh"
+
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
   echo "ERROR: This lab requires Bash 4.x or later." >&2
   exit 1

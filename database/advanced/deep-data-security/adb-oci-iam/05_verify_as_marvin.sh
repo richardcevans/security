@@ -34,6 +34,7 @@ check_oauth_token "$MARVIN_USERNAME" "$OCI_IAM_EMPLOYEE_GROUP" "$OCI_IAM_MANAGER
 echo
 
 sqlplus -L -s "/@${ADB_SERVICE}" <<'SQL'
+set echo on
 set pagesize 100
 set linesize 180
 set tab off

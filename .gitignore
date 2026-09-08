@@ -17,6 +17,17 @@ data-management-library/autonomous-database/autonomous-data-warehouse_PRIOR TO S
 data-management-library/autonomous-database/shared/adb-auto-scaling/images/send to Nilay.png
 *.bak
 
+# Local lab credentials and runtime artifacts
+*.par-url
+*.instance
+**/__pycache__/
+*.py[cod]
+
+# Generated archives containing local PAR-link output; keep originals locally
+/adb-oci-iam.zip
+/database/advanced/deep-data-security/adb-oci-iam.zip
+/database/advanced/deep-data-security/entra-id-data-grants.zip
+
 # Unused images folder
 **/unused_images/
 

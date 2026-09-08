@@ -15,8 +15,8 @@ else
   python_bin=python3
 fi
 "$python_bin" -c 'import jwt, oracledb' >/dev/null 2>&1 || {
+  error "Python dependencies are missing from ${python_bin}."
   cat >&2 <<EOF
-ERROR: Python dependencies are missing from ${python_bin}.
 Create the project-local virtual environment and install them:
   python3 -m venv ${script_dir}/.venv
   ${script_dir}/.venv/bin/python -m pip install -r ${script_dir}/service/requirements.txt

@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - Deep Data Security LangChain HR Assistant",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the architecture, prerequisites, and expected outcome for the LangChain Deep Data Security workshop",
+      "publisheddate": "06/24/2026",
+      "filename": "../../intro/intro-deepsec-langchain.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Get a Free Trial",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/cloud-login/pre-register-free-tier-account.md"
+    },
+    {
+      "title": "Lab 1: Build a LangChain HR Assistant with Oracle Deep Data Security",
+      "description": "Configure a LangChain HR assistant that propagates end-user identity to Oracle Database and validates Deep Data Security data grants",
+      "publisheddate": "06/24/2026",
+      "filename": "../../deep-data-security/langchain-lab/langchain-lab.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-freetier.md"
+    }
+  ]
+}

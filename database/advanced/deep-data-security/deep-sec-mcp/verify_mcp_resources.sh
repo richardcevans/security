@@ -19,6 +19,8 @@ else
   echo -e "${RED}ERROR: .deep-sec-mcp.env not found. Run ./00_configure_lab_env.sh first.${NC}" >&2
   exit 1
 fi
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -145,6 +147,17 @@ toolset_state=$(oci_query dbtools mcp-toolset get \
   --query 'data."lifecycle-state"' \
   --raw-output)
 expect_state "Built-in SQL MCP toolset" "ACTIVE" "$toolset_state"
+
+toolset_server_id=$(oci_query dbtools mcp-toolset get \
+  --mcp-toolset-id "$MCP_BUILT_IN_SQL_TOOLSET_ID" \
+  --query 'data."database-tools-mcp-server-id"' \
+  --raw-output)
+if [ "$(normalize_value "$toolset_server_id")" = "$MCP_SERVER_ID" ]; then
+  echo -e "${GREEN}PASS:${NC} Built-in SQL MCP toolset is attached to this MCP server"
+else
+  echo -e "${RED}FAIL:${NC} Built-in SQL MCP toolset belongs to ${toolset_server_id:-unknown}; expected ${MCP_SERVER_ID}" >&2
+  failures=$((failures + 1))
+fi
 
 echo
 if [ "$failures" -eq 0 ]; then

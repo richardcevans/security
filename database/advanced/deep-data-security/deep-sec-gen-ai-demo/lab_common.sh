@@ -7,9 +7,11 @@ LAB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ADB_LAB_DIR="${LAB_DIR}/../adb-oci-iam"
 ADB_IAM_ENV_FILE="${ADB_IAM_ENV_FILE:-${ADB_LAB_DIR}/.adb-oci-iam.env}"
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m'
 
-die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+error() { printf '\n\n%bERROR: %s%b\n' "$RED" "$*" "$NC" >&2; }
+die() { error "$*"; exit 1; }
 
 show_cmd() {
   printf '  $'

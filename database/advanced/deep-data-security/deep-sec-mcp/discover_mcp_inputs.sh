@@ -19,7 +19,7 @@ else
   echo -e "${RED}ERROR: .deep-sec-mcp.env not found. Run ./00_configure_lab_env.sh first.${NC}" >&2
   exit 1
 fi
-source "${SCRIPT_DIR}/../lib_oci_profile.sh"
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -92,12 +92,39 @@ lookup_domain_by_name() {
 }
 
 lookup_domain_by_url() {
-  oci_query iam domain list \
+  local domains
+  domains=$(oci_query iam domain list \
     --compartment-id "$TENANCY_OCID" \
     --lifecycle-state ACTIVE \
     --all \
-    --query "data[?url=='${OCI_DOMAIN_URL}' || \"home-region-url\"=='${OCI_DOMAIN_URL}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --output json || true)
+  [ -z "$domains" ] && return
+
+  printf '%s' "$domains" | python3 -c '
+import json
+import sys
+from urllib.parse import urlparse
+
+def host(value):
+    try:
+        return (urlparse(value).hostname or "").lower()
+    except ValueError:
+        return ""
+
+target = host(sys.argv[1])
+try:
+    data = json.load(sys.stdin).get("data") or []
+except (json.JSONDecodeError, AttributeError):
+    raise SystemExit(0)
+
+matches = [
+    item.get("id", "")
+    for item in data
+    if target and target in {host(item.get("url", "")), host(item.get("home-region-url", ""))}
+]
+if len(matches) == 1:
+    print(matches[0])
+' "$OCI_DOMAIN_URL"
 }
 
 lookup_single_domain() {
@@ -120,12 +147,22 @@ lookup_single_domain() {
 }
 
 lookup_connection_id() {
-  oci_query dbtools connection list \
+  local connection_id
+  connection_id=$(oci_query dbtools connection list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type ORACLE_DATABASE \
     --all \
     --query "data[?\"display-name\"=='${DATABASE_TOOLS_CONNECTION_NAME}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --raw-output 2>/dev/null || true)
+  if [ -z "$connection_id" ] || [ "$connection_id" = "null" ]; then
+    connection_id=$(oci_query dbtools connection list \
+      --compartment-id "$MCP_COMPARTMENT_OCID" \
+      --type ORACLE_DATABASE \
+      --all \
+      --query "data[?\"related-resource-identifier\"=='${ADB_OCID}' && \"lifecycle-state\"=='ACTIVE' && \"authentication-type\"=='${DATABASE_TOOLS_CONNECTION_AUTHENTICATION_TYPE}' && \"runtime-identity\"=='${DATABASE_TOOLS_RUNTIME_IDENTITY}'].id | [0]" \
+      --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$connection_id"
 }
 
 get_connection_state() {
@@ -159,20 +196,32 @@ get_connection_runtime_identity() {
 }
 
 lookup_mcp_server_id() {
-  oci_query dbtools mcp-server list \
+  local server_id
+  server_id=$(oci_query dbtools mcp-server list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --all \
     --query "data[?\"display-name\"=='${MCP_SERVER_NAME}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --raw-output 2>/dev/null || true)
+  if { [ -z "$server_id" ] || [ "$server_id" = "null" ]; } && [ -n "${DATABASE_TOOLS_CONNECTION_ID:-}" ]; then
+    server_id=$(oci_query dbtools mcp-server list --compartment-id "$MCP_COMPARTMENT_OCID" --all \
+      --query "data[?\"database-tools-connection-id\"=='${DATABASE_TOOLS_CONNECTION_ID}'].id | [0]" --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$server_id"
 }
 
 lookup_toolset_id() {
-  oci_query dbtools mcp-toolset list \
+  local toolset_id
+  toolset_id=$(oci_query dbtools mcp-toolset list \
     --compartment-id "$MCP_COMPARTMENT_OCID" \
     --type BUILT_IN_SQL_TOOLS \
     --all \
     --query "data[?\"display-name\"=='${MCP_BUILT_IN_SQL_TOOLSET_NAME}'].id | [0]" \
-    --raw-output 2>/dev/null || true
+    --raw-output 2>/dev/null || true)
+  if { [ -z "$toolset_id" ] || [ "$toolset_id" = "null" ]; } && [ -n "${MCP_SERVER_ID:-}" ]; then
+    toolset_id=$(oci_query dbtools mcp-toolset list --compartment-id "$MCP_COMPARTMENT_OCID" --type BUILT_IN_SQL_TOOLS --all \
+      --query "data[?\"mcp-server-id\"=='${MCP_SERVER_ID}'].id | [0]" --raw-output 2>/dev/null || true)
+  fi
+  printf '%s' "$toolset_id"
 }
 
 lookup_adb_connection_string() {
@@ -294,7 +343,7 @@ echo -e "${GREEN}===============================================================
 echo
 
 if [ -z "${NAMESPACE:-}" ]; then
-  NAMESPACE=$(oci_query os ns get --raw-output --query data 2>/dev/null || true)
+  NAMESPACE=$(oci_query os ns get --raw-output --query data || true)
 fi
 NAMESPACE=$(normalize_discovered_value "${NAMESPACE:-}")
 if [ -n "${NAMESPACE:-}" ] && [ "$NAMESPACE" != "null" ]; then
@@ -323,6 +372,7 @@ if [ -z "${MCP_COMPARTMENT_OCID:-}" ] && [ -n "${ADB_OCID:-}" ]; then
     --query 'data."compartment-id"' \
     --raw-output 2>/dev/null || true)
 fi
+MCP_COMPARTMENT_OCID="${MCP_COMPARTMENT_OCID:-${ROOT_COMP_ID:-}}"
 MCP_COMPARTMENT_OCID=$(normalize_discovered_value "${MCP_COMPARTMENT_OCID:-}")
 
 if [ -z "${MCP_COMPARTMENT_OCID:-}" ] && [ -n "${MCP_COMPARTMENT_NAME:-}" ]; then

@@ -23,6 +23,7 @@ show_cmd sqlplus -L -s "admin/<hidden>@${ADB_SERVICE}"
 echo
 
 if ! admin_sqlplus <<'SQL'
+set echo on
 set pagesize 100
 set linesize 180
 set tab off

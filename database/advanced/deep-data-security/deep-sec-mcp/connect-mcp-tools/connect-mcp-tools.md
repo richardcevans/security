@@ -21,6 +21,7 @@ In this lab, you will:
 
 - Completed Lab 1.
 - Workshop database connection values in `.deep-sec-mcp.env`.
+- A passed `01_verify_genai_baseline.sh` verification for the same ADB.
 - Permission to create or inspect Database Tools, Object Storage, and identity-domain resources.
 
 ## Task 1: Review the Loaded MCP Inputs
@@ -146,11 +147,12 @@ In this lab, you will:
 
     The OCI Console is not the MCP client for this lab. If you connect an external MCP client, use the MCP server details page to get the endpoint and tool information.
 
-2. Review the identity flow for the MCP path.
+2. Review the identity boundary for the MCP path.
 
     - The user authenticates through OCI IAM.
-    - The MCP server receives the user context through the token path.
-    - The database enforces the identity and data controls configured by the ADB OCI IAM prerequisite lab.
+    - The MCP server and Database Tools connection use the configured runtime identities.
+    - Do not assume that an MCP request propagates the interactive OCI IAM database identity or Deep Data Security context to ADB.
+    - Run the dedicated MCP-to-ADB identity test before exposing protected HR data through MCP.
 
     You may now proceed to the optional client lab or cleanup.
 

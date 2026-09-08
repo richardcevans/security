@@ -74,6 +74,7 @@ if [ -z "${OCI_DOMAIN_URL:-}" ] && [ -f "${SCRIPT_DIR}/.adb-oci-iam.env" ]; then
   # shellcheck disable=SC1091
   source "${SCRIPT_DIR}/.adb-oci-iam.env"
 fi
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 if [ -z "${OCI_DOMAIN_URL:-}" ]; then
   echo -e "${RED}ERROR: OCI_DOMAIN_URL is not set.${NC}" >&2
@@ -88,7 +89,7 @@ fi
 
 oci_global_args=()
 [ -n "${OCI_CONFIG_FILE:-}" ] && oci_global_args+=(--config-file "$OCI_CONFIG_FILE")
-[ -n "${OCI_PROFILE:-}" ] && oci_global_args+=(--profile "$OCI_PROFILE")
+[ -n "${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}}" ] && oci_global_args+=(--profile "${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-}}}")
 
 domain_cmd() {
   oci identity-domains "$@" --endpoint "$OCI_DOMAIN_URL" "${oci_global_args[@]}"
@@ -162,7 +163,7 @@ echo -e "${GREEN}===============================================================
 echo
 echo -e "${PURPLE}Using OCI IAM domain:${NC}"
 echo -e "${CYAN}  OCI_DOMAIN_URL = ${OCI_DOMAIN_URL}${NC}"
-echo -e "${CYAN}  OCI_PROFILE    = ${OCI_PROFILE:-DEFAULT}${NC}"
+echo -e "${CYAN}  OCI_PROFILE    = ${OCI_PROFILE_NAME:-${OCI_PROFILE:-${OCI_CLI_PROFILE:-DEFAULT}}}${NC}"
 echo
 
 if [ -z "$PASSWORD" ]; then

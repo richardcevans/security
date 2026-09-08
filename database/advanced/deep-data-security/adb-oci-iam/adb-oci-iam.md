@@ -193,6 +193,9 @@ Important files include:
 | `04_get_iam_oauth_token.sh` | Gets an OCI IAM OAuth2 token for the signed-in user |
 | `05_verify_as_marvin.sh` | Verifies manager access for Marvin |
 | `06_verify_as_emma.sh` | Verifies employee access for Emma |
+| `08_verify_current_token.sh` | Verifies whichever OCI IAM user the current token represents |
+| `trace_sqlplus_client.sh` | Enables reversible local SQL*Plus Oracle Net tracing |
+| `diagnose_oci_iam_direct_login.sh` | Creates a redacted, read-only OCI IAM direct-logon diagnostic report |
 | `verify_db_setup.sh` | Verifies the ADMIN-side database setup |
 | `07_cleanup_adb_lab.sh` | Removes lab database objects and optional OCI resources |
 
@@ -707,12 +710,51 @@ To delete the Autonomous AI Database instance too:
 </copy>
 ```
 
+### Recover Cleanup After Local Files Were Deleted
+
+If the lab directory or `.adb-oci-iam.env` file was removed, download and
+extract the script bundle again. To delete the Autonomous AI Database, create
+a small recovery environment file with the database display name, its OCID
+(copied from the OCI Console), and the OCI CLI profile that can delete it:
+
+```bash
+<copy>
+cat > "$HOME/adb-cleanup.env" <<'EOF'
+export DB_NAME='deepsec...'
+export ADB_OCID='ocid1.autonomousdatabase.oc1...'
+export OCI_PROFILE='DEFAULT'
+EOF
+
+./07_cleanup_adb_lab.sh --env-file="$HOME/adb-cleanup.env" --delete-adb
+</copy>
+```
+
+`--delete-adb` does not require the wallet or `ADMIN_PWD`. Deleting the ADB
+also removes its schemas, roles, data grants, and database users. To remove
+those objects while retaining the ADB, restore the wallet and ADMIN password,
+then use `--delete-db-objects`.
+
 To remove database objects, delete the Autonomous AI Database instance, delete
 the lab OAuth apps, and remove local generated wallet/env/token files:
 
 ```bash
 <copy>
 ./07_cleanup_adb_lab.sh --remove-all
+</copy>
+```
+
+When `--delete-iam-apps` is selected, cleanup finds the lab's two Integrated
+Applications by their exact display names and force-deletes their associated
+references before deleting the applications.
+
+If old ADB OCI IAM lab instances left Integrated Applications in the same
+Identity Domain, remove all applications created by this lab naming pattern.
+Public clients are removed first so their `allowedScopes` references do not
+block resource-application scope deletion:
+
+```bash
+<copy>
+./07_cleanup_adb_lab.sh --delete-all-lab-apps
 </copy>
 ```
 

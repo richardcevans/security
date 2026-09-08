@@ -89,7 +89,7 @@ else
   echo -e "${RED}ERROR: .deep-sec-mcp.env not found. Run ./00_configure_lab_env.sh first.${NC}" >&2
   exit 1
 fi
-source "${SCRIPT_DIR}/../lib_oci_profile.sh"
+source "${SCRIPT_DIR}/lib_oci_profile.sh"
 
 require_cmd oci
 require_cmd python3

@@ -1,0 +1,28 @@
+{
+  "workshoptitle": "DB Security - OCI IAM Web HR App with Oracle Deep Data Security",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Understand the direct user-token architecture and workshop prerequisites.",
+      "publisheddate": "07/20/2026",
+      "filename": "../../deep-data-security/oci-iam-web-hr-app/introduction.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Using noVNC Remote Desktop",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Deploy and Test the OCI IAM Web HR App",
+      "description": "Configure a public HTTPS callback, sign in with OCI IAM, and verify database-enforced HR access.",
+      "publisheddate": "07/20/2026",
+      "filename": "../../deep-data-security/oci-iam-web-hr-app/oci-iam-web-hr-app.md"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to common problems and directions for receiving live help.",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

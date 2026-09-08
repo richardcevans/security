@@ -2,9 +2,9 @@
 
 ## Introduction
 
-This workshop shows that Oracle AI Database, rather than customer-sales application code or an AI coding assistant, determines the rows and columns each end user can access.
+This workshop shows that Oracle AI Database, rather than Customer Sales App code or an AI coding assistant, determines the rows and columns each end user can access.
 
-You begin with a working customer-sales application and its ordinary Oracle objects. You then create Deep Data Security roles and grants, restrict Marvin to his own accounts, extend his access as a manager, and verify the results in Oracle Customer Sales. The optional Vibe Coding stage creates a new runtime Customer Sales report page, but it cannot override database authorization.
+You begin with a working Customer Sales App and its ordinary Oracle objects. You then create Deep Data Security roles and grants, restrict Marvin to his own accounts, extend his access as a manager, and verify the results in the Customer Sales App. The optional Vibe Coding stage creates a new runtime Customer Sales App report page, but it cannot override database authorization.
 
 Estimated workshop time: 60 minutes after the Stack is ready. Allow additional time for Autonomous AI Database provisioning and VM bootstrap. GreenButton publishes the checked-in Iceberg sample during bootstrap, so it does not wait for a Data Flow Spark run.
 
@@ -12,7 +12,7 @@ Estimated workshop time: 60 minutes after the Stack is ready. Allow additional t
 
 - Deploy the GreenButton Oracle Cloud Infrastructure stack.
 - Create data roles, data grants, and local database end users.
-- Verify database-enforced row and column authorization in Oracle Customer Sales.
+- Verify database-enforced row and column authorization in the Customer Sales App.
 - Add manager access through an end user context.
 - Query Order History through an Apache Iceberg external table without copying its data into Oracle.
 - See why application changes made with Vibe cannot bypass database authorization.
@@ -23,7 +23,7 @@ Estimated workshop time: 60 minutes after the Stack is ready. Allow additional t
 Browser
   |
   v
-Oracle Customer Sales / Deep Sec DEMO Setup on Compute
+Customer Sales App / Deep Sec DEMO Setup on Compute
   |
   | direct local database-user session
   v
@@ -71,7 +71,7 @@ external table; the data is not copied into database storage.
 6. Run **Plan**, review the successful plan, and run **Apply**. Apply waits
    for the application VM bootstrap health gate.
 7. In **Application Information**, unlock the generated shared password. Open
-   the Admin Console URL on port `7778`, Oracle Customer Sales on port `7777`,
+   the Admin Console URL on port `7778`, Customer Sales App on port `7777`,
    or JupyterLab on port `8888`.
 
 8. If you need to diagnose the deployment, SSH to the Compute public IP and

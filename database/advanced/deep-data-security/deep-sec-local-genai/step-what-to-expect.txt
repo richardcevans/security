@@ -31,10 +31,10 @@ Marvin receives HOL_DATAROLE_EMPLOYEE_ACCESS and can retrieve all 22 rows includ
 Review & Quiz
 Five sections print in order. The end user context section is expected to be empty at this point, that fills in once you reach the End User Context page.
 
-Customer Sales
+Customer Sales App
 --------------
 
-Customer Sales
+Customer Sales App
 Sign in as Marvin and select Customer Report. You should see 22 rows, including Apex Treasury, with Credit Limit and Sensitive Identifier both visible.
 
 Customize Grant
@@ -43,7 +43,7 @@ Customize Grant
 Customize the employee grant
 The employee data grant updates immediately. Review Generated SQL and SQL*Plus output; Oracle applies the selected row restriction and SELECT, UPDATE, and DELETE privileges.
 
-Check Customer Sales
+Check Customer Sales App
 Instead of 22 rows, Marvin should see 3. Credit Limit and Sensitive Identifier should both read Not authorized.
 
 Review & Quiz
@@ -62,7 +62,7 @@ Set Context
 The bridge role and SYS.END_USER_CONTEXT grant are both in place. Nothing about Marvin's or Emma's access changes yet.
 
 Manager Data Grant
-The grant updates immediately. Reload Customer Report in Customer Sales as Marvin, manager, to see the SELECT, UPDATE, and DELETE privileges you selected.
+The grant updates immediately. Reload Customer Report in the Customer Sales App as Marvin, manager, to see the SELECT, UPDATE, and DELETE privileges you selected.
 
 Grant manager role
 Marvin now holds HOL_DATAROLE_MANAGER_ACCESS. Reload Customer Report as Marvin to see manager access apply.

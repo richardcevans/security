@@ -10,8 +10,10 @@ branding:
 script_root: database
 
 overview:
-  introduction: "In this lab, you will setup and configure a customer-sales application where the Oracle AI Database, rather than the application code, determines the rows and columns each user can access. Scroll down to get started..."
-  architecture_alt: "A browser connects to Admin Console and Customer Sales on an OCI Compute VM. Both applications connect to Autonomous Database, which enforces Deep Sec data grants. Autonomous Database reads Iceberg order history files from OCI Object Storage."
+  introduction: "In this lab, you will set up and configure the Customer Sales App where the Oracle AI Database, rather than the application code, determines the rows and columns each user can access. Scroll down to get started..."
+  scenario_heading: "The scenario"
+  scenario: "Marvin is a salesperson and end user of the Customer Sales App. Emma is a second salesperson you will use as a comparison. You will start with broad baseline access, then use Oracle Deep Data Security to narrow Marvin's rows and columns and later extend his access as a manager."
+  architecture_alt: "A browser connects to Admin Console and Customer Sales App on an OCI Compute VM. Both applications connect to Autonomous Database, which enforces Deep Sec data grants. Autonomous Database reads Iceberg order history files from OCI Object Storage."
   architecture_caption: "Oracle Database is the authorization boundary: the applications request data, while Deep Sec data grants determine the rows and columns returned."
   heading: "What you will do"
   stage_heading: "Stage"
@@ -21,10 +23,10 @@ overview:
       description: "Create the APPLAB schema, customer data, and ordinary database login role."
     - label: "Deep Sec Setup"
       description: "Create Deep Sec data roles and data grants, then create and grant access to Marvin and Emma."
-    - label: "Customer Sales"
+    - label: "Customer Sales App"
       description: "See the rows and columns Oracle returns for the signed-in user."
     - label: "Customize Grant"
-      description: "Narrow Marvin's customer access, then confirm the change in Customer Sales."
+      description: "Narrow Marvin's customer access, then confirm the change in the Customer Sales App."
     - label: "End User Context"
       description: "Build the manager context and define manager-level access."
     - label: "Order History"
@@ -43,7 +45,7 @@ tour:
     title: "Deep Sec Setup"
     text: "Deep Data Security actually starts here: data roles, data grants, and Marvin and Emma."
   - selector: '.header-link[href="/customer-sales"]'
-    title: "Customer Sales Demo"
+    title: "Customer Sales App"
     text: "The live application Marvin and Emma sign into. Come back here after every policy change to see the effect."
   - selector: '.header-link[href="/build-grant"]'
     title: "Customize Data Grant"
@@ -56,7 +58,7 @@ tour:
     text: "See an Apache Iceberg table from three angles: raw Object Storage files, an Oracle external table over its metadata, and a cross-table data grant that limits which order rows each user can see."
   - selector: '.header-link[href="/exercises"]'
     title: "Exercises"
-    text: "Go back and forth between here and Customer Sales, confirming what you built actually holds up from the user's side, AI Insights included."
+    text: "Go back and forth between here and the Customer Sales App, confirming what you built actually holds up from the user's side, AI Insights included."
   - selector: '.header-link[href="/admin"]'
     title: "Admin"
     text: "Run validation queries, or reset the whole lab back to nothing and start over."
@@ -146,13 +148,13 @@ actions:
 
   customer_sales:
     type: link
-    title: Customer Sales
-    description: Navigate to the Oracle Customer Sales application to view Marvin's current access.
+    title: Customer Sales App
+    description: Navigate to the Oracle Customer Sales App to view Marvin's current access.
     requires:
       - grant_employee_access
     link_target: customer_sales_app
     completion: mark_viewed
-    short_label: Customer Sales
+    short_label: Customer Sales App
 
   review_light:
     type: sql
@@ -318,11 +320,11 @@ actions:
 
   verify_employee_grant:
     type: link
-    title: Check Customer Sales
-    description: You already have Customer Sales open in another tab. Go there now and select Customer Report again.
+    title: Check Customer Sales App
+    description: You already have the Customer Sales App open in another tab. Go there now and select Customer Report again.
     link_button_label: Mark as viewed
     completion: mark_viewed
-    short_label: Check Customer Sales
+    short_label: Check Customer Sales App
 
   customize_manager_grant:
     type: wizard
@@ -500,7 +502,7 @@ actions:
   exercise_persona_compare:
     type: link
     title: Compare Emma and Marvin
-    description: In the Customer Sales app, sign in as Emma and run Customer Report, note her rows and columns. Then sign in as Marvin and do the same.
+    description: In the Customer Sales App, sign in as Emma and run Customer Report, note her rows and columns. Then sign in as Marvin and do the same.
     link_button_label: Mark as viewed
     completion: mark_viewed
     short_label: Compare personas
@@ -532,7 +534,7 @@ actions:
   exercise_reset:
     type: link
     title: Use a restore option
-    description: On Admin, use Restore to DB Setup or Restore to Deep Sec Setup, then check Customer Sales for Marvin again.
+    description: On Admin, use Restore to DB Setup or Restore to Deep Sec Setup, then check the Customer Sales App for Marvin again.
     link_button_label: Mark as viewed
     completion: mark_viewed
     short_label: Try a restore
@@ -713,7 +715,7 @@ steps:
     title: Grant Data Role
     action_ids:
       - grant_employee_access
-    next_hint: Open Customer Sales Demo to see this access from Marvin's side.
+    next_hint: Open Customer Sales App to see this access from Marvin's side.
     notes:
       - "Remember the earlier note on local versus enterprise end users? Because Marvin and Emma are local end users, you have to manually assign them the data roles you want them to have."
       - "If you were integrated with a directory instead, you would write something like CREATE DATA ROLE HOL_DATAROLE_EMPLOYEE_ACCESS MAPPED TO 'azure_role=EMPLOYEES', and the mapping would take care of itself automatically the next time Marvin or Emma logs in."
@@ -724,7 +726,7 @@ steps:
     title: Review & Quiz
     action_ids:
       - review_light
-    next_hint: Continue to Customer Sales to see this access from Marvin's side.
+    next_hint: Continue to Customer Sales App to see this access from Marvin's side.
     quiz:
       question: "You've created a data role and a data grant. Why can't Marvin query APPLAB.CUSTOMERS yet?"
       options:
@@ -733,7 +735,7 @@ steps:
         - key: copy_needed
           label: "APPLAB.CUSTOMERS must first be copied into Marvin's own schema."
         - key: app_permission
-          label: "The Customer Sales application hasn't been told to allow Marvin in."
+          label: "The Customer Sales App hasn't been told to allow Marvin in."
         - key: context_needed
           label: "Marvin has the SELECT ANY TABLE system privilege."
       correct_answer: not_granted
@@ -743,8 +745,8 @@ steps:
 
   - id: customer_sales
     badge: "1"
-    label: Customer Sales Demo
-    title: Customer Sales Demo
+    label: Customer Sales App
+    title: Customer Sales App
     action_ids:
       - customer_sales
     next_hint: Continue to Customize Data Grant to narrow the rows and columns Oracle returns to Marvin.
@@ -762,7 +764,7 @@ steps:
       correct_answer: every_row
       explanation: "Correct. A data grant's WHERE clause is optional. Leaving it out is Deep Sec's own way of saying every row, not something you fake with 1=1."
     notes:
-      - "This is where you get to see what you built. Open Customer Sales Demo, sign in with the same password you used for this app, and run Customer Report. Then check your understanding with the quiz."
+      - "This is where you get to see what you built. Open the Customer Sales App, sign in with the same password you used for this app, and run Customer Report. Then check your understanding with the quiz."
 
   - id: customize_employee_grant
     badge: "1"
@@ -770,7 +772,7 @@ steps:
     title: Customize Data Grant
     action_ids:
       - customize_employee_grant
-    next_hint: Continue to Check Customer Sales to confirm the change took effect.
+    next_hint: Continue to Check Customer Sales App to confirm the change took effect.
     notes:
       - "Now you are getting into the really good stuff. In this section, you will modify the basic data grant you created, choosing which columns to exclude from SELECT or include for UPDATE. This is the real power of Deep Sec, control down to the column level."
       - "You will also restrict which rows come back, limited to the specific sales rep running the query. Nothing is hardcoded for Marvin or Emma specifically, you are matching their identity, ora_end_user_context.username, directly against the row data."
@@ -779,8 +781,8 @@ steps:
 
   - id: verify_employee_grant
     badge: "2"
-    label: Check Customer Sales
-    title: Check Customer Sales
+    label: Check Customer Sales App
+    title: Check Customer Sales App
     action_ids:
       - verify_employee_grant
     next_hint: Continue to Review to confirm the grant.
@@ -798,7 +800,7 @@ steps:
       correct_answer: excluded_select
       explanation: "Correct. The data grant controls SELECT down to the column level. A column left out of the grant isn't hidden by the app, Oracle never returns it at all."
     notes:
-      - "Check the Customer Sales app now, you should see a change in how many rows Marvin sees. You can go back to Customize Data Grant and adjust it again to confirm it is working, or to fix a mistake if you are still seeing Credit Limit or Sensitive Identifier. Once you are satisfied, answer the check your understanding question."
+      - "Check the Customer Sales App now, you should see a change in how many rows Marvin sees. You can go back to Customize Data Grant and adjust it again to confirm it is working, or to fix a mistake if you are still seeing Credit Limit or Sensitive Identifier. Once you are satisfied, answer the check your understanding question."
 
   - id: review_grant
     badge: "3"
@@ -811,9 +813,9 @@ steps:
       question: After row restriction and column exclusions are applied, what stops Marvin from seeing unauthorized data?
       options:
         - key: database
-          label: Oracle's data grant enforcement.
+          label: Oracle's Deep Data Security data grant enforcement.
         - key: application
-          label: The Customer Sales application's page logic.
+          label: The Customer Sales App page logic.
         - key: browser
           label: The browser hiding rows and columns.
         - key: password
@@ -878,9 +880,9 @@ steps:
     action_ids:
       - enable_manager
       - disable_manager
-    next_hint: Open Customer Sales as Marvin to see manager access apply.
+    next_hint: Open the Customer Sales App as Marvin to see manager access apply.
     notes:
-      - "Now give Marvin this new role, make him a manager. Switch to the Customer Sales app and re-run Customer Report, what changed? Answer the check your understanding question, how many rows do you see now, and are any columns still hidden? See if you can guess why."
+      - "Now give Marvin this new role, make him a manager. Switch to the Customer Sales App and re-run Customer Report, what changed? Answer the check your understanding question, how many rows do you see now, and are any columns still hidden? See if you can guess why."
       - "One hint before you compare numbers: multiple applicable data grants combine as a union of their rows, not added together. If a row would already be authorized by more than one grant, it still only counts once, keep that in mind as you look at the new total."
     quiz:
       question: Now that Marvin is both an employee and a manager, how many rows are returned?
@@ -909,7 +911,7 @@ steps:
         - key: context
           label: The authenticated user's end-user context and the manager lookup relationship.
         - key: browser
-          label: The manager selected in the Customer Sales browser page.
+          label: The manager selected in the Customer Sales App page.
         - key: all_rows
           label: Every row in APPLAB.CUSTOMERS, because managers always have full access.
         - key: table_copy
@@ -1158,7 +1160,7 @@ steps:
       - "Whatever you customized past this point, excluded columns, the manager grant, order history access, is gone after this runs. That is the point, it is a genuine do-over, not a partial one."
     action_ids:
       - restore_deep_sec_setup
-    next_hint: Open Customer Sales to continue from the baseline employee access.
+    next_hint: Open the Customer Sales App to continue from the baseline employee access.
 
   - id: download_lab_files
     badge: D
@@ -1202,7 +1204,7 @@ pages:
 
   - id: customer_sales
     path: /customer-sales
-    label: Customer Sales
+    label: Customer Sales App
     step_ids:
       - customer_sales
 

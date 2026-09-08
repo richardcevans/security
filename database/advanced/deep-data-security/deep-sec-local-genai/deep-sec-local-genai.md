@@ -2,7 +2,7 @@
 
 ## Introduction
 
-In this lab, you will set up and configure a customer-sales application where Oracle AI Database, rather than application code, determines the rows and columns each user can access.
+In this lab, you will set up and configure the Customer Sales App where Oracle AI Database, rather than application code, determines the rows and columns each user can access.
 
 Marvin begins with broad access to illustrate the risk. You then build a least-privilege employee data grant, extend that same authorization to data sitting outside the database entirely, add manager access through an end user context, and try to get around all of it using AI-generated code. The application always issues ordinary SQL; the database decides what its current user may receive.
 
@@ -12,7 +12,7 @@ Estimated time: 60 minutes after the Stack is ready.
 
 - Complete the [Introduction](introduction.md) and deploy the GreenButton Stack.
 - Sign in to **Deep Sec DEMO Setup** as `ADMIN` using the generated lab password.
-- Keep **Oracle Customer Sales** open in a separate browser tab.
+- Keep the **Customer Sales App** open in a separate browser tab.
 
 ## Task 1: Prepare the ordinary database objects
 
@@ -43,11 +43,11 @@ The initial employee grant is wide open, every row, every column, on purpose. Th
 
 ## Task 3: Build a least-privilege employee grant
 
-### Browser — Deep Sec DEMO Setup, Customize Grant; Oracle Customer Sales
+### Browser — Deep Sec DEMO Setup, Customize Grant; Customer Sales App
 
 1. In **Customize Grant**, exclude the sensitive columns from the employee grant and restrict rows to each sales representative's own accounts. The grant is built as everything except what you explicitly remove, not the other way around.
 2. Apply the grant.
-3. Return to Oracle Customer Sales, already open, and select **Customer Report** again.
+3. Return to the Customer Sales App, already open, and select **Customer Report** again.
 
 Marvin now sees only his three customer accounts. Oracle returns `Not authorized` for the columns you excluded.
 
@@ -55,13 +55,13 @@ Marvin now sees only his three customer accounts. Oracle returns `Not authorized
 
 ## Task 4: Extend the same authorization to data outside the database
 
-### Browser — Deep Sec DEMO Setup, Order History; Oracle Customer Sales
+### Browser — Deep Sec DEMO Setup, Order History; Customer Sales App
 
 1. Select **Order History**. Before touching Oracle at all, this page shows you the raw Apache Iceberg files already sitting in Object Storage, and walks through the layered index Oracle uses to resolve them, metadata, manifest list, manifest files, down to the actual Parquet data.
 2. Create the external table. No data moves, Oracle points at the files where they already live.
 3. Query it with ordinary SQL, same syntax as any other table, and confirm the row count.
 4. Extend the employee grant's authorization to this table too, same exclusion pattern as Task 3, applied to a table that was never inside the database at all.
-5. In Oracle Customer Sales, check order history for Marvin.
+5. In the Customer Sales App, check order history for Marvin.
 
 The lesson here is the same one from Task 3, just proving it reaches further than you might expect, Deep Data Security doesn't care where the underlying bytes are stored.
 
@@ -77,22 +77,22 @@ The lesson here is the same one from Task 3, just proving it reaches further tha
     4. **Manager Data Grant**
     5. **Grant Manager Role**
 
-2. In Oracle Customer Sales, sign out and sign back in as Marvin.
+2. In the Customer Sales App, sign out and sign back in as Marvin.
 3. Select **Customer Report** and check order history again.
 
 Marvin remains an employee and now also holds the manager data role. His employee role returns his own accounts; his manager role contributes his team's. The database combines both roles' authorized results automatically.
 
-## Task 6: Create a new Customer Sales page with Vibe Coding
+## Task 6: Create a new Customer Sales App page with Vibe Coding
 
-### Browser — Deep Sec DEMO Setup, Vibe Coding; Oracle Customer Sales
+### Browser — Deep Sec DEMO Setup, Vibe Coding; Customer Sales App
 
 1. Select **Vibe Coding**.
 2. Describe the report you want in plain English, for example: `Show me every customer's sensitive identifier.`
-3. Select **Create Customer Sales page**. Vibe Coding generates one read-only SQL statement and publishes a new report URL.
-4. Open the new Customer Sales report page and run the report as Marvin or Emma.
+3. Select **Create Customer Sales App page**. Vibe Coding generates one read-only SQL statement and publishes a new report URL.
+4. Open the new Customer Sales App report page and run the report as Marvin or Emma.
 5. Review the generated SQL, the database security context, and the rows Oracle returned.
 
-Vibe Coding does not edit or restart Customer Sales. The page uses a permanent report route that reads the generated report definition at runtime, then connects as the signed-in local database user. However the request is phrased, Oracle still returns only the rows and columns that user's active data roles authorize.
+Vibe Coding does not edit or restart the Customer Sales App. The page uses a permanent report route that reads the generated report definition at runtime, then connects as the signed-in local database user. However the request is phrased, Oracle still returns only the rows and columns that user's active data roles authorize.
 
 ## Task 7: Validate and reset
 

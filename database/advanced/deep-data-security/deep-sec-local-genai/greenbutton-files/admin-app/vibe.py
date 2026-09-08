@@ -1,4 +1,4 @@
-"""Vibe Coding: generate one bounded Oracle statement for Customer Sales."""
+"""Vibe Coding: generate one bounded Oracle statement for the Customer Sales App."""
 
 import re
 
@@ -32,7 +32,7 @@ def generate_report_query(settings, request_text: str) -> str:
     if not settings.genai_compartment_ocid or not settings.genai_model_id or not settings.genai_region:
         raise RuntimeError("OCI Generative AI is not configured for this lab environment.")
     prompt = (
-        "Write exactly one Oracle SQL SELECT, INSERT, UPDATE, or DELETE statement for a Customer Sales page. "
+        "Write exactly one Oracle SQL SELECT, INSERT, UPDATE, or DELETE statement for a Customer Sales App page. "
         "The statement will run as whichever local database end user opens the page, so do not "
         "embed credentials or assume broader access. You may query APPLAB objects and Oracle "
         "dictionary, role, privilege, and end-user-context views. Oracle, including Deep Sec data "

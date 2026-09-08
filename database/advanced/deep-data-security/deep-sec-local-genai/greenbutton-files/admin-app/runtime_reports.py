@@ -1,4 +1,4 @@
-"""Persistent definitions for Vibe-created Customer Sales report pages."""
+"""Persistent definitions for Vibe-created Customer Sales App report pages."""
 
 import json
 import os
@@ -26,7 +26,7 @@ def _read_reports() -> dict[str, dict]:
 
 
 def publish_report(request_text: str, sql: str) -> dict:
-    """Atomically publish one report definition for Customer Sales to read."""
+    """Atomically publish one report definition for the Customer Sales App to read."""
     report_id = secrets.token_urlsafe(8).replace("-", "").replace("_", "")[:12]
     report = {
         "id": report_id,

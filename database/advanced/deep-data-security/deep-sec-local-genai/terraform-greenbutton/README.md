@@ -42,7 +42,7 @@ the generated password for ADB ADMIN, JupyterLab, and Marvin, then use the
 output URLs:
 
 - Admin Console: port `7778`
-- Customer Sales: port `7777`
+- Customer Sales App: port `7777`
 - JupyterLab: port `8888`
 
 The official Resource Manager procedure is [Creating a Stack from a Zip

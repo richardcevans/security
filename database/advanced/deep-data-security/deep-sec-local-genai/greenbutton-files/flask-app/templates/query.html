@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Customer Accounts | Customer Sales Demo</title><meta name="csrf-token" content="{{ csrf_token() }}"><link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}"></head>
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Customer Accounts | Customer Sales App</title><meta name="csrf-token" content="{{ csrf_token() }}"><link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}"></head>
   <body>
-    <header class="app-header"><a class="brand" href="/query" aria-label="Customer Sales Demo"><span class="oracle-mark" aria-hidden="true">O</span><span>Customer Sales Demo</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="active" href="/query">Customer Accounts</a><a href="/ai">AI Insights</a></nav><span class="header-context"><span class="status-dot"></span> {{ persona.label }}</span><button id="logout" class="header-button">Sign out</button></div></header>
+    <header class="app-header"><a class="brand" href="/query" aria-label="Customer Sales App"><span class="oracle-mark" aria-hidden="true">O</span><span>Customer Sales App</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application"><a class="active" href="/query">Customer Accounts</a><a href="/ai">AI Insights</a></nav><span class="header-context"><span class="status-dot"></span> {{ persona.label }}</span><button id="logout" class="header-button">Sign out</button></div></header>
     <main class="page narrow-page">
-      <section class="page-heading compact-heading"><div><p class="eyebrow">Customer Sales</p><h1>Customer Accounts</h1><p class="lead">Review the customer accounts available to your current database identity.</p></div><div class="security-badge"><span aria-hidden="true">✓</span> Signed in as {{ persona.label }}</div></section>
+      <section class="page-heading compact-heading"><div><p class="eyebrow">Customer Sales App</p><h1>Customer Accounts</h1><p class="lead">Review the customer accounts available to your current database identity.</p></div><div class="security-badge"><span aria-hidden="true">✓</span> Signed in as {{ persona.label }}</div></section>
       <section class="card query-card" aria-labelledby="query-title">
         <div class="card-heading"><div><h2 id="query-title">Customer Accounts</h2><p id="account-count">Load the accounts returned for your current database identity.</p></div></div>
         <div class="query-actions"><button id="load" class="primary" type="button">Customer Report</button><span id="load-status" class="loading-status" aria-live="polite"></span><span id="error" role="alert"></span></div>
@@ -35,6 +35,6 @@
         <div id="order-history-result" aria-live="polite"></div>
       </section>
     </main>
-    <footer>Customer Sales Demo · Protected by Oracle Deep Data Security</footer><script src="{{ url_for('static', filename='app.js') }}"></script>
+    <footer>Customer Sales App · Protected by Oracle Deep Data Security</footer><script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>
 </html>

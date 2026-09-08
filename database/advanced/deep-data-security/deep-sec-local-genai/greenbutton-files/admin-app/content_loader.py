@@ -238,6 +238,8 @@ def _normalize_overview(
         raw_overview,
         {
             "introduction",
+            "scenario_heading",
+            "scenario",
             "architecture_alt",
             "architecture_caption",
             "heading",
@@ -268,6 +270,8 @@ def _normalize_overview(
     result: dict[str, Any] = {}
     for key in (
         "introduction",
+        "scenario_heading",
+        "scenario",
         "architecture_alt",
         "architecture_caption",
         "heading",
@@ -276,7 +280,10 @@ def _normalize_overview(
         "note",
         "start_label",
     ):
-        result[key] = _string(raw_overview.get(key), f"{location}.{key}", errors) or ""
+        if key in {"scenario_heading", "scenario"}:
+            result[key] = _optional_string(raw_overview.get(key), f"{location}.{key}", errors) or ""
+        else:
+            result[key] = _string(raw_overview.get(key), f"{location}.{key}", errors) or ""
 
     start_path = _string(raw_overview.get("start_path"), f"{location}.start_path", errors) or ""
     if start_path and not start_path.startswith("/"):

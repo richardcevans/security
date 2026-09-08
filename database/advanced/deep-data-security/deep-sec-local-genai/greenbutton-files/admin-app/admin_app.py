@@ -667,7 +667,7 @@ def publish_vibe_coding_report():
         report = publish_report(request_text, sql)
     except Exception:
         app.logger.exception("Vibe Coding report publication failed.")
-        return jsonify(error="Could not create the Customer Sales report page. Check the server log."), 502
+        return jsonify(error="Could not create the Customer Sales App report page. Check the server log."), 502
     return jsonify(report_id=report["id"], report_path=f"/vibe-report/{report['id']}", sql=sql), 201
 
 

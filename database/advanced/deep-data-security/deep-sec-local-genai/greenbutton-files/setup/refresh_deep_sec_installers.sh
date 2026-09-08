@@ -90,7 +90,7 @@ if ! /usr/local/sbin/install-deep-sec-admin-console.verbose >> "$log" 2>&1; then
   tail -n 80 "$log" >&2 || true
   exit 1
 fi
-grep -E '^(Protected original Customer Sales|Deep Sec Customer Sales|Deep Sec Administrator)' "$log" || true
+grep -E '^(Protected original Customer Sales App|Deep Sec Customer Sales App|Deep Sec Administrator)' "$log" || true
 SCRIPT
   chmod 0755 "$console_installer"
 fi
@@ -100,7 +100,7 @@ add_section /usr/local/sbin/generate-deep-sec-order-history 'Install Iceberg gen
 add_section /usr/local/sbin/generate-deep-sec-order-history 'Generate Iceberg order history' 'runuser -u opc -- bash -c'
 add_section /usr/local/sbin/install-deep-sec-admin-console 'Install Administrator Console' 'systemctl stop deep-sec-admin-console.service'
 add_section /usr/local/sbin/install-deep-sec-admin-console 'Install database setup scripts' 'chown -R opc:opc "$admin_database_dir"'
-add_section /usr/local/sbin/install-deep-sec-admin-console 'Install Customer Sales application' 'customer_stage_dir'
+add_section /usr/local/sbin/install-deep-sec-admin-console 'Install Customer Sales App' 'customer_stage_dir'
 add_section /usr/local/sbin/install-deep-sec-admin-console 'Configure and start Deep Sec services' 'install -d -m 0755 /etc/deep-sec'
 add_section /usr/local/sbin/install-deep-sec-vibe 'Install Vibe Coding' 'unzip -tqq "$archive"'
 add_section /usr/local/sbin/install-deep-sec-vibe 'Verify Vibe Coding' 'restorecon -RF'

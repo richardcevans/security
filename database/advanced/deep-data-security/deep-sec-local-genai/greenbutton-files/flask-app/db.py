@@ -113,7 +113,7 @@ def fetch_order_history(settings: Settings, persona: str, password: str) -> tupl
 
 
 def execute_vibe_statement(settings: Settings, persona: str, password: str, sql: str) -> dict:
-    """Run one published Vibe statement as the Customer Sales end user, never as ADMIN."""
+    """Run one published Vibe statement as the Customer Sales App end user, never as ADMIN."""
     if persona not in PERSONAS:
         raise ValueError("Choose Marvin or Emma")
     operation = sql.lstrip().split(None, 1)[0].upper()

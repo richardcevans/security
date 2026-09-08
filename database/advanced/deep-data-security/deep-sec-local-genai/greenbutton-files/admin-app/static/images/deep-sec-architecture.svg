@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500" role="img" aria-labelledby="title desc">
   <title id="title">Deep Sec lab architecture</title>
-  <desc id="desc">A browser connects to the Admin Console and Customer Sales applications on an OCI Compute VM. Both applications connect to Autonomous Database, which enforces Deep Sec data grants. Autonomous Database reads Iceberg data from OCI Object Storage.</desc>
+  <desc id="desc">A browser connects to the Admin Console and Customer Sales App on an OCI Compute VM. Both applications connect to Autonomous Database, which enforces Deep Sec data grants. Autonomous Database reads Iceberg data from OCI Object Storage.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#56708a"/></marker>
     <style>
@@ -30,8 +30,7 @@
   <text x="435" y="213" text-anchor="middle" class="label">Admin Console</text>
   <text x="435" y="234" text-anchor="middle" class="small">Build and review the lab</text>
   <rect x="320" y="280" width="230" height="65" rx="8" class="app"/>
-  <text x="435" y="308" text-anchor="middle" class="label">Customer Sales</text>
-  <text x="435" y="329" text-anchor="middle" class="small">Application requests data</text>
+  <text x="435" y="318" text-anchor="middle" class="label">Customer Sales App</text>
 
   <rect x="665" y="130" width="255" height="120" rx="10" class="service"/>
   <text x="792" y="167" text-anchor="middle" class="label">Autonomous Database</text>

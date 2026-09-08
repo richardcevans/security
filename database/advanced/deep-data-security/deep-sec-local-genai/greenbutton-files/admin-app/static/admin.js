@@ -11,6 +11,10 @@ function loadSetupProgress() {
 let completedSetupActions = loadSetupProgress();
 let selectedActionKey = null;
 
+function stepIsCompleted(step) {
+  return (step.dataset.actionKeys || "").split(",").some((actionKey) => completedSetupActions.has(actionKey));
+}
+
 function updateActionAvailability() {
   document.querySelectorAll(".run-action").forEach((button) => {
     const actionArea = button.closest(".toggle-half") || button.closest(".action-card");
@@ -24,7 +28,7 @@ function updateActionAvailability() {
   document.querySelectorAll(".step-item").forEach((step) => {
     const key = step.dataset.actionStep;
     const button = step.querySelector(".step-badge");
-    const completed = (step.dataset.actionKeys || "").split(",").some((actionKey) => completedSetupActions.has(actionKey));
+    const completed = stepIsCompleted(step);
     step.classList.remove("is-locked");
     step.classList.toggle("is-completed", completed);
     step.classList.toggle("is-current", !completed && key === selectedActionKey);
@@ -48,7 +52,7 @@ function selectAction(actionKey) {
   document.querySelectorAll(".step-item").forEach((step) => {
     const selected = step.dataset.actionStep === actionKey;
     step.classList.toggle("is-selected", selected);
-    step.classList.toggle("is-current", selected && !completedSetupActions.has(step.dataset.actionStep));
+    step.classList.toggle("is-current", selected && !stepIsCompleted(step));
     step.querySelector(".step-badge")?.setAttribute("aria-current", selected ? "step" : "false");
   });
   const validationButton = document.querySelector(`[data-action="${actionKey}"][data-validation-comparison="true"]`);
@@ -291,7 +295,7 @@ document.querySelectorAll(".customer-sales-link[data-complete-action]").forEach(
     const status = actionArea.querySelector(".action-status");
     const output = actionArea.querySelector(".action-output");
     const outputText = output.querySelector("pre");
-    status.textContent = "Opening Customer Sales…";
+    status.textContent = "Opening Customer Sales App…";
 
     // Do not prevent the link's default target=_blank navigation. The demo
     // opens immediately, while this page records the same link-step action
@@ -342,7 +346,7 @@ document.querySelector("#run-vibe-coding")?.addEventListener("click", async () =
   const reportLink = document.querySelector("#vibe-coding-report-link");
   const requestText = document.querySelector("#vibe-coding-request").value;
   button.disabled = true;
-  status.textContent = "Creating Customer Sales page…";
+  status.textContent = "Creating Customer Sales App page…";
   reportLink.hidden = true;
   reportLink.replaceChildren();
   try {
@@ -351,7 +355,7 @@ document.querySelector("#run-vibe-coding")?.addEventListener("click", async () =
       headers: jsonHeaders,
       body: JSON.stringify({request: requestText}),
     });
-    status.textContent = response.ok ? "Customer Sales page created." : (payload.error || "Failed.");
+    status.textContent = response.ok ? "Customer Sales App page created." : (payload.error || "Failed.");
     if (payload.sql) {
       scriptOutput.hidden = false;
       scriptOutput.querySelector("pre").textContent = payload.sql;
@@ -361,7 +365,7 @@ document.querySelector("#run-vibe-coding")?.addEventListener("click", async () =
       const customerUrl = new URL(payload.report_path, window.location.origin);
       customerUrl.port = "7777";
       link.href = customerUrl.toString();
-      link.textContent = "Open the new Customer Sales report page";
+      link.textContent = "Open the new Customer Sales App report page";
       link.target = "_blank";
       link.rel = "noopener";
       reportLink.append(link);
@@ -371,7 +375,7 @@ document.querySelector("#run-vibe-coding")?.addEventListener("click", async () =
     status.textContent = "Could not contact the administrator console.";
   } finally {
     button.disabled = false;
-    button.textContent = "Create Customer Sales page";
+    button.textContent = "Create Customer Sales App page";
   }
 });
 

@@ -903,7 +903,7 @@ write_files:
       echo 'Iceberg external-table bootstrap verification succeeded.'
       rm -f "$order_history_bootstrap_sqlplus_input" "$order_history_bootstrap_verify_sql"
 
-      section 'Install Customer Sales application'
+      section 'Install Customer Sales App'
       rm -rf "$customer_stage_dir" "$customer_dir" "$customer_original_dir"
       mkdir -p "$customer_stage_dir"
       unzip -q "$package_file" 'flask-app/*' -d "$customer_stage_dir"
@@ -912,18 +912,18 @@ write_files:
       chown -R opc:opc "$customer_dir"
 
       runuser -u opc -- /usr/bin/python3 -m venv "$customer_dir/.venv"
-      run_logged 'IPv4 package-network readiness for Customer Sales' wait_for_pypi_ipv4
-      run_logged 'Customer Sales dependency installation' runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip install --disable-pip-version-check --no-input --retries 10 --timeout 60 -r "$customer_dir/requirements.txt"
-      run_logged 'Customer Sales dependency check' runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip check
+      run_logged 'IPv4 package-network readiness for Customer Sales App' wait_for_pypi_ipv4
+      run_logged 'Customer Sales App dependency installation' runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip install --disable-pip-version-check --no-input --retries 10 --timeout 60 -r "$customer_dir/requirements.txt"
+      run_logged 'Customer Sales App dependency check' runuser -u opc -- "$customer_dir/.venv/bin/python" -m pip check
       cp -a "$customer_dir" "$customer_original_dir"
       chown -R opc:opc "$customer_original_dir"
       for app_file in app.py config.py db.py requirements.txt run.sh templates/index.html; do
         cmp -s "$customer_dir/$app_file" "$customer_original_dir/$app_file" || {
-          echo "Original Customer Sales copy does not match installed application: $app_file" >&2
+          echo "Original Customer Sales App copy does not match installed application: $app_file" >&2
           exit 1
         }
       done
-      printf 'Protected original Customer Sales application verified: %s\n' "$customer_original_dir"
+      printf 'Protected original Customer Sales App verified: %s\n' "$customer_original_dir"
 
       section 'Configure and start Deep Sec services'
       install -d -m 0755 /etc/deep-sec
@@ -1010,7 +1010,7 @@ write_files:
 
       cat > "$customer_service_file" <<'SERVICE'
       [Unit]
-      Description=Deep Sec Customer Sales Application
+      Description=Deep Sec Customer Sales App
       After=network-online.target
       Wants=network-online.target
       StartLimitIntervalSec=0
@@ -1050,7 +1050,7 @@ write_files:
       systemctl daemon-reload
       systemctl enable --now deep-sec-customer-sales.service
       systemctl enable --now deep-sec-admin-console.service
-      echo "Deep Sec Customer Sales Application is running on port 7777."
+      echo "Deep Sec Customer Sales App is running on port 7777."
       echo "Deep Sec Administrator Console is running on port 7778."
   - path: /usr/local/sbin/install-deep-sec-vibe
     owner: root:root
@@ -1071,7 +1071,7 @@ write_files:
       section() { printf '\n===== %s =====\n' "$1"; }
 
       [[ -s "$archive" ]] || { echo "Missing Vibe package: $archive" >&2; exit 1; }
-      [[ -d "$customer_dir" ]] || { echo "Customer Sales application is missing: $customer_dir" >&2; exit 1; }
+      [[ -d "$customer_dir" ]] || { echo "Customer Sales App is missing: $customer_dir" >&2; exit 1; }
       section 'Install Vibe Coding'
       unzip -tqq "$archive"
       rm -rf "$source_dir" "$vibe_base"

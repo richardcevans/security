@@ -14,6 +14,12 @@
           <p>{{ lesson.overview.introduction }}</p>
         </div>
       </section>
+      {% if lesson.overview.scenario %}
+      <section class="card overview-scenario" aria-labelledby="scenario-heading">
+        <h2 id="scenario-heading">{{ lesson.overview.scenario_heading }}</h2>
+        <p>{{ lesson.overview.scenario }}</p>
+      </section>
+      {% endif %}
       <section class="overview-card">
         <figure class="overview-architecture">
           <img src="{{ url_for('static', filename='images/deep-sec-architecture.svg') }}" alt="{{ lesson.overview.architecture_alt }}">

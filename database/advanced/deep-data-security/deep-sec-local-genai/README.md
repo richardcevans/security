@@ -46,7 +46,7 @@ verification, reset behavior, and the Stack-owned Iceberg bucket flow.
 4. Run **Plan**, review it, and then run **Apply**. Apply waits for the
    application VM bootstrap health gate.
 5. Unlock the sensitive password in Application Information. Use the emitted
-   Admin Console, Customer Sales, JupyterLab, and SSH outputs.
+   Admin Console, Customer Sales App, JupyterLab, and SSH outputs.
 
 The GreenButton path creates a private Stack-owned bucket and publishes the
 checked-in Iceberg sample during bootstrap. It does not require a user-owned

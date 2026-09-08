@@ -1,4 +1,4 @@
-"""Read Vibe-created Customer Sales report definitions without restarting Flask."""
+"""Read Vibe-created Customer Sales App report definitions without restarting Flask."""
 
 import json
 import os

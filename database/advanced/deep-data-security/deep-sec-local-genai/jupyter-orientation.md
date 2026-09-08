@@ -10,7 +10,7 @@ Estimated Time: 5 minutes
 
 - Open JupyterLab from the Resource Manager Stack output.
 - Confirm the Stack-provided wallet is ready without downloading or uploading it.
-- The Customer Sales and Admin Console services already run from Terraform. Task 7 uses the Admin Console's Vibe Coding page, so no terminal setup is required.
+- The Customer Sales App and Admin Console services already run from Terraform. Task 7 uses the Admin Console's Vibe Coding page, so no terminal setup is required.
 
 ### Prerequisites
 

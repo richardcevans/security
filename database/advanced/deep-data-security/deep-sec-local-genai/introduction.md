@@ -78,12 +78,12 @@ that Oracle did not authorize.
 
    | Input | What it means |
    | --- | --- |
-   | `tenancy_ocid` | The OCID of the OCI tenancy where Resource Manager will create tenancy-scoped resources. |
-   | `compartment_ocid` | The target compartment for the database, compute instance, networking, and lab resources. |
-   | `adb_admin_password` | Not entered for this Stack. GreenButton generates the shared ADB `ADMIN`, JupyterLab, and Marvin password and exposes it in **Application Information** after Apply. |
-   | `ssh_public_key` | The public half of the SSH key that will be authorized on the application Compute instance. Keep the private key; it is not uploaded to the Stack. |
-   | `allowed_ingress_home_ip_address` | The public IPv4 address or CIDR allowed to reach the lab services. A single address is treated as `/32`; restrict the default `0.0.0.0/0` before broader use. |
-   | `create_genai_iam` | Whether Terraform creates a dynamic group and policy that allow the new Compute instance to call OCI Generative AI. Enable it when the tenancy does not already authorize that instance through an existing policy; leave the current default unchanged when the required authorization already exists or tenancy quota is constrained. |
+   | <code style="white-space: nowrap;">tenancy_ocid</code> | The OCID of the OCI tenancy where Resource Manager will create tenancy-scoped resources. |
+   | <code style="white-space: nowrap;">compartment_ocid</code> | The target compartment for the database, compute instance, networking, and lab resources. |
+   | <code style="white-space: nowrap;">adb_admin_password</code> | Not entered for this Stack. GreenButton generates the shared ADB `ADMIN`, JupyterLab, and Marvin password and exposes it in **Application Information** after Apply. |
+   | <code style="white-space: nowrap;">ssh_public_key</code> | The public half of the SSH key that will be authorized on the application Compute instance. Keep the private key; it is not uploaded to the Stack. |
+   | <code style="white-space: nowrap;">allowed_ingress_home_ip_address</code> | The public IPv4 address or CIDR allowed to reach the lab services. A single address is treated as `/32`; restrict the default `0.0.0.0/0` before broader use. |
+   | <code style="white-space: nowrap;">create_genai_iam</code> | Whether Terraform creates a dynamic group and policy that allow the new Compute instance to call OCI Generative AI. Enable it when the tenancy does not already authorize that instance through an existing policy; leave the current default unchanged when the required authorization already exists or tenancy quota is constrained. |
 
    The Stack also requires the Order History reader identity and matching OCI
    Auth Token. `order_history_oci_username` must use

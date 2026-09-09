@@ -55,16 +55,16 @@ Open the JupyterLab link from the Stack's **Application Information** tab and si
 
 ### Connect directly with SQL*Plus
 
-The Stack output `adb_tls_connection_string` is a one-way TLS connect string; no wallet is required.
+The Stack configures the built-in `deepsec_low` TNS alias for the ADB LOW service; no wallet is required.
 
 ```text
-sqlplus ADMIN/"<generated password>"@"<adb_tls_connection_string>"
+sqlplus ADMIN/"<generated password>"@deepsec_low
 ```
 
 Try the same query the Customer Sales App runs, as Marvin instead of ADMIN, and watch Oracle return a different answer to the identical statement:
 
 ```text
-sqlplus MARVIN/"<generated password>"@"<adb_tls_connection_string>"
+sqlplus MARVIN/"<generated password>"@deepsec_low
 SQL> SELECT * FROM APPLAB.customers ORDER BY revenue DESC;
 ```
 

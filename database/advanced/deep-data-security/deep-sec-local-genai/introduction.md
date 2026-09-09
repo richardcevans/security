@@ -2,11 +2,11 @@
 
 ## Introduction
 
-This workshop is a guided build of Oracle Deep Data Security on Oracle Autonomous AI Database. You will create database end users, data roles, data grants, cross-table data grants, and an end user context, then test the resulting policies from the Customer Sales App and OCI Generative AI.
+This workshop builds Oracle Deep Data Security on Oracle Autonomous AI Database. You create database end users, data roles, data grants, cross-table data grants, and an end user context. You then test those policies from the Customer Sales App and OCI Generative AI.
 
-You begin with a working Customer Sales App and its ordinary Oracle objects. You create Marvin and Emma as local database end users, build employee and manager data roles, and define row- and column-level access with data grants. You then extend those policies to Order History through a cross-table data grant and use an end user context to add manager access. At each stage, you test the results with ordinary queries and with different natural-language questions in Customer Insights. OCI Generative AI receives only the rows and columns Oracle has already authorized for the signed-in user; changing the question cannot override or bypass database authorizations.
+The Stack starts with a working Customer Sales App and its ordinary Oracle objects. You create Marvin and Emma as local database end users. You build employee and manager data roles, then define row- and column-level access with data grants. Next, you extend those policies to Order History through a cross-table data grant. You also use an end user context to add manager access. At each stage, test the results with SQL queries and natural-language questions in Customer Insights. OCI Generative AI receives only the rows and columns that Oracle authorizes for the signed-in user. Changing the question cannot override or bypass database authorization.
 
-Estimated Workshop Time: 60 minutes after the Stack is ready. Allow additional time for Autonomous AI Database provisioning and VM bootstrap. GreenButton publishes the checked-in Iceberg sample during bootstrap, so it does not wait for a Data Flow Spark run.
+Estimated Workshop Time: 60 minutes after the Stack is ready. Allow extra time for Autonomous AI Database provisioning and VM bootstrap. GreenButton publishes the checked-in Iceberg sample during bootstrap. The process does not wait for a Data Flow Spark run.
 
 ### Objectives
 
@@ -40,18 +40,18 @@ Only authorized rows and columns
 OCI Generative AI / Customer Insights
 ```
 
-The Stack creates a private Object Storage bucket, publishes the checked-in
-Iceberg files into it, and points ADB at the direct metadata JSON. The VM
-rewrites the complete metadata and manifest graph for the generated bucket
-prefix before creating the external table. ADB reads the existing files as an
-external table; the data is not copied into database storage.
+The Stack creates a private Object Storage bucket. It publishes the checked-in
+Iceberg files into that bucket and points ADB at the direct metadata JSON. The
+VM rewrites the complete metadata and manifest graph for the generated bucket
+prefix before it creates the external table. ADB reads the existing files as an
+external table. The data stays in Object Storage.
 
 Customer Insights sends the signed-in user's Oracle-authorized customer rows to
-OCI Generative AI. The AI service can answer different questions about that
-result set, but it does not receive or independently query rows and columns
-that Oracle did not authorize.
+OCI Generative AI. The service can answer different questions about that result
+set. It does not receive or independently query rows and columns that Oracle
+did not authorize.
 
-## Prerequisites
+### Prerequisites
 
 - An isolated, non-production OCI compartment.
 - Permission to create the Stack resources or the supplied Stack inputs from the lab owner.
@@ -86,8 +86,8 @@ that Oracle did not authorize.
    | <code style="white-space: nowrap;">create_genai_iam</code> | Whether Terraform creates a dynamic group and policy that allow the new Compute instance to call OCI Generative AI. Enable it when the tenancy does not already authorize that instance through an existing policy; leave the current default unchanged when the required authorization already exists or tenancy quota is constrained. |
 
    The Stack also requires the Order History reader identity and matching OCI
-   Auth Token. `order_history_oci_username` must use
-   `<identity-domain>/<username>` form. Enter the matching
+   Auth Token. Use the `<identity-domain>/<username>` form for
+   `order_history_oci_username`. Enter the matching
    `order_history_oci_auth_token` as a sensitive value.
 5. Leave the retired Customer Secret Key, user-bucket, shared-dataset, and
    Data Flow inputs empty or disabled. The Stack creates its own private

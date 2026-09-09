@@ -648,7 +648,7 @@ function showDeebeePopup() {
   const popup = document.createElement("div");
   popup.className = "deebee-popup";
   popup.innerHTML = `
-    <img src="/static/images/DeeBee.png" alt="DeeBee" class="deebee-icon deebee-icon-large">
+    <img src="/static/images/deebee.png" alt="DeeBee" class="deebee-icon deebee-icon-large">
     <div>
       <p class="deebee-greeting">Hi, I'm DeeBee, your Oracle LiveLabs assistant. I will guide you through Oracle Deep Data Security, help you test each policy from the user's side, and point out patterns you can apply in your own environment.</p>
       <button class="primary small deebee-popup-dismiss" type="button">Got it</button>

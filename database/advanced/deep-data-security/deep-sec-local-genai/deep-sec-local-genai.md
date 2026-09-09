@@ -1,418 +1,111 @@
-# Build a Local End-User Deep Data Security Web App
+# Can Application Code Bypass Oracle AI Database Security?
 
 ## Introduction
 
-Build a web application that signs in directly to Autonomous AI Database as Emma, Marvin, or Carol. They are local Deep Data Security end users. The application runs one fixed query. Database grants, not Flask, determine the returned rows and columns. OCI Generative AI summarizes only the database-authorized result set.
+In this lab, you will set up and configure the Customer Sales App where Oracle AI Database, rather than application code, determines the rows and columns each user can access.
 
-Estimated Time: 60 minutes after the Stack Apply job completes. Allow additional time for Autonomous Database provisioning and Python package installation.
+Marvin begins with broad access to illustrate the risk. You then build a least-privilege employee data grant, extend that same authorization to data sitting outside the database entirely, add manager access through an end user context, and try to get around all of it using AI-generated code. The application always issues ordinary SQL; the database decides what its current user may receive.
 
-### Objectives
-
-- Deploy Autonomous AI Database 26ai, a disposable VCN, and the Flask compute host.
-- Create the `APPLAB` schema, local users, data roles, and data grants.
-- Download an ADB wallet through OCI Console and upload it through JupyterLab.
-- Sign in directly as Emma, Marvin, and Carol and compare database-enforced results.
-- Ask OCI Generative AI to summarize authorized data only.
+Estimated time: 60 minutes after the Stack is ready.
 
 ### Prerequisites
 
-- A non-production OCI compartment and permission to create the lab resources.
-- The provided Oracle Linux application-server image and an SSH public key.
-- Access to download the ADB wallet from OCI Console.
-- A browser whose public IPv4 address is known.
+- Complete the [Introduction](introduction.md) and deploy the GreenButton Stack.
+- Sign in to **Deep Sec DEMO Setup** as `ADMIN` using the generated lab password.
+- Keep the **Customer Sales App** open in a separate browser tab.
 
-### Before You Start
+## Task 1: Prepare the ordinary database objects
 
-Confirm each item before creating the Stack:
+### Browser — Deep Sec DEMO Setup, DB Setup
 
-- The supplied custom image is visible in **US East (Ashburn)**. Use a compatible image OCID if you deploy elsewhere.
-- Your organization permits an Autonomous AI Database with the supplied **BYOL**, 2-ECPU, and 1-TB storage defaults. These defaults can incur cost.
-- You accept a public compute IP and browser access restricted to the one IPv4 address supplied to `allowed_ingress_home_ip_address`.
-- The Stack operator can create compartment resources and, when `create_genai_iam = true`, tenancy-level dynamic groups and policies.
-- The Ashburn region can use the default on-demand GenAI model, `google.gemini-2.5-flash`, or you have selected a compatible replacement model ID.
+1. Select **DB Setup**.
+2. Run **Prepare App**.
+3. Run **Create DB Role**.
+4. Run **Review & Quiz** to confirm that the APPLAB schema, customer data, and database role exist.
 
-## Task 0: Deploy the Infrastructure with OCI Resource Manager
+These steps create ordinary Oracle objects. Deep Data Security has not yet been configured.
 
-1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Upload it to an OCI Resource Manager Stack without unzipping it.
+## Task 2: Create data roles and initial grants
 
-2. In OCI Console, open **Developer Services**, **Resource Manager**, and **Stacks**. Create a Stack using **My configuration**. Set the configuration working directory to `terraform` and select Terraform 1.5.x.
+### Browser — Deep Sec DEMO Setup, Deep Sec Setup
 
-3. Enter these Stack variables:
+1. Select **Deep Sec Setup**.
+2. Run the steps in order:
 
-    - `tenancy_ocid`
-    - `compartment_ocid`
-    - `adb_admin_password`
-    - `ssh_public_key`
-    - `allowed_ingress_home_ip_address`: your current public IPv4 address, without `/32`
+    1. **Create data roles**
+    2. **Create data grants**
+    3. **Create end users**
+    4. **Grant Data Role**
 
-    Keep `create_genai_iam = true` to create the compute instance-principal dynamic group and Generative AI policy. Run **Plan**, then **Apply**. The Stack operator needs permission to manage Autonomous Database, instance-family, virtual-network-family, object-family, dynamic groups, and policies. Exact policy statements are in `terraform/README.md` in the Terraform ZIP.
+3. Run **Review & Quiz**.
 
-4. After Apply completes, open the Stack **Application Information** tab. Save these values:
+The initial employee grant is wide open, every row, every column, on purpose. The next task narrows it.
 
-    - `adb_console_url`: direct link to the `deepsec7` database in OCI Console
-    - `jupyter_url`: browser link to JupyterLab
-    - `flask_url`: browser link to the completed web application
-    - `ssh_command`: optional terminal access to the compute host
+## Task 3: Build a least-privilege employee grant
 
-    The tab also shows the ADB `ADMIN` password as a sensitive value. Select **Unlock** only when you need to copy it. Use the Apply job **Outputs** page for `deepsec7_lab_summary`, which lists the ADB, network, wallet bucket, GenAI identity, ports, and trusted ingress CIDR. If Flask or JupyterLab does not open, update `allowed_ingress_home_ip_address` with the current browser public IPv4 address. Apply the Stack again.
+### Browser — Deep Sec DEMO Setup, Customize Grant; Customer Sales App
 
-## Task 1: Download the ADB Wallet in OCI Console
+1. In **Customize Grant**, exclude the sensitive columns from the employee grant and restrict rows to each sales representative's own accounts. The grant is built as everything except what you explicitly remove, not the other way around.
+2. Apply the grant.
+3. Return to the Customer Sales App, already open, and select **Customer Report** again.
 
-1. Open `adb_console_url` from the Resource Manager Apply job Outputs page.
+Marvin now sees only his three customer accounts. Oracle returns `Not authorized` for the columns you excluded.
 
-2. On the `deepsec7` Autonomous Database details page, select **Database connection**, then **Download wallet**.
+4. Open **AI Insights** and ask a question about customer data. The AI response is limited to the same database-authorized result.
 
-3. For **Wallet type**, select **Instance Wallet**. Select **Download**, enter the ADB `ADMIN` password as the wallet password, then download the ZIP to your local computer. Keep the downloaded filename as `Wallet_DEEPSEC7.zip`.
+## Task 4: Extend the same authorization to data outside the database
 
-4. The wallet ZIP contains connection configuration and certificates; it does **not** contain the ADB `ADMIN` password or the Emma, Marvin, and Carol passwords. You enter those passwords only when prompted later in the lab.
+### Browser — Deep Sec DEMO Setup, Order History; Customer Sales App
 
-## Task 2: Prepare the App Server
+1. Select **Order History**. Before touching Oracle at all, this page shows you the raw Apache Iceberg files already sitting in Object Storage, and walks through the layered index Oracle uses to resolve them, metadata, manifest list, manifest files, down to the actual Parquet data.
+2. Create the external table. No data moves, Oracle points at the files where they already live.
+3. Query it with ordinary SQL, same syntax as any other table, and confirm the row count.
+4. Extend the employee grant's authorization to this table too, same exclusion pattern as Task 3, applied to a table that was never inside the database at all.
+5. In the Customer Sales App, check order history for Marvin.
 
-1. Open `jupyter_url` from the Resource Manager Stack **Application Information** tab. This opens the JupyterLab service on the application server.
+The lesson here is the same one from Task 3, just proving it reaches further than you might expect, Deep Data Security doesn't care where the underlying bytes are stored.
 
-2. At the JupyterLab sign-in prompt, enter `Oracle123`. This is the shared password for this disposable lab environment.
+## Task 5: Add manager access
 
-3. In the JupyterLab file browser, select **+** and then **Other** > **Terminal**. Use the **Upload Files** button to upload your local `Wallet_DEEPSEC7.zip`, then return to the terminal and verify the upload.
+### Browser — Deep Sec DEMO Setup, End User Context
 
-    Display the current JupyterLab working directory. The next commands use this directory to locate the uploaded wallet.
+1. Complete the manager workflow in order:
 
-    ```
-    <copy>pwd</copy>
-    ```
+    1. **Manager Lookup**
+    2. **Manager Context**
+    3. **Set Context**
+    4. **Manager Data Grant**
+    5. **Grant Manager Role**
 
-    Confirm that the uploaded wallet ZIP is present and readable before using it.
+2. In the Customer Sales App, sign out and sign back in as Marvin.
+3. Select **Customer Report** and check order history again.
 
-    ```
-    <copy>ls -l Wallet_DEEPSEC7.zip</copy>
-    ```
+Marvin remains an employee and now also holds the manager data role. His employee role returns his own accounts; his manager role contributes his team's. The database combines both roles' authorized results automatically.
 
-    Save the wallet ZIP path in `WALLET_ZIP`. Later commands use this variable instead of requiring you to retype the path.
+## Task 6: Create a new Customer Sales App page with Vibe Coding
 
-    ```
-    <copy>export WALLET_ZIP="$PWD/Wallet_DEEPSEC7.zip"</copy>
-    ```
+### Browser — Deep Sec DEMO Setup, Vibe Coding; Customer Sales App
 
-4. Download and extract **exactly** `deep-data-security-flask-app.zip`. This is the only lab archive required on the compute host; it includes the Flask application and database SQL scripts.
+1. Select **Vibe Coding**.
+2. Describe the report you want in plain English, for example: `Show me every customer's sensitive identifier.`
+3. Select **Create Customer Sales App page**. Vibe Coding generates one read-only SQL statement and publishes a new report URL.
+4. Open the new Customer Sales App report page and run the report as Marvin or Emma.
+5. Review the generated SQL, the database security context, and the rows Oracle returned.
 
-    Create a dedicated directory for the extracted lab files. The `-v` option reports the directory that is created.
+Vibe Coding does not edit or restart the Customer Sales App. The page uses a permanent report route that reads the generated report definition at runtime, then connects as the signed-in local database user. However the request is phrased, Oracle still returns only the rows and columns that user's active data roles authorize.
 
-    ```
-    <copy>mkdir -vp "$HOME/deepsec7-lab"</copy>
-    ```
+## Task 7: Validate and reset
 
-    Move into the lab directory so the downloaded archive and extracted files stay together.
+### Browser — Deep Sec DEMO Setup, Admin
 
-    ```
-    <copy>cd "$HOME/deepsec7-lab"</copy>
-    ```
+1. Select **Admin** and run the validation comparison. Emma and Marvin's active roles, applicable grants, authorized columns, and row rules are read directly from Oracle and shown side by side.
+2. Use the reset options available on this page if you need to repeat a section of the lab.
 
-    Download the compute-host archive from the lab's published Object Storage location. Verbose output confirms the transfer progress and destination filename.
+## Clean up
 
-    ```
-    <copy>wget --verbose -O deep-data-security-flask-app.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/Mzf75vY1KZat2TyYinBCgXRxO0q8Ky-adubY5hAAHj21tjcSBowCcJcHkBw6Glh5/n/oradbclouducm/b/dbsec_public/o/deep-data-security-flask-app.zip</copy>
-    ```
-
-    Extract the application and database scripts from the downloaded archive. The `-o` option permits replacement if you are rerunning the lab setup.
-
-    ```
-    <copy>unzip -o deep-data-security-flask-app.zip</copy>
-    ```
-
-    Enter the Flask application directory. All remaining compute-host commands in this task run from here unless stated otherwise.
-
-    ```
-    <copy>cd flask-app</copy>
-    ```
-
-5. Create the isolated Python environment, install the curated requirements, and verify the preinstalled SQL*Plus and Instant Client. These steps do not require `sudo`.
-
-    Create or refresh the application's isolated Python virtual environment and install its required packages.
-
-    ```
-    <copy>bash setup_venv.sh</copy>
-    ```
-
-    Verify that the virtual environment, SQL*Plus, and Oracle Instant Client expected by the lab image are available.
-
-    ```
-    <copy>bash verify_app_server.sh</copy>
-    ```
-
-## Task 3: Configure the Database and Local Users
-
-1. Install the wallet uploaded in Task 2 into a protected directory. Replace the path if your JupyterLab upload is in a different directory.
-
-    Extract the wallet into the protected location and update its configuration to use that directory.
-
-    ```
-    <copy>bash install_wallet.sh "$WALLET_ZIP"</copy>
-    ```
-
-    The installer reports the protected wallet directory: `$HOME/deepsec7-wallet/tns_admin`. It also updates the downloaded `sqlnet.ora` wallet location from the Instant Client default to that directory.
-
-2. List the wallet aliases, then connect as the ADB administrator. This fixed lab uses `deepsec7_low`. Enter the ADB `ADMIN` password when prompted.
-
-    List the service aliases provided by the extracted wallet. This confirms that the `deepsec7_low` alias is available.
-
-    ```
-    <copy>grep -E '^[[:alnum:]_]+[[:space:]]*=' "$HOME/deepsec7-wallet/tns_admin/tnsnames.ora"</copy>
-    ```
-
-    Point Oracle client tools to the extracted wallet directory for this terminal session.
-
-    ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
-    ```
-
-    Display the value that Oracle client tools will use. It should be the protected wallet directory.
-
-    ```
-    <copy>echo "$TNS_ADMIN"</copy>
-    ```
-
-    Open a SQL*Plus session as the Autonomous Database administrator. SQL*Plus prompts for the `ADMIN` password without echoing it.
-
-    ```
-    <copy>sqlplus admin@deepsec7_low</copy>
-    ```
-
-3. Stay connected as ADB `ADMIN` and run the provisioning scripts. ADMIN creates the `APPLAB` schema, sample data, broad baseline data grants, and local end users. The user-creation script securely prompts for the Emma, Marvin, and Carol database passwords.
-
-    Create the `APPLAB` schema and the customers table that the application queries.
-
-    ```
-    <copy>@../database/01_create_schema.sql</copy>
-    ```
-
-    Load the sample customer rows used for the before-and-after access comparison.
-
-    ```
-    <copy>@../database/02_load_sample_data.sql</copy>
-    ```
-
-    Run the intentional no-op application-account script. It documents that this lab does not use a shared database application account.
-
-    ```
-    <copy>@../database/03_create_app_user.sql</copy>
-    ```
-
-    Create the data roles and deliberately broad baseline grants. SQL*Plus displays the full data-role and data-grant DDL as it runs.
-
-    ```
-    <copy>@../database/04_create_baseline_access.sql</copy>
-    ```
-
-    Create the three password-authenticated local end users. Choose and record the Emma, Marvin, and Carol passwords when the script prompts.
-
-    ```
-    <copy>@../database/05_create_lab_users.sql</copy>
-    ```
-
-    The scripts create schema `APPLAB` and data roles `APP_EAST_SALES`, `APP_SALES_MANAGER`, and `APP_FINANCE`. The baseline-access script has SQL*Plus `ECHO` enabled, so the terminal prints each complete `CREATE DATA ROLE`, role grant, and `CREATE OR REPLACE DATA GRANT` statement as it executes. The baseline grants deliberately give every local end user all customer rows and columns. The application-account script is intentionally a no-op. This lab authenticates directly as each local end user; it does not use an IAM token or a shared database account.
-
-4. Test each local end user through a separate SQL*Plus connection. Exit the ADMIN session, then use the supplied runner to connect as Emma and execute the unchanged validation query. The password prompt keeps the password out of shell history.
-
-    Leave the privileged ADMIN connection before testing the application personas.
-
-    ```
-    <copy>exit</copy>
-    ```
-
-    Connect as Emma and run the fixed validation query. Enter Emma's local database password when prompted.
-
-    ```
-    <copy>./query_data.sh emma</copy>
-    ```
-
-    Connect as Marvin and run the same fixed validation query. Enter Marvin's local database password when prompted.
-
-    ```
-    <copy>./query_data.sh marvin</copy>
-    ```
-
-    Connect as Carol and run the same fixed validation query. Enter Carol's local database password when prompted.
-
-    ```
-    <copy>./query_data.sh carol</copy>
-    ```
-
-    You may optionally supply the password as the second argument, for example `./query_data.sh emma PASSWORD`. Replace `PASSWORD` with Emma's password. The prompt is safer because command-line passwords can appear in shell history or process listings. At this point, all three users return the same unrestricted data. Task 6 replaces this baseline with Deep Data Security policies.
-
-    | Local user | Expected rows | Credit limit | Sensitive identifier |
-    | --- | --- | --- | --- |
-    | Emma | All customer rows | Visible | Visible |
-    | Marvin | All customer rows | Visible | Visible |
-    | Carol | All customer rows | Visible | Visible |
-
-## Task 4: Configure and Start the Web Application
-
-1. Return to the application directory and create the Flask configuration.
-
-    Return to the application directory, where the environment configuration script is located.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
-    ```
-
-    Generate the application configuration, validate the wallet, and accept the Terraform-provided GenAI defaults when prompted.
-
-    ```
-    <copy>./configure_env.sh</copy>
-    ```
-
-    The script explains each prompt, validates the wallet, generates a new `FLASK_SECRET_KEY` with `openssl rand -hex 32`, and writes `.env` with mode `600`. The application uses the Instant Client auto-login wallet (`cwallet.sso`), so it does not save the wallet password. Terraform has already supplied the GenAI policy compartment and the default on-demand model; press Enter at both GenAI prompts to accept them. The script preserves any existing `.env` as a timestamped backup.
-
-    Do not add Emma, Marvin, or Carol passwords to `.env`. Students enter each local database password on the sign-in page.
-
-2. Start the web server.
-
-    Start the web application on port 7777. Keep this terminal open while you test the web interface.
-
-    ```
-    <copy>./run.sh</copy>
-    ```
-
-    The web server listens on port 7777 and occupies this terminal while it runs. Leave this terminal open. Select **+**, then **Other** and **Terminal** in JupyterLab to open a second terminal for the policy and cleanup tasks. You do not need host-firewall changes or JupyterLab `sudo` access. The Stack controls VCN ingress with `allowed_ingress_home_ip_address`.
-
-## Task 5: Query App Data
-
-1. From the trusted browser, open `flask_url` from the Stack outputs. Select **Emma: East Sales**. Enter the Emma database password and select **Sign in**. Run the query. Emma sees every customer row across all regions, including credit limits and sensitive identifiers.
-
-2. Select **Sign out**. Select **Marvin: Sales Manager**. Enter the Marvin password and sign in. Run the unchanged query. Marvin receives the same unrestricted rows and fields that Emma received.
-
-3. Select **Sign out**. Select **Carol: Finance**. Enter the Carol password and sign in. Run the same query. Carol also receives the same unrestricted result set. This establishes the before-policy baseline.
-
-4. While signed in as Emma, enter this bounded prompt and select **Ask AI**.
-
-    Use this prompt to ask OCI Generative AI about the rows returned for Emma. It explicitly directs the model to mention only fields that were available in that authorized result.
-
-    ```
-    <copy>Summarize all authorized customer rows. Mention credit limits and sensitive identifiers only when those values are available.</copy>
-    ```
-
-    The application queries ADB before it calls OCI Generative AI. The model receives only the returned rows and cannot generate or execute SQL. At this point, Emma's summary can reference the unrestricted baseline values.
-
-5. Ask a second question that requires the model to reason over the authorized result set.
-
-    This question identifies the highest-revenue customer and its region using only the rows ADB returned to Emma.
-
-    ```
-    <copy>Tell me who has the most money and tell me which region they're in.</copy>
-    ```
-
-## Task 6: Implement Deep Sec Policies
-
-1. You can keep the application running and open a second JupyterLab terminal. Return to the application directory and connect as ADB `ADMIN`.
-
-    Return to the application directory in the second terminal so the database script paths resolve correctly.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
-    ```
-
-    Point SQL*Plus in this second terminal at the extracted wallet.
-
-    ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
-    ```
-
-    Connect as ADB `ADMIN` to replace the baseline grants with Deep Data Security policy grants.
-
-    ```
-    <copy>sqlplus admin@deepsec7_low</copy>
-    ```
-
-2. Run the Deep Data Security policy script. SQL*Plus `ECHO` is enabled, so the terminal prints each complete replacement `CREATE OR REPLACE DATA GRANT` statement. It replaces the broad Task 5 data grants with the Emma, Marvin, and Carol policy grants.
-
-    Execute the policy DDL and review the displayed grants to see the row and column restrictions assigned to each data role.
-
-    ```
-    <copy>@../database/06_implement_deep_sec_policies.sql</copy>
-    ```
-
-3. Exit SQL*Plus. You do not need to restart Flask because the app opens a new database connection for every query.
-
-    Close the ADMIN session. The running application uses the updated grants the next time a persona signs in.
-
-    ```
-    <copy>exit</copy>
-    ```
-
-## Task 7: Test Deep Sec Policies
-
-1. Return to the browser and sign in as **Emma: East Sales**. Run the unchanged query. Emma sees exactly **six** East sales rows: Acme East, Beacon Health, Cedar Retail, Delta Foods, Evergreen Labs, and Redwood Travel. She can see **Customer name**, **Region**, and **Revenue**. **Credit limit** and **Sensitive identifier** display as `Not authorized`.
-
-2. Sign out and sign in as **Marvin: Sales Manager**. Run the unchanged query. Marvin sees **20** EMMA and MARVIN sales rows. He can see **Customer name**, **Region**, **Revenue**, and **Credit limit**; **Sensitive identifier** displays as `Not authorized`.
-
-3. Sign out and sign in as **Carol: Finance**. Run the unchanged query. Carol sees all **22** rows across every region, including Apex Treasury and Crown Capital. She can see all displayed columns: **Customer name**, **Region**, **Revenue**, **Credit limit**, and **Sensitive identifier**.
-
-    Use this table to compare the policy-enforced result sets. The application always displays the same five column headers; `Not authorized` means the selected local end user did not receive that field from the database.
-
-    | Local user | Expected rows | Authorized columns in the application | Columns shown as `Not authorized` |
-    | --- | ---: | --- | --- |
-    | Emma | 6 | Customer name, Region, Revenue | Credit limit, Sensitive identifier |
-    | Marvin | 20 | Customer name, Region, Revenue, Credit limit | Sensitive identifier |
-    | Carol | 22 | Customer name, Region, Revenue, Credit limit, Sensitive identifier | None |
-
-4. Sign out and sign back in as Emma. Run the query and submit both GenAI questions from Task 5. Compare each answer with its Task 5 result. The post-policy Emma summaries cannot mention finance rows, credit limits, or sensitive identifiers because ADB no longer returns them.
-
-## Task 8: Clean Up
-
-1. In the terminal where the application is running, press `Ctrl+C` to stop the web server. Leave the terminal open.
-
-2. In the second JupyterLab terminal, return to the application directory, set the wallet location, and reconnect as ADB `ADMIN`.
-
-    Return to the application directory before running the cleanup script.
-
-    ```
-    <copy>cd "$HOME/deepsec7-lab/flask-app"</copy>
-    ```
-
-    Point SQL*Plus to the installed wallet for this cleanup terminal.
-
-    ```
-    <copy>export TNS_ADMIN="$HOME/deepsec7-wallet/tns_admin"</copy>
-    ```
-
-    Verify the wallet location before connecting as the administrator.
-
-    ```
-    <copy>echo "$TNS_ADMIN"</copy>
-    ```
-
-    Connect as ADB `ADMIN` so the cleanup script can remove the lab database objects.
-
-    ```
-    <copy>sqlplus admin@deepsec7_low</copy>
-    ```
-
-3. In the ADB administrator SQL*Plus session, remove the lab database objects.
-
-    Remove the database users, data roles, grants, and schema created for this disposable lab.
-
-    ```
-    <copy>@../database/reset_lab.sql</copy>
-    ```
-
-4. Exit SQL*Plus, then remove the protected wallet directory from the compute host.
-
-    Close the database administrator session after the cleanup script finishes.
-
-    ```
-    <copy>exit</copy>
-    ```
-
-    Remove the extracted wallet directory and its connection configuration from the compute host. The verbose option lists the deleted files.
-
-    ```
-    <copy>rm -rfv "$HOME/deepsec7-wallet"</copy>
-    ```
-
-5. In OCI Resource Manager, run a **Destroy** job for the Stack. This removes the Autonomous Database, compute instance, bucket, VCN, and optional GenAI IAM resources.
-
-You may now proceed to the next lab.
+When finished, destroy the Resource Manager Stack. The GreenButton destroy workflow removes its stack-specific Object Storage objects and pre-authenticated requests before deleting the bucket.
 
 ## Acknowledgements
 
 - **Author** - Richard Evans
-- **Last Updated By/Date** - Richard Evans, July 2026
+- **Last Updated** - September 2026

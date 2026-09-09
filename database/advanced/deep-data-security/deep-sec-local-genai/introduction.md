@@ -1,60 +1,94 @@
-# Introduction to Local Deep Data Security and Generative AI
+# Introduction to Deep Sec GreenButton
 
 ## Introduction
 
-AI applications should never decide which customer data a user may see. In this workshop, Oracle Deep Data Security enforces that decision in Oracle Autonomous AI Database 26ai. The browser UI is a small Flask application, but its sign-in control does not filter rows or hide columns. A student supplies the password for Emma, Marvin, or Carol; the app opens a direct database session as that selected local end user and executes one fixed query.
+This workshop shows that Oracle AI Database, rather than Customer Sales App code or an AI coding assistant, determines the rows and columns each end user can access.
 
-Emma, Marvin, and Carol are local database-managed end users. They do not require OCI IAM identities, application registration, or database-access tokens. The only OCI identity used is the compute instance principal, which calls OCI Generative AI after the database has returned authorized data.
+You begin with a working Customer Sales App and its ordinary Oracle objects. You then create Deep Data Security roles and grants, restrict Marvin to his own accounts, extend his access as a manager, and verify the results in the Customer Sales App. The optional Vibe Coding stage creates a new runtime Customer Sales App report page, but it cannot override database authorization.
 
-Estimated Workshop Time: 60 minutes after infrastructure provisioning. Allow additional time for Autonomous Database creation and Python package installation.
+Estimated workshop time: 60 minutes after the Stack is ready. Allow additional time for Autonomous AI Database provisioning and VM bootstrap. GreenButton publishes the checked-in Iceberg sample during bootstrap, so it does not wait for a Data Flow Spark run.
 
 ### Objectives
 
-- Provision an Autonomous AI Database 26ai instance and retrieve its wallet.
-- Create local Deep Data Security end users, data roles, and row- and column-level data grants.
-- Deploy a Flask web application that connects directly as Emma, Marvin, or Carol.
-- Demonstrate that the same SQL produces database-enforced differences in rows and column values.
-- Summarize only authorized query results with OCI Generative AI.
+- Deploy the GreenButton Oracle Cloud Infrastructure stack.
+- Create data roles, data grants, and local database end users.
+- Verify database-enforced row and column authorization in the Customer Sales App.
+- Add manager access through an end user context.
+- Query Order History through an Apache Iceberg external table without copying its data into Oracle.
+- See why application changes made with Vibe cannot bypass database authorization.
 
 ## Architecture
 
 ```text
-Browser local-user sign-in
-          |
-          v
-Flask application on OL9
-          |
-          | direct password-authenticated local end-user session
-          v
+Browser
+  |
+  v
+Customer Sales App / Deep Sec DEMO Setup on Compute
+  |
+  | direct local database-user session
+  v
 Autonomous AI Database 26ai
-          |
-          | Deep Data Security data roles and data grants
-          v
-Authorized rows only ----> OCI Generative AI summary
-                         (compute instance principal)
+  |
+  | Deep Data Security data roles and grants
+  v
+Only authorized rows and columns
 ```
+
+The Stack creates a private Object Storage bucket, publishes the checked-in
+Iceberg files into it, and points ADB at the direct metadata JSON. The VM
+rewrites the complete metadata and manifest graph for the generated bucket
+prefix before creating the external table. ADB reads the existing files as an
+external table; the data is not copied into database storage.
 
 ## Prerequisites
 
-- Use an isolated, non-production environment.
-- Have permission to create the Stack resources, or obtain the required Stack inputs and ADB administrator password from the lab owner.
-- Use the provided Oracle Linux 9 compute instance with JupyterLab.
-- Ensure the Stack operator can create the compute-instance dynamic group and `generative-ai-chat` policy in the target compartment. Terraform supplies the default on-demand GenAI model. This instance permission does not create or require IAM identities for Emma, Marvin, or Carol.
+- An isolated, non-production OCI compartment.
+- Permission to create the Stack resources or the supplied Stack inputs from the lab owner.
+- An SSH public key for the Compute instance.
+- An Oracle-SSO user Auth Token for the ADB Iceberg reader, entered only as a sensitive Stack variable.
+- Access to the supplied compute image in the selected OCI region.
 
-## Download and Deploy the Terraform Stack
+## Deploy the GreenButton Stack
 
-You do not install Terraform locally. OCI Resource Manager runs the included Terraform configuration for you.
+1. From the `deep-sec-local-genai` project directory, build both archives:
 
-1. Download [deep-sec-local-genai-terraform.zip](https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qr29aAUJD9vH5NaArxcqfk0CvgpmJBiEGNi9zfVbmHLb4kXq6ULqukuj5DQb2B0N/n/oradbclouducm/b/dbsec_public/o/deep-sec-local-genai-terraform.zip). Keep the ZIP intact; do not unzip it.
+   ```bash
+   bash build_greenbutton_app_zip.sh
+   bash build_greenbutton_terraform_zip.sh
+   ```
 
+   The Terraform ZIP embeds the application ZIP and the checked-in Iceberg
+   sample. Only the Terraform ZIP is uploaded to Resource Manager.
 2. In the OCI Console, open **Developer Services**, select **Resource Manager**, then select **Stacks** and **Create stack**.
+3. Select **My configuration** and upload the ZIP. Set the working directory to `terraform`.
+4. Enter the target tenancy, compartment, region, SSH public key, and the
+   ADB reader credential. `order_history_oci_username` must use
+   `<identity-domain>/<username>` form. Enter the matching
+   `order_history_oci_auth_token` as a sensitive value.
+5. Leave the retired Customer Secret Key, user-bucket, shared-dataset, and
+   Data Flow inputs empty or disabled. The Stack creates its own private
+   Iceberg bucket.
+6. Run **Plan**, review the successful plan, and run **Apply**. Apply waits
+   for the application VM bootstrap health gate.
+7. In **Application Information**, unlock the generated shared password. Open
+   the Admin Console URL on port `7778`, Customer Sales App on port `7777`,
+   or JupyterLab on port `8888`.
 
-3. Select **My configuration** and **Zip file**, upload `deep-sec-local-genai-terraform.zip`, name the Stack, then select **Next**. Enter the required values, especially the compartment, ADB `ADMIN` password, SSH public key, and home public IPv4 address. Run **Plan**, review it, then run **Apply**.
+8. If you need to diagnose the deployment, SSH to the Compute public IP and
+   run:
 
-After Apply completes, begin the main lab and use the Stack **Application Information** tab to open JupyterLab and the `deepsec7` Autonomous Database Console.
+   ```bash
+   sudo cat /var/lib/deep-sec/bootstrap-status
+   sudo tail -n 200 /var/log/deep-sec-bootstrap.log
+   ```
+
+   The status file should contain `COMPLETE`.
+
+> The GreenButton Stack currently defaults the browser CIDR to `0.0.0.0/0` for hands-on-lab use. Restrict it before broader use.
 
 You may now proceed to the next lab.
 
 ## Acknowledgements
 
-- Oracle Database Security and Oracle LiveLabs teams
+- **Author** - Richard Evans
+- **Last Updated** - September 2026

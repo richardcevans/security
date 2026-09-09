@@ -827,7 +827,9 @@ actions:
       takeaways:
         - The application sends ordinary SQL; Oracle decides which rows and columns the user can receive.
         - Data roles and data grants apply consistently across the application, direct SQL, and OCI Generative AI.
-        - End user context and cross-table grants extend least privilege without trusting a prompt or copying external data into Oracle.
+        - End user context extends the end user's attributes stored in memory.
+        - Cross-table data grants allow you to enforce parent/child table relationships.
+        - If you can query the data via SQL, you can protect it with Deep Data Security.
       documentation_url: https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html
       button_label: Mark as viewed
 

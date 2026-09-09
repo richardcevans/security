@@ -245,7 +245,9 @@ def logout():
 def customers():
     try:
         persona, password = _login_credentials()
-        rows, context = fetch_authorized_customers(settings, persona, password)
+        rows, context, authorization = fetch_authorized_customers(
+            settings, persona, password, include_authorization=True
+        )
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     except Exception as exc:
@@ -254,7 +256,7 @@ def customers():
             return jsonify(error=access_error), 403
         return jsonify(error="Oracle could not complete the Customer Report for this database identity. Check the active data role and grant, then sign out and back in after a role change."), 502
     return jsonify(rows=[{key: _json_value(value) for key, value in row.items()} for row in rows],
-                    context=context, row_count=len(rows))
+                    context=context, row_count=len(rows), authorization=authorization)
 
 
 @app.post("/api/order-history")
@@ -262,7 +264,7 @@ def customers():
 def order_history():
     try:
         persona, password = _login_credentials()
-        rows, row_count, context = fetch_order_history(settings, persona, password)
+        rows, row_count, context, authorization = fetch_order_history(settings, persona, password)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     except Exception as exc:
@@ -274,6 +276,7 @@ def order_history():
         rows=[{key: _json_value(value) for key, value in row.items()} for row in rows],
         row_count=row_count,
         context=context,
+        authorization=authorization,
     )
 
 
@@ -319,7 +322,7 @@ def ai_insight():
         return jsonify(error="Keep the question to 1,000 characters or fewer."), 400
     try:
         persona, password = _login_credentials()
-        rows, context = fetch_authorized_customers(settings, persona, password)
+        rows, context, _ = fetch_authorized_customers(settings, persona, password)
         answer = answer_customer_question(settings, question, rows)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400

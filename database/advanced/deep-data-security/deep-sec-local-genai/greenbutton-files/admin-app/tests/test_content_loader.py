@@ -16,9 +16,9 @@ class ContentLoaderTests(unittest.TestCase):
     def test_deep_sec_manifest_loads_with_complete_shape(self) -> None:
         lesson = load_lesson(MANIFEST)
         self.assertEqual(lesson.id, "deep_data_security")
-        self.assertEqual(len(lesson.pages), 9)
-        self.assertEqual(len(lesson.steps), 40)
-        self.assertEqual(len(lesson.actions), 41)
+        self.assertEqual(len(lesson.pages), 10)
+        self.assertEqual(len(lesson.steps), 41)
+        self.assertEqual(len(lesson.actions), 42)
         self.assertEqual(len(lesson.overview["stages"]), 8)
         self.assertEqual(lesson.overview["start_path"], "/db-setup")
         self.assertEqual(lesson.overview["scenario_heading"], "The scenario")
@@ -35,11 +35,13 @@ class ContentLoaderTests(unittest.TestCase):
         )
         self.assertFalse(lesson.actions["customize_manager_grant"].confirm_apply)
         self.assertFalse(lesson.actions["extend_manager_context"].confirm_apply)
-        self.assertEqual(lesson.pages[-3].id, "exercises")
-        self.assertEqual(lesson.pages[-2].id, "best_practices")
-        self.assertEqual(len(lesson.pages[-2].step_ids), 6)
+        self.assertEqual(lesson.pages[-4].id, "exercises")
+        self.assertEqual(lesson.pages[-3].id, "best_practices")
+        self.assertEqual(lesson.pages[-2].id, "what_you_proved")
+        self.assertEqual(lesson.pages[4].label, "Context")
+        self.assertEqual(len(lesson.pages[-3].step_ids), 6)
         self.assertEqual(
-            [lesson.step_by_id[step_id].title for step_id in lesson.pages[-2].step_ids],
+            [lesson.step_by_id[step_id].title for step_id in lesson.pages[-3].step_ids],
             [
                 "Authorization Mode",
                 "End User Context",
@@ -71,17 +73,20 @@ class ContentLoaderTests(unittest.TestCase):
         self.assertIn("DBA_DATA_ROLE_GRANTS", audit_examples[3]["code"].upper())
         self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
         self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")
+        self.assertEqual(lesson.overview["stages"][0]["estimated_minutes"], 8)
+        self.assertEqual(lesson.actions["what_you_proved"].config["result_sets"][2]["description"], "9 rows after the employee and manager grants union together.")
 
     def test_runtime_content_preserves_configured_pages_and_wizards(self) -> None:
         lesson = load_lesson(MANIFEST)
         actions, steps, pages = build_runtime_content(lesson)
         self.assertEqual(actions["customize_employee_grant"]["type"], "wizard")
         self.assertEqual(actions["extend_manager_context"]["grant_wizard"]["style"], "all_except")
-        self.assertEqual(pages[-3]["key"], "exercises")
-        self.assertEqual(pages[-2]["key"], "best_practices")
-        self.assertEqual(len(pages[-2]["step_keys"]), 6)
+        self.assertEqual(pages[-4]["key"], "exercises")
+        self.assertEqual(pages[-3]["key"], "best_practices")
+        self.assertEqual(pages[-2]["key"], "what_you_proved")
+        self.assertEqual(len(pages[-3]["step_keys"]), 6)
         self.assertFalse(pages[-1]["ordered"])
-        self.assertEqual(len(steps), 40)
+        self.assertEqual(len(steps), 41)
 
     def test_unknown_action_reference_is_reported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

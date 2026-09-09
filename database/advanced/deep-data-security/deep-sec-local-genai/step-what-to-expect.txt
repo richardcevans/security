@@ -1,4 +1,4 @@
-Deep Sec DEMO Setup - What to expect
+Deep Sec Demo Setup - What to expect
 =====================================
 
 DB Setup
@@ -45,6 +45,7 @@ The employee data grant updates immediately. Review Generated SQL and SQL*Plus o
 
 Check Customer Sales App
 Instead of 22 rows, Marvin should see 3. Credit Limit and Sensitive Identifier should both read Not authorized.
+Select a Not authorized value to see which Deep Sec data grant and role excluded that column. The explanation is based on the authorization metadata available to Marvin's database session.
 
 Review & Quiz
 The employee data grant reflects your selected rows, columns, and privileges.

@@ -1,9 +1,9 @@
 schema_version: 1
 id: deep_data_security
-title: Deep Sec DEMO Setup
+title: Deep Sec Demo Setup
 
 branding:
-  header: Deep Sec DEMO Setup
+  header: Deep Sec Demo Setup
   footer: Deep Sec Administrator Console · Oracle Database is the authorization boundary
 
 # Executable and learner-display SQL lives beside this lesson manifest.
@@ -18,23 +18,34 @@ overview:
   heading: "What you will do"
   stage_heading: "Stage"
   description_heading: "What you will do"
+  time_heading: "Estimated time"
+  total_label: "Total"
+  fast_path: "DB Setup → Deep Sec Setup → Customize Grant → Exercises 1 and 2. About twenty minutes."
   stages:
     - label: "DB Setup"
       description: "Create the APPLAB schema, customer data, and ordinary database login role."
+      estimated_minutes: 8
     - label: "Deep Sec Setup"
       description: "Create Deep Sec data roles and data grants, then create and grant access to Marvin and Emma."
+      estimated_minutes: 12
     - label: "Customer Sales App"
       description: "See the rows and columns Oracle returns for the signed-in user."
+      estimated_minutes: 5
     - label: "Customize Grant"
       description: "Narrow Marvin's customer access, then confirm the change in the Customer Sales App."
-    - label: "End User Context"
+      estimated_minutes: 10
+    - label: "Context"
       description: "Build the manager context and define manager-level access."
+      estimated_minutes: 10
     - label: "Order History"
       description: "Inspect Iceberg files in Object Storage, create the external table, and extend the data grant."
+      estimated_minutes: 10
     - label: "Exercises"
       description: "Put Deep Sec to work through hands-on exercises."
+      estimated_minutes: 3
     - label: "Best Practices"
       description: "Apply Deep Sec principles at enterprise scale with trusted identity, least privilege, controlled context, and policy lifecycle management."
+      estimated_minutes: 2
   note: "Use the navigation links at any time. The Review steps provide a read-only snapshot of the database objects created so far."
   start_path: /db-setup
   start_label: "Start DB Setup"
@@ -154,7 +165,7 @@ actions:
   customer_sales:
     type: link
     title: Customer Sales App
-    description: Navigate to the Oracle Customer Sales App to view Marvin's current access.
+    description: Navigate to the Customer Sales App to view Marvin's current access.
     requires:
       - grant_employee_access
     link_target: customer_sales_app
@@ -795,6 +806,31 @@ actions:
             denied:   Marvin cannot read excluded columns or other rows
             compare:  Emma's result remains independently attributable
 
+  what_you_proved:
+    type: explanation
+    title: What you proved
+    description: "The application issued the same ordinary query throughout the lab. Oracle Deep Data Security changed the authorized result as the end user, data roles, grants, context, and cross-table relationship changed."
+    completion: mark_viewed
+    short_label: What you proved
+    output_title: Step status
+    config:
+      query: SELECT * FROM APPLAB.customers ORDER BY revenue DESC
+      result_sets:
+        - title: Baseline access
+          description: 22 rows, all 8 customer columns.
+        - title: Employee access
+          description: 3 rows, 6 authorized columns.
+        - title: Manager access
+          description: 9 rows after the employee and manager grants union together.
+        - title: Order History
+          description: 618 authorized Iceberg rows through the cross-table data grant.
+      takeaways:
+        - The application sends ordinary SQL; Oracle decides which rows and columns the user can receive.
+        - Data roles and data grants apply consistently across the application, direct SQL, and OCI Generative AI.
+        - End user context and cross-table grants extend least privilege without trusting a prompt or copying external data into Oracle.
+      documentation_url: https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html
+      button_label: Mark as viewed
+
   validate_as_marvin:
     type: sql
     title: Run Marvin validation queries
@@ -937,6 +973,7 @@ steps:
     next_hint: Run Create data grants to give these data roles something to actually authorize.
     notes:
       - "Data roles are the first new Deep Sec concept you will learn. They are similar to traditional roles, you grant privileges to a data role and grant the data role to users, but with Deep Sec, you grant data grants to data roles, and data roles to end users. You will learn more about this in the next step."
+      - "In your environment this role would be named for the job, such as SALES_EMPLOYEE or CLAIMS_ADJUSTER. The HOL_ prefix is only a lab convention."
       - "For now, just know this: you can grant data grants directly to end users, but to help you scale, it is better to grant them to standard database roles instead. In this example, you grant the traditional database role to the EMPLOYEE_ACCESS data role."
       - "Data Roles can also be enterprise-identified, meaning they can be mapped to your OCI IAM or Azure Entra ID roles. This allows you to assign membership at the directory level and have it granted within the Oracle AI Database."
       - "CREATE OR REPLACE is supported for data roles. Standard database roles do not support the REPLACE option, that is a Deep Sec-specific convenience."
@@ -1056,7 +1093,7 @@ steps:
       correct_answer: excluded_select
       explanation: "Correct. The data grant controls SELECT down to the column level. A column left out of the grant isn't hidden by the app, Oracle never returns it at all."
     notes:
-      - "Check the Customer Sales App now, you should see a change in how many rows Marvin sees. You can go back to Customize Data Grant and adjust it again to confirm it is working, or to fix a mistake if you are still seeing Credit Limit or Sensitive Identifier. Once you are satisfied, answer the check your understanding question."
+      - "Check the Customer Sales App now, you should see a change in how many rows Marvin sees. Select a Not authorized value to see which Deep Sec data grant and role excluded that column. You can go back to Customize Data Grant and adjust it again to confirm it is working, or to fix a mistake if you are still seeing Credit Limit or Sensitive Identifier. Once you are satisfied, answer the check your understanding question."
 
   - id: review_grant
     badge: "3"
@@ -1140,6 +1177,7 @@ steps:
     notes:
       - "Now give Marvin this new role, make him a manager. Switch to the Customer Sales App and re-run Customer Report, what changed? Answer the check your understanding question, how many rows do you see now, and are any columns still hidden? See if you can guess why."
       - "One hint before you compare numbers: multiple applicable data grants combine as a union of their rows, not added together. If a row would already be authorized by more than one grant, it still only counts once, keep that in mind as you look at the new total."
+      - "Expected result: 3 employee rows + 6 team rows = 9, as a union, not a sum."
     quiz:
       question: Now that Marvin is both an employee and a manager, how many rows are returned?
       options:
@@ -1233,6 +1271,7 @@ steps:
       - "If you thought Deep Sec was already cool, wait until you see this. Now you will create a data grant based on the access a sales rep already has to the CUSTOMERS table, building a parent/child relationship between ORDER_HISTORY and CUSTOMERS through Deep Sec data grants. This is what is called a cross-table data grant."
       - "Its predicate does not reference the sales rep's name or the manager context you built earlier at all, it matches customer_id on CUSTOMERS to customer_id on ORDER_HISTORY directly."
       - "That means whatever rows you can see in CUSTOMERS, you can see the matching rows in ORDER_HISTORY, and nothing more. Do you remember how many rows Marvin could see as an employee? How many once he became Emma's manager? That is exactly how this narrows down too."
+      - "Expected result: 223 + 395 = 618 authorized Order History rows."
       - "One more thing worth noticing, Deep Sec data grants support an EXCEPT clause. For this grant, exclude the amount column. Check that box and watch the Generated SQL change to match."
     quiz:
       question: "In the Customer Sales App, scroll down past the Customer Report and run the Order History Report. How many rows are returned?"
@@ -1393,8 +1432,8 @@ steps:
       - best_practice_authorization_model
     next_hint: Continue to End User Context.
     notes:
+      - "You saw this model become concrete when the employee role, row predicate, and column choices changed Marvin's Customer Sales App result without changing the application query."
       - "Start with a decision table: who is the subject, what object is protected, which operation is allowed, which rows and columns are in scope, and what trusted attributes affect the decision."
-      - "In this lab, that model becomes an employee data role, a row predicate based on the signed-in salesperson, and column-level choices for CUSTOMERS."
 
   - id: best_practice_trusted_identity
     badge: "2"
@@ -1404,6 +1443,7 @@ steps:
       - best_practice_trusted_identity
     next_hint: Continue to Application Connections.
     notes:
+      - "You saw this when Marvin's end user context changed his manager result while the Customer Sales App stayed unchanged."
       - "Application identity and end-user identity are related but distinct. The application identity identifies the calling application; Marvin's end-user security context identifies the person whose request Oracle must authorize."
       - "The lab uses local Marvin and Emma accounts to make the result visible. In production, map enterprise IAM users and roles, then propagate the trusted end-user security context through the connection pool."
 
@@ -1415,6 +1455,7 @@ steps:
       - best_practice_minimal_connections
     next_hint: Continue to Least Privilege.
     notes:
+      - "You saw the safe boundary when the Customer Sales App issued the same query for Marvin and Oracle returned only his authorized result."
       - "A connection pool is an efficiency mechanism, not an authorization model. Do not make the pooled account a back door to every application table."
       - "For requests on behalf of a user, let the application establish trusted identity and context, while Deep Sec data roles and grants decide which data the user can read or change."
 
@@ -1426,8 +1467,9 @@ steps:
       - best_practice_least_privilege
     next_hint: Continue to Privilege Elevation.
     notes:
+      - "You saw least privilege when Marvin's result changed from 22 rows with all columns to 3 rows with 6 columns, even though the app still sent the same query."
       - "Treat SELECT, UPDATE, INSERT, and DELETE as separate business decisions. An employee may be able to read a row without being able to update every column in it."
-      - "Multiple applicable data grants are additive. Review the union of grants, not each grant in isolation, especially when users hold more than one data role."
+      - "Multiple applicable data grants combine as a union. Review the combined result, not each grant in isolation, especially when users hold more than one data role."
 
   - id: best_practice_trusted_context
     badge: "5"
@@ -1437,6 +1479,7 @@ steps:
       - best_practice_trusted_context
     next_hint: Continue to Audit Policies.
     notes:
+      - "You saw controlled elevation when Marvin's MGR_CTX context and manager role expanded his result to the union of his employee and team rows."
       - "Never treat an arbitrary browser field as a trusted authorization attribute. Validate identity and business attributes before placing them in the protected end-user context."
       - "The lab's MGR_CTX demonstrates context-driven manager access. At enterprise scale, sensitive elevation should be approved, scoped to the operation, time-limited, and auditable."
 
@@ -1446,11 +1489,23 @@ steps:
     title: Audit Policies
     action_ids:
       - best_practice_policy_lifecycle
-    next_hint: Continue to Admin when you are ready.
+    next_hint: Continue to What you proved when you are ready.
     notes:
+      - "You saw why lifecycle testing matters when the same Customer Sales App and OCI Generative AI questions produced different authorized results after each policy change."
       - "Test both sides of every policy: authorized and unauthorized users, multiple roles, role changes, pooled connections, direct access paths, and agent-assisted workflows."
       - "Audit Deep Sec administration and runtime use separately. Capture data role creation, assignment, and removal, plus data grant creation, replacement, and removal with Oracle Unified Auditing."
       - "There is no separate data-role-used event. Audit SELECT, INSERT, UPDATE, and DELETE on protected objects, then correlate END_USER_NAME and END_USER_SECURITY_CONTEXT_ID with DBA_DATA_ROLE_GRANTS and DBA_DATA_GRANTS."
+
+  - id: what_you_proved
+    badge: "1"
+    label: What you proved
+    title: What you proved
+    action_ids:
+      - what_you_proved
+    next_hint: Use Admin to validate or reset the lab when you are ready.
+    notes:
+      - "The query did not become more trusted because it came from an application or an AI prompt. The result changed because Oracle evaluated the signed-in end user, active data roles, data grants, and end user context."
+      - "The four result sets are the evidence to take home: broad baseline access, least-privilege employee access, the manager union, and cross-table Order History access."
 
   - id: validate_as_marvin
     badge: V
@@ -1541,7 +1596,7 @@ pages:
 
   - id: end_user_context
     path: /end-user-context
-    label: End User Context
+    label: Context
     step_ids:
       - create_managers
       - create_manager_context
@@ -1581,6 +1636,12 @@ pages:
       - best_practice_least_privilege
       - best_practice_trusted_context
       - best_practice_policy_lifecycle
+
+  - id: what_you_proved
+    path: /what-you-proved
+    label: What you proved
+    step_ids:
+      - what_you_proved
 
   - id: admin
     path: /admin

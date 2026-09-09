@@ -157,7 +157,7 @@ the reset workflow has not already done so.
 
 ## Generative AI prerequisite
 
-The Vibe page uses the Compute instance principal. To avoid exhausting the
+Customer Insights uses the Compute instance principal. To avoid exhausting the
 tenancy dynamic-group quota when many lab stacks deploy concurrently,
 GreenButton does **not** create one dynamic group per Stack by default. Before
 the lab, a tenancy administrator must provide a shared dynamic group and policy

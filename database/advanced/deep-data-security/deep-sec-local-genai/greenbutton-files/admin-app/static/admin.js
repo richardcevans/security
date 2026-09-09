@@ -15,6 +15,41 @@ function stepIsCompleted(step) {
   return (step.dataset.actionKeys || "").split(",").some((actionKey) => completedSetupActions.has(actionKey));
 }
 
+function updateNavigationProgress() {
+  const links = Array.from(document.querySelectorAll("[data-progress-steps]"));
+  let total = 0;
+  let completed = 0;
+  links.forEach((link) => {
+    let groups = [];
+    try {
+      groups = JSON.parse(link.dataset.progressSteps || "[]");
+    } catch (_) {
+      groups = [];
+    }
+    const excluded = link.dataset.progressExcluded === "true";
+    const isCompleted = !excluded && groups.length > 0 && groups.every((group) =>
+      group.some((actionKey) => completedSetupActions.has(actionKey))
+    );
+    link.classList.toggle("is-completed", isCompleted);
+    link.querySelector(".page-check")?.toggleAttribute("hidden", !isCompleted);
+    if (!excluded) {
+      total += 1;
+      if (isCompleted) completed += 1;
+    }
+  });
+  const progress = document.querySelector(".page-progress");
+  if (!progress) return;
+  const configuredTotal = Number(progress.dataset.progressTotal || total);
+  const percent = configuredTotal ? (completed / configuredTotal) * 100 : 0;
+  progress.dataset.progressCompleted = String(completed);
+  progress.dataset.progressTotal = String(configuredTotal);
+  progress.setAttribute("aria-valuenow", String(completed));
+  const label = progress.querySelector(".page-progress-label");
+  if (label) label.textContent = `${completed} of ${configuredTotal} pages complete`;
+  const fill = progress.querySelector(".page-progress-fill");
+  if (fill) fill.style.width = `${percent}%`;
+}
+
 function updateActionAvailability() {
   document.querySelectorAll(".run-action").forEach((button) => {
     const actionArea = button.closest(".toggle-half") || button.closest(".action-card");
@@ -35,6 +70,7 @@ function updateActionAvailability() {
     button.disabled = false;
     button.setAttribute("aria-disabled", "false");
   });
+  updateNavigationProgress();
 
   if (!selectedActionKey) {
     const firstStep = document.querySelector("[data-select-action]");
@@ -187,6 +223,7 @@ function renderValidationComparison(snapshot) {
       details.append(term, description);
     });
     card.append(details);
+    if (persona.columns?.length) card.append(columnPills(persona.columns));
     const grantsTitle = document.createElement("h5");
     grantsTitle.textContent = "Applicable data grants";
     card.append(grantsTitle);
@@ -229,7 +266,56 @@ async function refreshValidationComparison() {
   }
 }
 
+function renderGrantComparison(snapshot) {
+  const target = document.querySelector("#customize-grant-states");
+  const query = document.querySelector("#customize-grant-query");
+  if (!target) return;
+  target.replaceChildren();
+  if (!snapshot.available) {
+    const message = document.createElement("p");
+    message.className = "muted";
+    message.textContent = snapshot.message || "Marvin's authorization is not available yet.";
+    target.append(message);
+    return;
+  }
+  if (query) query.textContent = snapshot.query || query.textContent;
+  [["Before", snapshot.before], ["After", snapshot.after]].forEach(([label, state]) => {
+    const card = document.createElement("article");
+    card.className = "grant-state-card";
+    const heading = document.createElement("h4");
+    heading.textContent = label;
+    card.append(heading);
+    const summary = document.createElement("p");
+    summary.className = "grant-state-summary";
+    summary.textContent = state
+      ? `${state.row_count} rows, ${state.columns.length} columns.`
+      : "Pending Apply.";
+    card.append(summary);
+    if (state) {
+      const columns = document.createElement("p");
+      columns.className = "grant-state-columns";
+      columns.textContent = `Visible columns: ${state.columns.join(", ")}`;
+      card.append(columns);
+    }
+    target.append(card);
+  });
+}
+
+async function refreshGrantComparison(method = "GET") {
+  if (!document.querySelector("#customize-grant-states")) return;
+  try {
+    const {response, payload} = await requestJson("/api/customize-grant-comparison", {
+      method,
+      headers: jsonHeaders,
+    });
+    renderGrantComparison(response.ok ? payload : {available: false, message: payload.error});
+  } catch (_) {
+    renderGrantComparison({available: false, message: "Could not read Marvin's authorization comparison."});
+  }
+}
+
 updateActionAvailability();
+refreshGrantComparison();
 
 document.querySelectorAll("[data-select-action]").forEach((button) => {
   button.addEventListener("click", () => selectAction(button.dataset.selectAction));
@@ -476,6 +562,7 @@ document.querySelectorAll(".grant-wizard").forEach((wizard) => {
           completedSetupActions.add(actionKey);
         }
         updateActionAvailability();
+        await refreshGrantComparison("POST");
       }
     } catch (_) {
       status.textContent = "Could not contact the administrator console.";
@@ -563,7 +650,7 @@ function showDeebeePopup() {
   popup.innerHTML = `
     <img src="/static/images/DeeBee.png" alt="DeeBee" class="deebee-icon deebee-icon-large">
     <div>
-      <p class="deebee-greeting">Hi, I'm DeeBee, your Oracle LiveLabs assistant! I am here to help you understand the lab and to give you information about Oracle Deep Data Security (Deep Sec). On each page I'll give you instructions, best practices, and tips for completing the lab but also for helping you deploy Deep Sec successfully in your environment.</p>
+      <p class="deebee-greeting">Hi, I'm DeeBee, your Oracle LiveLabs assistant. I will guide you through Oracle Deep Data Security, help you test each policy from the user's side, and point out patterns you can apply in your own environment.</p>
       <button class="primary small deebee-popup-dismiss" type="button">Got it</button>
     </div>
   `;

@@ -34,6 +34,7 @@
         <details class="lab-details" open><summary>SQL Query <span>Sent to Oracle</span></summary><code>{{ order_history_query }}</code></details>
         <div id="order-history-result" aria-live="polite"></div>
       </section>
+      <div id="authorization-popover" class="authorization-popover" role="dialog" aria-labelledby="authorization-popover-title" hidden></div>
     </main>
     <footer>Customer Sales App · Protected by Oracle Deep Data Security</footer><script src="{{ url_for('static', filename='app.js') }}"></script>
   </body>

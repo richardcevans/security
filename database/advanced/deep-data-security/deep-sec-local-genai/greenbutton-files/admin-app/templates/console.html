@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   </head>
   <body data-completed-actions='{{ completed_actions|tojson }}' data-tour-steps='{{ lesson.tour|tojson }}'>
-    <header class="app-header app-header-stacked"><div class="app-header-top"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>{{ lesson.branding.header }}</span></a><div class="app-header-top-actions"><button id="logout" class="secondary small">Sign out</button></div></div><nav class="header-nav header-nav-row" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}">{{ page.nav_label }}</a>{% endfor %}<button id="tour-replay" class="secondary small" type="button" title="Replay the tour">?</button></nav></header>
+    <header class="app-header app-header-stacked"><div class="app-header-top"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>{{ lesson.branding.header }}</span></a><div class="app-header-top-actions"><button id="logout" class="secondary small">Sign out</button></div></div><nav class="header-nav header-nav-row" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}" data-page-key="{{ page.key }}" data-progress-excluded="{{ 'true' if page.progress_excluded else 'false' }}" data-progress-steps='{{ page.progress_steps|tojson }}'>{{ page.nav_label }}<span class="page-check" aria-hidden="true"{% if not page.completed %} hidden{% endif %}>✓</span></a>{% endfor %}<button id="tour-replay" class="secondary small" type="button" title="Replay the tour">?</button></nav></header>
+    <div class="page-progress" data-progress-completed="{{ progress.completed }}" data-progress-total="{{ progress.total }}" role="progressbar" aria-label="Lab pages completed" aria-valuemin="0" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.completed }}"><span class="page-progress-label">{{ progress.completed }} of {{ progress.total }} pages complete</span><span class="page-progress-track" aria-hidden="true"><span class="page-progress-fill" style="width: {{ (progress.completed / progress.total * 100) if progress.total else 0 }}%"></span></span></div>
     <main class="page">
       <section class="stepper" aria-label="{{ lesson.title }} actions">
         <ol class="stepper-list{% if not current_page_ordered %} stepper-list-unordered{% endif %}">
@@ -90,11 +91,25 @@
               {% endif %}
               {% endif %}
               <details open><summary>Generated SQL</summary><pre class="grant-preview">Loading…</pre></details>
+              {% if action.key == "customize_employee_grant" %}
+              <section id="customize-grant-comparison" class="grant-before-after" aria-live="polite">
+                <h3>Before and after</h3>
+                <p class="muted">The same query is run as Marvin before and after this grant changes.</p>
+                <div id="customize-grant-states" class="validation-grid"><p class="muted">Loading Marvin's current authorization…</p></div>
+                <pre id="customize-grant-query">SELECT * FROM APPLAB.customers ORDER BY revenue DESC</pre>
+              </section>
+              {% endif %}
               <button class="primary run-grant-apply" type="button">{{ action.config.apply_button_label or "Apply this grant" }}</button><span class="action-status grant-status" aria-live="polite"></span>
               <details class="action-output grant-output" hidden><summary>{{ action.output_title or "SQL*Plus output" }}</summary><pre></pre></details>
               </div>
             {% elif action.explain_step %}
               <figure class="explanation-figure"><img src="{{ url_for('static', filename='images/' ~ action.config.asset) }}" alt="{{ action.config.asset_alt or 'Deep Data Security explanation diagram' }}"><figcaption>{{ action.config.asset_caption or 'Deep Data Security explanation.' }}</figcaption></figure>
+              {% if action.config.query and action.config.result_sets %}
+              <section class="proof-grid" aria-label="What the lab proved">
+                <article class="proof-card proof-query"><h3>Same query</h3><pre><code>{{ action.config.query }}</code></pre></article>
+                {% for result in action.config.result_sets %}<article class="proof-card"><h3>{{ result.title }}</h3><p>{{ result.description }}</p></article>{% endfor %}
+              </section>
+              {% endif %}
               {% if action.config.examples %}
               <section class="code-examples" aria-labelledby="examples-{{ action.key }}-title">
                 <h3 id="examples-{{ action.key }}-title">Sample code</h3>
@@ -107,6 +122,8 @@
                 {% endfor %}
               </section>
               {% endif %}
+              {% if action.config.takeaways %}<h3>Take it with you</h3><ul class="takeaways">{% for takeaway in action.config.takeaways %}<li>{{ takeaway }}</li>{% endfor %}</ul>{% endif %}
+              {% if action.config.documentation_url %}<p><a href="{{ action.config.documentation_url }}" target="_blank" rel="noopener">Read the Oracle Deep Data Security documentation</a></p>{% endif %}
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" type="button">{{ action.button_label or action.config.button_label or "Mark as viewed" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% elif action.type == "object_storage" %}

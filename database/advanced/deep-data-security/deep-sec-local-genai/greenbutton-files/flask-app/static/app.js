@@ -1,6 +1,12 @@
 const csrfToken = document.querySelector("meta[name='csrf-token']")?.content;
 const requestHeaders = {"Content-Type": "application/json", "X-CSRFToken": csrfToken};
 const error = document.querySelector("#error");
+let authorizationState = {
+  customers: {available: false, columns: {}},
+  orderHistory: {available: false, columns: {}}
+};
+let currentAuthorization = authorizationState.customers;
+let authorizationTrigger = null;
 
 function showError(message) {
   if (error) error.textContent = message || "";
@@ -80,7 +86,9 @@ if (load) {
         return;
       }
       renderSecurityContext(payload.context, payload.row_count);
-      renderCustomers(payload.rows);
+      authorizationState.customers = payload.authorization || {available: false, columns: {}};
+      currentAuthorization = authorizationState.customers;
+      renderCustomers(payload.rows, currentAuthorization);
     } catch (_) {
       showError("Unable to load customer accounts. Please try again.");
     } finally {
@@ -105,7 +113,8 @@ if (loadOrderHistory) {
       if (!response.ok) {
         renderOrderHistoryMessage(payload.error || "Order history is unavailable.", "warning-banner");
       } else if (Array.isArray(payload.rows)) {
-        renderOrderHistoryTable(payload.rows || [], payload.context, payload.row_count);
+        authorizationState.orderHistory = payload.authorization || {available: false, columns: {}};
+        renderOrderHistoryTable(payload.rows || [], payload.context, payload.row_count, authorizationState.orderHistory);
       } else {
         renderOrderHistoryMessage(payload.error || "Order history is unavailable.", "warning-banner");
       }
@@ -134,7 +143,7 @@ function renderOrderHistoryMessage(message, className) {
   result.replaceChildren(banner);
 }
 
-function renderOrderHistoryTable(rows, contextData, rowCount) {
+function renderOrderHistoryTable(rows, contextData, rowCount, authorization) {
   const result = document.querySelector("#order-history-result");
   const context = document.querySelector("#order-history-context");
   const details = document.querySelector("#order-history-context-details");
@@ -163,8 +172,8 @@ function renderOrderHistoryTable(rows, contextData, rowCount) {
     const tableRow = document.createElement("tr");
     for (const column of columns) {
       const numericColumn = ["order_id", "customer_id", "amount"].includes(column);
-      const value = row[column] == null ? "Not authorized" : (column === "amount" ? formatNumber(row[column]) : row[column]);
-      tableRow.append(makeCell(value, numericColumn ? "number" : ""));
+      const formatValue = column === "amount" ? formatNumber : (value) => value;
+      tableRow.append(makeDataCell(row[column], column, authorization, numericColumn ? "number" : "", formatValue));
     }
     body.append(tableRow);
   }
@@ -311,6 +320,108 @@ function makeCell(value, className = "") {
   return cell;
 }
 
+function humanizeColumn(column) {
+  return String(column || "column")
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function closeAuthorizationPopover(restoreFocus = true) {
+  const popover = document.querySelector("#authorization-popover");
+  if (popover) {
+    popover.hidden = true;
+    popover.replaceChildren();
+  }
+  if (authorizationTrigger) {
+    authorizationTrigger.setAttribute("aria-expanded", "false");
+    if (restoreFocus) authorizationTrigger.focus();
+  }
+  authorizationTrigger = null;
+}
+
+function showAuthorizationPopover(trigger, column, details) {
+  const popover = document.querySelector("#authorization-popover");
+  if (!popover) return;
+  closeAuthorizationPopover(false);
+  authorizationTrigger = trigger;
+  trigger.setAttribute("aria-expanded", "true");
+
+  const heading = document.createElement("div");
+  heading.className = "authorization-popover-heading";
+  const title = document.createElement("h3");
+  title.id = "authorization-popover-title";
+  title.textContent = `Why ${humanizeColumn(column)} is not authorized`;
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "authorization-popover-close";
+  close.setAttribute("aria-label", "Close authorization explanation");
+  close.textContent = "×";
+  close.addEventListener("click", () => closeAuthorizationPopover());
+  heading.append(title, close);
+
+  const explanation = document.createElement("p");
+  explanation.textContent = "Oracle returned NULL because no applicable SELECT data grant authorizes this column for the active data roles.";
+  const list = document.createElement("ul");
+  for (const reason of details?.reasons || []) {
+    const item = document.createElement("li");
+    const grant = document.createElement("strong");
+    grant.textContent = "Grant: ";
+    const grantName = document.createElement("code");
+    grantName.textContent = reason.grant || "Not available";
+    const role = document.createElement("strong");
+    role.textContent = "Role: ";
+    const rule = document.createElement("strong");
+    rule.textContent = "Rule: ";
+    item.append(grant, grantName, document.createElement("br"), role, document.createTextNode(reason.role || "Not available"), document.createElement("br"), rule, document.createTextNode(reason.rule || "Not available"));
+    list.append(item);
+  }
+  popover.append(heading, explanation, list);
+  popover.hidden = false;
+
+  const triggerBox = trigger.getBoundingClientRect();
+  const popoverBox = popover.getBoundingClientRect();
+  const left = Math.min(Math.max(12, triggerBox.left), window.innerWidth - popoverBox.width - 12);
+  const top = triggerBox.bottom + popoverBox.height + 12 <= window.innerHeight
+    ? triggerBox.bottom + 8
+    : Math.max(12, triggerBox.top - popoverBox.height - 8);
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+  close.focus();
+}
+
+function makeUnauthorizedCell(column, details, className = "") {
+  const cell = document.createElement("td");
+  if (className) cell.className = className;
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "authorization-help";
+  trigger.textContent = "Not authorized";
+  trigger.setAttribute("aria-label", `Why is ${humanizeColumn(column)} not authorized?`);
+  trigger.setAttribute("aria-controls", "authorization-popover");
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.addEventListener("click", () => showAuthorizationPopover(trigger, column, details));
+  cell.append(trigger);
+  return cell;
+}
+
+function makeDataCell(value, column, authorization, className = "", formatValue = (item) => item) {
+  if (value == null) {
+    const details = authorization?.available ? authorization.columns?.[column] : null;
+    if (details?.authorized === false) return makeUnauthorizedCell(column, details, className);
+    return makeCell("—", className);
+  }
+  return makeCell(formatValue(value), className);
+}
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".authorization-help, #authorization-popover")) closeAuthorizationPopover(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && authorizationTrigger) closeAuthorizationPopover();
+});
+
 let currentRows = [];
 let currentSort = {key: null, direction: "asc"};
 
@@ -330,7 +441,7 @@ function sortRows(rows, key, type, direction) {
   return sorted;
 }
 
-function renderCustomers(rows) {
+function renderCustomers(rows, authorization = currentAuthorization) {
   currentRows = rows || [];
   const results = document.querySelector("#results");
   const accountCount = document.querySelector("#account-count");
@@ -349,14 +460,14 @@ function renderCustomers(rows) {
   for (const customer of rows) {
     const row = document.createElement("tr");
     row.append(
-      makeCell(customer.customer_id ?? "Not authorized", "number"),
-      makeCell(customer.customer_name ?? ""),
-      makeCell(customer.sales_rep ?? "Not authorized"),
-      makeCell(customer.manager_id ?? "", "number"),
-      makeCell(customer.region ?? ""),
-      makeCell(formatNumber(customer.revenue), "number"),
-      makeCell(customer.credit_limit == null ? "Not authorized" : formatNumber(customer.credit_limit), "number"),
-      makeCell(customer.sensitive_identifier ?? "Not authorized")
+      makeDataCell(customer.customer_id, "customer_id", authorization, "number", formatNumber),
+      makeDataCell(customer.customer_name, "customer_name", authorization),
+      makeDataCell(customer.sales_rep, "sales_rep", authorization),
+      makeDataCell(customer.manager_id, "manager_id", authorization, "number", formatNumber),
+      makeDataCell(customer.region, "region", authorization),
+      makeDataCell(customer.revenue, "revenue", authorization, "number", formatNumber),
+      makeDataCell(customer.credit_limit, "credit_limit", authorization, "number", formatNumber),
+      makeDataCell(customer.sensitive_identifier, "sensitive_identifier", authorization)
     );
     results.append(row);
   }

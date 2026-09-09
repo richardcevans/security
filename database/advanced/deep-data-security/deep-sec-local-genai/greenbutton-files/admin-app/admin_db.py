@@ -198,13 +198,15 @@ def validation_comparison(settings: AdminSettings, password: str) -> dict:
                 with connection.cursor() as cursor:
                     cursor.execute("select role_name from v$end_user_data_role order by role_name")
                     roles = [row[0] for row in cursor]
-                    cursor.execute("select count(*) from applab.customers")
-                    row_count = cursor.fetchone()[0]
+                    cursor.execute(query)
+                    columns = [column[0].lower() for column in cursor.description]
+                    row_count = sum(1 for _ in cursor)
             personas.append(
                 {
                     "username": username,
                     "roles": roles,
                     "row_count": row_count,
+                    "columns": columns,
                     "grants": [grant for grant in grants if grant["role"] in roles],
                     "available": True,
                 }
@@ -215,6 +217,7 @@ def validation_comparison(settings: AdminSettings, password: str) -> dict:
                     "username": username,
                     "roles": [],
                     "row_count": None,
+                    "columns": [],
                     "grants": [],
                     "available": False,
                     "message": str(exc),

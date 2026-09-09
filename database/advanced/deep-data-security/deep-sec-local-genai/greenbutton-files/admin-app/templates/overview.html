@@ -6,8 +6,9 @@
     <title>{{ lesson.title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
   </head>
-  <body data-tour-steps='{{ lesson.tour|tojson }}'>
-    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>{{ lesson.branding.header }}</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}">{{ page.nav_label }}</a>{% endfor %}</nav><button id="tour-replay" class="secondary small" type="button" title="Replay the tour">?</button><button id="logout" class="secondary small">Sign out</button></div></header>
+  <body data-completed-actions='{{ completed_actions|tojson }}' data-tour-steps='{{ lesson.tour|tojson }}'>
+    <header class="app-header"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>{{ lesson.branding.header }}</span></a><div class="header-actions"><nav class="header-nav" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}" data-page-key="{{ page.key }}" data-progress-excluded="{{ 'true' if page.progress_excluded else 'false' }}" data-progress-steps='{{ page.progress_steps|tojson }}'>{{ page.nav_label }}<span class="page-check" aria-hidden="true"{% if not page.completed %} hidden{% endif %}>✓</span></a>{% endfor %}</nav><button id="tour-replay" class="secondary small" type="button" title="Replay the tour">?</button><button id="logout" class="secondary small">Sign out</button></div></header>
+    <div class="page-progress" data-progress-completed="{{ progress.completed }}" data-progress-total="{{ progress.total }}" role="progressbar" aria-label="Lab pages completed" aria-valuemin="0" aria-valuemax="{{ progress.total }}" aria-valuenow="{{ progress.completed }}"><span class="page-progress-label">{{ progress.completed }} of {{ progress.total }} pages complete</span><span class="page-progress-track" aria-hidden="true"><span class="page-progress-fill" style="width: {{ (progress.completed / progress.total * 100) if progress.total else 0 }}%"></span></span></div>
     <main class="page">
       <section class="heading">
         <div>
@@ -28,14 +29,23 @@
         </figure>
         <h2>{{ lesson.overview.heading }}</h2>
         <table class="overview-table">
-          <thead><tr><th>{{ lesson.overview.stage_heading }}</th><th>{{ lesson.overview.description_heading }}</th></tr></thead>
+          <thead><tr><th>{{ lesson.overview.stage_heading }}</th><th>{{ lesson.overview.description_heading }}</th><th>{{ lesson.overview.time_heading }}</th></tr></thead>
           <tbody>
             {% for stage in lesson.overview.stages %}
-            <tr><th scope="row">{{ stage.label }}</th><td>{{ stage.description }}</td></tr>
+            <tr><th scope="row">{{ stage.label }}</th><td>{{ stage.description }}</td><td>{{ stage.estimated_minutes }} minutes</td></tr>
             {% endfor %}
           </tbody>
+          <tfoot><tr><th scope="row">{{ lesson.overview.total_label }}</th><td></td><td>{{ lesson.overview.stages|sum(attribute="estimated_minutes") }} minutes</td></tr></tfoot>
         </table>
+        <p class="overview-fast-path"><strong>Fast path:</strong> {{ lesson.overview.fast_path }}</p>
         <p class="muted">{{ lesson.overview.note }}</p>
+      </section>
+      <section class="card overview-under-hood" aria-labelledby="under-hood-heading">
+        <h2 id="under-hood-heading">Under the hood</h2>
+        <dl>
+          <dt>JupyterLab</dt><dd><a href="{{ under_hood.jupyter_url }}" target="_blank" rel="noopener">{{ under_hood.jupyter_url }}</a></dd>
+          <dt>ADB TLS connection string</dt><dd><code>{{ under_hood.adb_tls_connection_string }}</code></dd>
+        </dl>
       </section>
       <div class="overview-start-row">
         <a class="primary overview-start" href="{{ lesson.overview.start_path }}">{{ lesson.overview.start_label }}</a>

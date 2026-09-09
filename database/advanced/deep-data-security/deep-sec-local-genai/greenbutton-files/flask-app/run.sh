@@ -47,9 +47,9 @@ if command -v curl >/dev/null 2>&1; then
 fi
 
 if [[ -n "$public_ip" ]]; then
-  printf '\nOracle Customer Sales App: http://%s:7777/\n\n' "$public_ip"
+  printf '\nCustomer Sales App: http://%s:7777/\n\n' "$public_ip"
 else
-  printf '\nOracle Customer Sales App listens on port 7777.\n\n'
+  printf '\nCustomer Sales App listens on port 7777.\n\n'
 fi
 
 # Gunicorn replaces failed workers itself.  This small supervisor also restarts the
@@ -73,7 +73,7 @@ stop_server() {
 trap stop_server INT TERM
 
 while true; do
-  printf 'Starting Oracle Customer Sales App server. Press Ctrl+C to stop it.\n'
+  printf 'Starting Customer Sales App server. Press Ctrl+C to stop it.\n'
   "$script_dir/.venv/bin/python" -m gunicorn \
     --bind "${FLASK_HOST:-0.0.0.0}:7777" \
     --workers "${GUNICORN_WORKERS:-1}" \

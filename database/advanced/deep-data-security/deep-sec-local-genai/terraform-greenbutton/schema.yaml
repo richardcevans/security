@@ -2,7 +2,7 @@ title: "Deep Sec Local End-User GenAI Lab - GreenButton"
 stackDescription: "Walletless TLS deployment of the Deep Sec Autonomous AI Database, application server, private Object Storage, and a dedicated Stack-created bucket containing the pre-created Order History Iceberg data."
 description: "Deep Data Security demonstration using local database end user Marvin."
 informationalText: "After Apply completes, use the Application Outputs below. Terraform generates one sensitive password for ADB ADMIN, JupyterLab, and Marvin; select Unlock and copy it. Enter that password for Marvin when the database setup script prompts in Task 2."
-  instructions: "Build and upload deep-sec-local-genai-terraform-GreenButton.zip from the GreenButton project. In OCI Resource Manager choose My configuration, set the working directory to terraform, enter the tenancy, target compartment, region, SSH public key, order_history_oci_username in <identity-domain>/<username> form, and its sensitive OCI Auth Token. Run Plan, review the successful plan, then run Apply. This Stack creates a private Stack-owned Iceberg bucket and publishes the checked-in sample during VM bootstrap; it does not require a user-owned bucket, Customer Secret Keys, manual uploads, Spark, Data Flow, or a Hadoop catalog. After Apply, select Unlock for the generated password and use the Admin Console (7778), Customer Sales App (7777), and JupyterLab (8888) outputs. Verify the VM bootstrap status is COMPLETE. The first test intentionally permits browser access from 0.0.0.0/0; set a restricted browser CIDR before broader use. See Oracle's Resource Manager ZIP deployment procedure: https://docs.oracle.com/en-us/iaas/Content/ResourceManager/Tasks/create-stack-local.htm"
+instructions: "Build and upload deep-sec-local-genai-terraform-GreenButton.zip from the GreenButton project. In OCI Resource Manager choose My configuration, set the working directory to terraform, enter the tenancy, target compartment, region, SSH public key, order_history_oci_username in <identity-domain>/<username> form, and its sensitive OCI Auth Token. Run Plan, review the successful plan, then run Apply. This Stack creates a private Stack-owned Iceberg bucket and publishes the checked-in sample during VM bootstrap; it does not require a user-owned bucket, Customer Secret Keys, manual uploads, Spark, Data Flow, or a Hadoop catalog. After Apply, select Unlock for the generated password and use the Admin Console (7778), Customer Sales App (7777), and JupyterLab (8888) outputs. Verify the VM bootstrap status is COMPLETE. The first test intentionally permits browser access from 0.0.0.0/0; set a restricted browser CIDR before broader use. See Oracle's Resource Manager ZIP deployment procedure: https://docs.oracle.com/en-us/iaas/Content/ResourceManager/Tasks/create-stack-local.htm"
 schemaVersion: 1.1.0
 version: "20260903"
 locale: "en"
@@ -351,8 +351,8 @@ outputs:
     displayText: "Open Deep Data Security App"
   admin_console_url:
     type: link
-    title: "Deep Sec DEMO Setup"
-    displayText: "Open Deep Sec DEMO Setup"
+    title: "Deep Sec Demo Setup"
+    displayText: "Open Deep Sec Demo Setup"
   jupyter_url:
     type: link
     title: "JupyterLab"

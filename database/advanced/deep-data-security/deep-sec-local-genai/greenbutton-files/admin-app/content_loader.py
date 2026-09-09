@@ -245,6 +245,9 @@ def _normalize_overview(
             "heading",
             "stage_heading",
             "description_heading",
+            "time_heading",
+            "total_label",
+            "fast_path",
             "stages",
             "note",
             "start_path",
@@ -260,6 +263,9 @@ def _normalize_overview(
         "heading",
         "stage_heading",
         "description_heading",
+        "time_heading",
+        "total_label",
+        "fast_path",
         "stages",
         "note",
         "start_path",
@@ -277,6 +283,9 @@ def _normalize_overview(
         "heading",
         "stage_heading",
         "description_heading",
+        "time_heading",
+        "total_label",
+        "fast_path",
         "note",
         "start_label",
     ):
@@ -293,7 +302,7 @@ def _normalize_overview(
     result["start_path"] = start_path
 
     stages_raw = raw_overview.get("stages")
-    stages: list[dict[str, str]] = []
+    stages: list[dict[str, Any]] = []
     if not isinstance(stages_raw, list):
         errors.append(f"{location}.stages: expected a list")
     else:
@@ -302,9 +311,10 @@ def _normalize_overview(
             if not isinstance(stage, dict):
                 errors.append(f"{stage_location}: expected a mapping")
                 continue
-            _check_keys(stage, {"label", "description"}, stage_location, errors)
+            _check_keys(stage, {"label", "description", "estimated_minutes"}, stage_location, errors)
             _require(stage, "label", stage_location, errors)
             _require(stage, "description", stage_location, errors)
+            _require(stage, "estimated_minutes", stage_location, errors)
             stages.append(
                 {
                     "label": _string(stage.get("label"), f"{stage_location}.label", errors) or "",
@@ -312,6 +322,11 @@ def _normalize_overview(
                         stage.get("description"), f"{stage_location}.description", errors
                     )
                     or "",
+                    "estimated_minutes": _positive_integer(
+                        stage.get("estimated_minutes"),
+                        f"{stage_location}.estimated_minutes",
+                        errors,
+                    ),
                 }
             )
     result["stages"] = tuple(stages)
@@ -751,6 +766,13 @@ def _bool(value: Any, location: str, errors: list[str]) -> bool:
     if not isinstance(value, bool):
         errors.append(f"{location}: expected true or false")
         return False
+    return value
+
+
+def _positive_integer(value: Any, location: str, errors: list[str]) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        errors.append(f"{location}: expected a non-negative integer")
+        return 0
     return value
 
 

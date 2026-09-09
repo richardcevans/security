@@ -1,109 +1,88 @@
-# Can Application Code Bypass Oracle AI Database Security?
+# Can Application Code or GenAI Bypass Oracle Deep Data Security?
 
 ## Introduction
 
-In this lab, you will set up and configure the Customer Sales App where Oracle AI Database, rather than application code, determines the rows and columns each user can access.
+In this lab, you build a customer-sales application where Oracle AI Database, not the application code or an AI prompt, decides which rows and columns each user can see. You then test the same boundary with OCI Generative AI and with data that does not live inside the database.
 
-Marvin begins with broad access to illustrate the risk. You then build a least-privilege employee data grant, extend that same authorization to data sitting outside the database entirely, add manager access through an end user context, and try to get around all of it using AI-generated code. The application always issues ordinary SQL; the database decides what its current user may receive.
+You do the entire lab inside a guided web console. Every page has numbered steps, a **Run Action** button, notes from DeeBee (your guide), and a short check-your-understanding quiz. You will not need to come back to this document once you are in the console; everything you need is on the page in front of you.
 
-Estimated time: 60 minutes after the Stack is ready.
+Estimated time: 60 minutes once the Stack is ready. In a hurry? A twenty-minute fast path is described on the console's Overview page.
+
+### Objectives
+
+- Create database end users, data roles, data grants, cross-table data grants, and end user context.
+- Walk through Oracle Deep Data Security's core authorization capabilities and observe how each one changes the authorized result.
+- Use OCI Generative AI to test natural-language queries against the data already authorized for the signed-in user.
+- Verify that GenAI queries cannot override or bypass database authorizations.
+
+### Who this lab is for
+
+- **Security engineers:** see row- and column-level enforcement that no application, script, or AI prompt can override.
+- **Database administrators:** every step is real SQL you can open, read, and run yourself.
+- **Developers:** watch the application stay completely unchanged while what it returns changes underneath it.
+- **Managers and team leads:** least privilege you can demonstrate to an auditor in under an hour.
 
 ### Prerequisites
 
 - Complete the [Introduction](introduction.md) and deploy the GreenButton Stack.
-- Sign in to **Deep Sec DEMO Setup** as `ADMIN` using the generated lab password.
-- Keep the **Customer Sales App** open in a separate browser tab.
+- The Stack's **Application Information** tab gives you three URLs and one generated password. The same password is used everywhere in this lab: `ADMIN` in the console, `MARVIN` and `EMMA` in the Customer Sales App, and JupyterLab.
 
-## Task 1: Prepare the ordinary database objects
+## Task 1: Open the console and start
 
-### Browser — Deep Sec DEMO Setup, DB Setup
+### Browser — Deep Sec Demo Setup
 
-1. Select **DB Setup**.
-2. Run **Prepare App**.
-3. Run **Create DB Role**.
-4. Run **Review & Quiz** to confirm that the APPLAB schema, customer data, and database role exist.
+1. From the OCI Stack page, open the **Deep Sec Demo Setup** application using the link in the **Application Information** tab. Sign in as `ADMIN` with the password shown in the same tab.
+2. Read the **Overview** page. It shows the scenario, the architecture, and what each stage does.
+3. Press the **?** in the header for a thirty-second tour of the navigation.
+4. Select **Start DB Setup** and follow the numbered steps. The console guides you through every stage from here:
 
-These steps create ordinary Oracle objects. Deep Data Security has not yet been configured.
+    DB Setup → Deep Sec Setup → Customer Sales App → Customize Grant → End User Context → Order History → Exercises → Best Practices
 
-## Task 2: Create data roles and initial grants
+5. Keep the **Customer Sales App** open in a second browser tab using its link from the Stack's **Application Information** tab. The console tells you exactly when to switch to it and what to look for.
 
-### Browser — Deep Sec DEMO Setup, Deep Sec Setup
+    That's the whole lab. The rest of this document is optional.
 
-1. Select **Deep Sec Setup**.
-2. Run the steps in order:
+## Under the hood (optional)
 
-    1. **Create data roles**
-    2. **Create data grants**
-    3. **Create end users**
-    4. **Grant Data Role**
+The console runs real SQL against a real Autonomous Database. If you'd rather see or run it yourself, you can.
 
-3. Run **Review & Quiz**.
+### JupyterLab and the shell
 
-The initial employee grant is wide open, every row, every column, on purpose. The next task narrows it.
+Open the JupyterLab link from the Stack's **Application Information** tab and sign in with the generated password. From the launcher, open a **Terminal**. You are on the compute VM that hosts both applications.
 
-## Task 3: Build a least-privilege employee grant
+- Check the applications: `sudo /usr/local/sbin/deep-sec-status`
+- Every script the console runs is under `database/` in the deployed application source. Open any of them to read exactly what a step does.
 
-### Browser — Deep Sec DEMO Setup, Customize Grant; Customer Sales App
+### Connect directly with SQL*Plus
 
-1. In **Customize Grant**, exclude the sensitive columns from the employee grant and restrict rows to each sales representative's own accounts. The grant is built as everything except what you explicitly remove, not the other way around.
-2. Apply the grant.
-3. Return to the Customer Sales App, already open, and select **Customer Report** again.
+The Stack output `adb_tls_connection_string` is a one-way TLS connect string; no wallet is required.
 
-Marvin now sees only his three customer accounts. Oracle returns `Not authorized` for the columns you excluded.
+```text
+sqlplus ADMIN/"<generated password>"@"<adb_tls_connection_string>"
+```
 
-4. Open **AI Insights** and ask a question about customer data. The AI response is limited to the same database-authorized result.
+Try the same query the Customer Sales App runs, as Marvin instead of ADMIN, and watch Oracle return a different answer to the identical statement:
 
-## Task 4: Extend the same authorization to data outside the database
+```text
+sqlplus MARVIN/"<generated password>"@"<adb_tls_connection_string>"
+SQL> SELECT * FROM APPLAB.customers ORDER BY revenue DESC;
+```
 
-### Browser — Deep Sec DEMO Setup, Order History; Customer Sales App
+### SSH
 
-1. Select **Order History**. Before touching Oracle at all, this page shows you the raw Apache Iceberg files already sitting in Object Storage, and walks through the layered index Oracle uses to resolve them, metadata, manifest list, manifest files, down to the actual Parquet data.
-2. Create the external table. No data moves, Oracle points at the files where they already live.
-3. Query it with ordinary SQL, same syntax as any other table, and confirm the row count.
-4. Extend the employee grant's authorization to this table too, same exclusion pattern as Task 3, applied to a table that was never inside the database at all.
-5. In the Customer Sales App, check order history for Marvin.
+The Stack output `ssh_command` is a ready-to-paste command using the SSH key you supplied at deploy time. Use it if you prefer your own terminal to JupyterLab's.
 
-The lesson here is the same one from Task 3, just proving it reaches further than you might expect, Deep Data Security doesn't care where the underlying bytes are stored.
+### Take the scripts with you
 
-## Task 5: Add manager access
+The console's **Admin → Downloads** page builds a fresh ZIP of the SQL scripts and the two application source trees, generated from what's actually running on your VM at that moment. Nothing in them is lab-specific magic; they are the statements you would run in your own environment.
 
-### Browser — Deep Sec DEMO Setup, End User Context
+## If something doesn't load
 
-1. Complete the manager workflow in order:
-
-    1. **Manager Lookup**
-    2. **Manager Context**
-    3. **Set Context**
-    4. **Manager Data Grant**
-    5. **Grant Manager Role**
-
-2. In the Customer Sales App, sign out and sign back in as Marvin.
-3. Select **Customer Report** and check order history again.
-
-Marvin remains an employee and now also holds the manager data role. His employee role returns his own accounts; his manager role contributes his team's. The database combines both roles' authorized results automatically.
-
-## Task 6: Create a new Customer Sales App page with Vibe Coding
-
-### Browser — Deep Sec DEMO Setup, Vibe Coding; Customer Sales App
-
-1. Select **Vibe Coding**.
-2. Describe the report you want in plain English, for example: `Show me every customer's sensitive identifier.`
-3. Select **Create Customer Sales App page**. Vibe Coding generates one read-only SQL statement and publishes a new report URL.
-4. Open the new Customer Sales App report page and run the report as Marvin or Emma.
-5. Review the generated SQL, the database security context, and the rows Oracle returned.
-
-Vibe Coding does not edit or restart the Customer Sales App. The page uses a permanent report route that reads the generated report definition at runtime, then connects as the signed-in local database user. However the request is phrased, Oracle still returns only the rows and columns that user's active data roles authorize.
-
-## Task 7: Validate and reset
-
-### Browser — Deep Sec DEMO Setup, Admin
-
-1. Select **Admin** and run the validation comparison. Emma and Marvin's active roles, applicable grants, authorized columns, and row rules are read directly from Oracle and shown side by side.
-2. Use the reset options available on this page if you need to repeat a section of the lab.
+If a console or application page returns an error on first open, the VM may still be finishing its bootstrap. Wait a minute and reload. If it persists, open JupyterLab's terminal and run `sudo /usr/local/sbin/deep-sec-status`; both services should report `active (running)`.
 
 ## Clean up
 
-When finished, destroy the Resource Manager Stack. The GreenButton destroy workflow removes its stack-specific Object Storage objects and pre-authenticated requests before deleting the bucket.
+When finished, destroy the Resource Manager Stack. This permanently removes the workshop resources. The GreenButton destroy workflow removes its stack-specific Object Storage objects and pre-authenticated requests before deleting the bucket.
 
 ## Acknowledgements
 

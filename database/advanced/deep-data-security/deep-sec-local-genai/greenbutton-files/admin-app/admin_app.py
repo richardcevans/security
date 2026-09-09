@@ -212,8 +212,10 @@ def _record_completed_action(action: dict) -> list[str]:
             raise ValueError("Sign in as ADMIN first")
         if action["resets_setup"]:
             login["completed_actions"] = set()
+            login.pop("customize_before", None)
         if action["restored_actions"]:
             login["completed_actions"].update(action["restored_actions"])
+            login.pop("customize_before", None)
         elif not action["resets_setup"]:
             login.setdefault("completed_actions", set()).add(action["key"])
         return sorted(login["completed_actions"])
@@ -236,6 +238,43 @@ def _action_outputs() -> dict[str, str]:
         if not login or login["expires_at"] <= time.monotonic():
             return {}
         return dict(login.get("action_outputs", {}))
+
+
+def _navigation_state(completed_actions: set[str]) -> tuple[list[dict], dict[str, int]]:
+    """Add page completion metadata for the shared navigation and progress bar."""
+    steps_by_key = {step["key"]: step for step in STEPS}
+    pages = []
+    total = 0
+    completed = 0
+    for page in PAGES:
+        progress_steps = []
+        for step_key in page["step_keys"]:
+            step = steps_by_key[step_key]
+            action_keys = [
+                action_key
+                for action_key in step["action_keys"]
+                if ACTIONS[action_key]["type"] != "download"
+            ]
+            if action_keys:
+                progress_steps.append(action_keys)
+        excluded = page["key"] == "best_practices"
+        is_completed = bool(progress_steps) and all(
+            any(action_key in completed_actions for action_key in action_keys)
+            for action_keys in progress_steps
+        )
+        if not excluded:
+            total += 1
+            if is_completed:
+                completed += 1
+        pages.append(
+            {
+                **page,
+                "progress_steps": progress_steps,
+                "progress_excluded": excluded,
+                "completed": is_completed,
+            }
+        )
+    return pages, {"completed": completed, "total": total}
 
 
 def _database_completed_actions() -> set[str]:
@@ -332,6 +371,7 @@ def index():
 
 def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Optional[str]):
     completed_actions = _completed_actions() | _database_completed_actions()
+    navigation_pages, progress = _navigation_state(completed_actions)
     action_outputs = _action_outputs()
     customer_sales_url = f"{request.scheme}://{request.host.split(':', 1)[0]}:7777/"
     actions = {
@@ -379,7 +419,8 @@ def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Option
         actions=actions,
         steps=steps,
         completed_actions=sorted(completed_actions),
-        pages=PAGES,
+        pages=navigation_pages,
+        progress=progress,
         current_page_key=page_key,
         lesson=LESSON,
         current_page_ordered=_page_by_key(page_key)["ordered"],
@@ -389,9 +430,18 @@ def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Option
 @app.get("/console")
 @login_required
 def console():
+    completed_actions = _completed_actions() | _database_completed_actions()
+    navigation_pages, progress = _navigation_state(completed_actions)
+    public_host = request.host.split(":", 1)[0]
     return render_template(
         "overview.html",
-        pages=PAGES,
+        pages=navigation_pages,
+        progress=progress,
+        completed_actions=sorted(completed_actions),
+        under_hood={
+            "jupyter_url": f"{request.scheme}://{public_host}:8888/",
+            "adb_tls_connection_string": settings.dsn,
+        },
         current_page_key="console",
         lesson=LESSON,
     )
@@ -519,6 +569,52 @@ def validation_comparison_state():
     except Exception as exc:
         app.logger.debug("Validation comparison is not available yet: %s", exc)
         return jsonify(available=False, message="Create the comparison users and data roles first."), 200
+
+
+def _marvin_comparison_snapshot(comparison: dict) -> Optional[dict]:
+    for persona in comparison.get("personas", []):
+        if persona.get("username") == "MARVIN" and persona.get("available"):
+            return {
+                "row_count": persona.get("row_count"),
+                "columns": persona.get("columns", []),
+            }
+    return None
+
+
+@app.route("/api/customize-grant-comparison", methods=["GET", "POST"])
+@login_required
+def customize_grant_comparison():
+    """Capture Marvin before the wizard and return the post-apply snapshot."""
+    try:
+        comparison = validation_comparison(settings, _admin_password())
+    except Exception as exc:
+        app.logger.debug("Customize-grant comparison is not available yet: %s", exc)
+        return jsonify(available=False, message="Create Marvin and the employee grant before customizing it."), 200
+
+    current = _marvin_comparison_snapshot(comparison)
+    if current is None:
+        return jsonify(available=False, message="Marvin's authorized query is not available yet."), 200
+
+    login_id = current_user.get_id()
+    with _logins_lock:
+        login = _logins.get(login_id)
+        if not login or login["expires_at"] <= time.monotonic():
+            return jsonify(error="Sign in as ADMIN first"), 401
+        before = login.get("customize_before")
+        if (
+            before is None
+            and request.method == "GET"
+            and "customize_employee_grant" not in login.get("completed_actions", set())
+        ):
+            before = current
+            login["customize_before"] = before
+
+    return jsonify(
+        available=True,
+        query=comparison["query"],
+        before=before,
+        after=current if request.method == "POST" else None,
+    )
 
 
 @app.post("/api/actions/show_iceberg_files")

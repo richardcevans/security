@@ -6,7 +6,7 @@
 -- Flask receives only the rows and columns Oracle authorizes for MARVIN.
 set echo off
 
-prompt Oracle Customer Sales App uses direct database authentication as MARVIN.
+prompt Customer Sales App uses direct database authentication as MARVIN.
 prompt Oracle verifies the sign-in password for that session.
 prompt Deep Sec evaluates MARVIN's active data roles and grants.
 prompt Flask only gets the rows and columns Oracle authorizes.

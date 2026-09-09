@@ -109,7 +109,7 @@ that Oracle did not authorize.
 
    The status file should contain `COMPLETE`.
 
-> The GreenButton Stack currently defaults the browser CIDR to `0.0.0.0/0` for hands-on-lab use. Restrict it before broader use.
+> The GreenButton Stack currently defaults the browser CIDR to `0.0.0.0/0` for hands-on-lab use. This CIDR represents every IP address on the Internet and is not recommended for long-term use. Oracle recommends limiting it to a smaller set of IP addresses.
 
 You may now proceed to the next lab.
 

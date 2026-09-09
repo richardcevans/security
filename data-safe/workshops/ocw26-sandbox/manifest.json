@@ -1,5 +1,5 @@
 {
-    "workshoptitle": "Become a Data Security Superhero in Just 90 Minutes with Oracle Data Safe",
+    "workshoptitle": "Manage and Strengthen Your Cloud AI Database Security with Oracle Data Safe",
     "help": "livelabs-help-db_us@oracle.com",
     "tutorials": [
       {
@@ -45,15 +45,9 @@
         "type": "livelabs"
       },
       {
-        "title": "Lab 7: Check Your Understanding",
-        "description": "Review key Oracle Data Safe concepts with a scored quiz.",
-        "filename": "../../check-your-understanding/check-your-understanding.md",
-        "type": "livelabs"
-      },
-      {
         "title": "Need Help?",
         "description": "Solutions to Common Problems and Directions for Receiving Live Help",
-        "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+        "filename": "https://oracle-livelabs.github.io/common/labs/need-help/need-help-livelabs.md"
       }
     ]
   }

@@ -63,7 +63,7 @@ You have three options for registering your Autonomous AI Database:
 
 5. Select **Register database**. From here, you can manually configure registration details. This method assumes that you have already completed the required pre-registration tasks for your database.
 
-   ![Manual target registration](images/manual-target-registration.png "Manual target registration")
+    ![Manual target registration](images/manual-target-registration.png "Manual target registration")
 
 6. Select **Cancel**.
 
@@ -143,16 +143,18 @@ To register a database other than an Autonomous AI Database for this workshop, p
 
     Note: From here on, to navigate to a landing page, we simply say *Navigate to the 'feature-name' page*.
 
+    ![Data Safe landing pages](images/data-safe-landing-pages.png "Data Safe landing pages")
+
 
 You may now **proceed to the next lab**.
 
 ## Learn More
 
-- [Target Database Registration](https://www.oracle.com/pls/topic/lookup?ctx=en/cloud/paas/data-safe&id=ADMDS-GUID-B5F255A7-07DD-4731-9FA5-668F7DD51AA6)
-- [Oracle Data Safe Dashboard](https://www.oracle.com/pls/topic/lookup?ctx=en/cloud/paas/data-safe&id=ADMDS-GUID-B4D784B8-F3F7-4020-891D-49D709B9A302)
+- [Target Database Registration](https://docs.oracle.com/iaas/data-safe/doc/target-database-registration.html)
 
 
 ## Acknowledgements
 
-- **Author** - Jody Glover, Consulting User Assistance Developer, Database Development
-- **Last Updated By/Date** - Jody Glover, January 29, 2026
+- **Author** - Jody Glover, Lead Principal User Assistance Developer, Database Development
+- **Contributor** - Bettina Schäumer, Lead Principal Product Manager, Oracle Database Security
+- **Last Updated By/Date** - Jody Glover, August 20, 2026

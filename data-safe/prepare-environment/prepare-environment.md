@@ -87,7 +87,7 @@ Create a user group and add your Oracle Cloud account to the group.
 
 Create an IAM policy that grants the workshop user the necessary permissions.
 
-1. From the navigation menu, select **Identity and Security**, and the select **Policies**.
+1. From the navigation menu, select **Identity & Security**, and the select **Policies**.
 
     The **Policies** page opens.
 
@@ -281,5 +281,6 @@ You may now **proceed to the next lab**.
 
 ## Acknowledgements
 
-- **Author** - Jody Glover, Consulting User Assistance Developer, Database Development
-- **Last Updated By/Date** - Jody Glover, January 20, 2026
+- **Author** - Jody Glover, Lead Principal User Assistance Developer, Database Development
+- **Contributor** - Bettina Schäumer, Lead Principal Product Manager, Oracle Database Security
+- **Last Updated By/Date** - Jody Glover, August 20, 2026

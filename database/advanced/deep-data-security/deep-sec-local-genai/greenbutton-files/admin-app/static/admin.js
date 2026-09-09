@@ -37,17 +37,6 @@ function updateNavigationProgress() {
       if (isCompleted) completed += 1;
     }
   });
-  const progress = document.querySelector(".page-progress");
-  if (!progress) return;
-  const configuredTotal = Number(progress.dataset.progressTotal || total);
-  const percent = configuredTotal ? (completed / configuredTotal) * 100 : 0;
-  progress.dataset.progressCompleted = String(completed);
-  progress.dataset.progressTotal = String(configuredTotal);
-  progress.setAttribute("aria-valuenow", String(completed));
-  const label = progress.querySelector(".page-progress-label");
-  if (label) label.textContent = `${completed} of ${configuredTotal} pages complete`;
-  const fill = progress.querySelector(".page-progress-fill");
-  if (fill) fill.style.width = `${percent}%`;
 }
 
 function updateActionAvailability() {

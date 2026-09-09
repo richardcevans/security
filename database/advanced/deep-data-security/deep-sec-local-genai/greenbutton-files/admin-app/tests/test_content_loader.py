@@ -73,7 +73,10 @@ class ContentLoaderTests(unittest.TestCase):
         self.assertIn("DBA_DATA_ROLE_GRANTS", audit_examples[3]["code"].upper())
         self.assertNotIn("vibe-coding", {page.id for page in lesson.pages})
         self.assertEqual(lesson.actions["exercise_reset"].completion, "mark_viewed")
-        self.assertEqual(lesson.overview["stages"][0]["estimated_minutes"], 8)
+        self.assertEqual(
+            [stage["estimated_minutes"] for stage in lesson.overview["stages"]],
+            [5, 10, 5, 10, 10, 10, 5, 5],
+        )
         self.assertEqual(lesson.actions["what_you_proved"].config["result_sets"][2]["description"], "9 rows after the employee and manager grants union together.")
 
     def test_runtime_content_preserves_configured_pages_and_wizards(self) -> None:

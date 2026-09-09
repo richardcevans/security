@@ -432,16 +432,11 @@ def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Option
 def console():
     completed_actions = _completed_actions() | _database_completed_actions()
     navigation_pages, progress = _navigation_state(completed_actions)
-    public_host = request.host.split(":", 1)[0]
     return render_template(
         "overview.html",
         pages=navigation_pages,
         progress=progress,
         completed_actions=sorted(completed_actions),
-        under_hood={
-            "jupyter_url": f"{request.scheme}://{public_host}:8888/",
-            "adb_tls_connection_string": settings.dsn,
-        },
         current_page_key="console",
         lesson=LESSON,
     )

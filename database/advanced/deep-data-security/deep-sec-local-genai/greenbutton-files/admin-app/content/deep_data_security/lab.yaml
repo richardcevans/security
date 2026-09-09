@@ -20,14 +20,13 @@ overview:
   description_heading: "What you will do"
   time_heading: "Estimated time"
   total_label: "Total"
-  fast_path: "DB Setup → Deep Sec Setup → Customize Grant → Exercises 1 and 2. About twenty minutes."
   stages:
     - label: "DB Setup"
       description: "Create the APPLAB schema, customer data, and ordinary database login role."
-      estimated_minutes: 8
+      estimated_minutes: 5
     - label: "Deep Sec Setup"
       description: "Create Deep Sec data roles and data grants, then create and grant access to Marvin and Emma."
-      estimated_minutes: 12
+      estimated_minutes: 10
     - label: "Customer Sales App"
       description: "See the rows and columns Oracle returns for the signed-in user."
       estimated_minutes: 5
@@ -42,10 +41,10 @@ overview:
       estimated_minutes: 10
     - label: "Exercises"
       description: "Put Deep Sec to work through hands-on exercises."
-      estimated_minutes: 3
+      estimated_minutes: 5
     - label: "Best Practices"
       description: "Apply Deep Sec principles at enterprise scale with trusted identity, least privilege, controlled context, and policy lifecycle management."
-      estimated_minutes: 2
+      estimated_minutes: 5
   note: "Use the navigation links at any time. The Review steps provide a read-only snapshot of the database objects created so far."
   start_path: /db-setup
   start_label: "Start DB Setup"

@@ -36,15 +36,7 @@
           </tbody>
           <tfoot><tr><th scope="row">{{ lesson.overview.total_label }}</th><td></td><td>{{ lesson.overview.stages|sum(attribute="estimated_minutes") }} minutes</td></tr></tfoot>
         </table>
-        <p class="overview-fast-path"><strong>Fast path:</strong> {{ lesson.overview.fast_path }}</p>
         <p class="muted">{{ lesson.overview.note }}</p>
-      </section>
-      <section class="card overview-under-hood" aria-labelledby="under-hood-heading">
-        <h2 id="under-hood-heading">Under the hood</h2>
-        <dl>
-          <dt>JupyterLab</dt><dd><a href="{{ under_hood.jupyter_url }}" target="_blank" rel="noopener">{{ under_hood.jupyter_url }}</a></dd>
-          <dt>ADB TLS connection string</dt><dd><code>{{ under_hood.adb_tls_connection_string }}</code></dd>
-        </dl>
       </section>
       <div class="overview-start-row">
         <a class="primary overview-start" href="{{ lesson.overview.start_path }}">{{ lesson.overview.start_label }}</a>

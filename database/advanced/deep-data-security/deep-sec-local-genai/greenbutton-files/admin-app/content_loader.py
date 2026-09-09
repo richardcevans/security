@@ -247,7 +247,6 @@ def _normalize_overview(
             "description_heading",
             "time_heading",
             "total_label",
-            "fast_path",
             "stages",
             "note",
             "start_path",
@@ -265,7 +264,6 @@ def _normalize_overview(
         "description_heading",
         "time_heading",
         "total_label",
-        "fast_path",
         "stages",
         "note",
         "start_path",
@@ -285,7 +283,6 @@ def _normalize_overview(
         "description_heading",
         "time_heading",
         "total_label",
-        "fast_path",
         "note",
         "start_label",
     ):

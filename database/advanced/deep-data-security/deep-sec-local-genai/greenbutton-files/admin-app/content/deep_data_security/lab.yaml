@@ -194,7 +194,7 @@ actions:
     title: Review
     description: Confirms the manager context, manager data grant, and Marvin's manager role after the End User Context steps.
     scripts:
-      - end_user_status.sql
+      - end_user_status_light.sql
     short_label: Review
     output_title: Complete SQL*Plus output
 
@@ -510,7 +510,7 @@ actions:
     title: Review
     description: Confirms the external table and its data grant.
     scripts:
-      - end_user_status.sql
+      - end_user_status_light.sql
     short_label: Review
     output_title: Complete SQL*Plus output
 
@@ -1272,7 +1272,6 @@ steps:
       - "If you thought Deep Sec was already cool, wait until you see this. Now you will create a data grant based on the access a sales rep already has to the CUSTOMERS table, building a parent/child relationship between ORDER_HISTORY and CUSTOMERS through Deep Sec data grants. This is what is called a cross-table data grant."
       - "Its predicate does not reference the sales rep's name or the manager context you built earlier at all, it matches customer_id on CUSTOMERS to customer_id on ORDER_HISTORY directly."
       - "That means whatever rows you can see in CUSTOMERS, you can see the matching rows in ORDER_HISTORY, and nothing more. Do you remember how many rows Marvin could see as an employee? How many once he became Emma's manager? That is exactly how this narrows down too."
-      - "Expected result: 223 + 395 = 618 authorized Order History rows."
       - "One more thing worth noticing, Deep Sec data grants support an EXCEPT clause. For this grant, exclude the amount column. Check that box and watch the Generated SQL change to match."
     quiz:
       question: "In the Customer Sales App, scroll down past the Customer Report and run the Order History Report. How many rows are returned?"

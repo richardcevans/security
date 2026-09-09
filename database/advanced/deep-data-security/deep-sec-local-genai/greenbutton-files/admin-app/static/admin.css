@@ -95,8 +95,6 @@ label { display: block; font-size: 14px; font-weight: 650; margin: 18px 0 6px; }
 .action-output summary::before { content: "▶ "; display: inline-block; transition: transform .15s; }
 .action-output[open] summary::before { transform: rotate(90deg); }
 .validation-comparison { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
-.grant-before-after { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
-.grant-before-after h3 { margin-top: 0; }
 .grant-state-card { background: #f8fafc; border: 1px solid #cdd9e6; border-radius: 6px; padding: 16px; }
 .grant-state-card h4 { font-size: 18px; margin: 0 0 8px; }
 .grant-state-summary { font-size: 16px; font-weight: 700; margin: 0; }

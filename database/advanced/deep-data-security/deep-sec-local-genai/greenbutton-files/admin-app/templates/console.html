@@ -90,14 +90,6 @@
               {% endif %}
               {% endif %}
               <details open><summary>Generated SQL</summary><pre class="grant-preview">Loading…</pre></details>
-              {% if action.key == "customize_employee_grant" %}
-              <section id="customize-grant-comparison" class="grant-before-after" aria-live="polite">
-                <h3>Before and after</h3>
-                <p class="muted">The same query is run as Marvin before and after this grant changes.</p>
-                <div id="customize-grant-states" class="validation-grid"><p class="muted">Loading Marvin's current authorization…</p></div>
-                <pre id="customize-grant-query">SELECT * FROM APPLAB.customers ORDER BY revenue DESC</pre>
-              </section>
-              {% endif %}
               <button class="primary run-grant-apply" type="button">{{ action.config.apply_button_label or "Apply this grant" }}</button><span class="action-status grant-status" aria-live="polite"></span>
               <details class="action-output grant-output" hidden><summary>{{ action.output_title or "SQL*Plus output" }}</summary><pre></pre></details>
               </div>

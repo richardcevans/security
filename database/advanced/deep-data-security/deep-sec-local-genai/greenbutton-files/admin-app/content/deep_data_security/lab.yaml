@@ -807,12 +807,15 @@ actions:
 
   what_you_proved:
     type: explanation
-    title: What you proved
+    title: Summary
     description: "The application issued the same ordinary query throughout the lab. Oracle Deep Data Security changed the authorized result as the end user, data roles, grants, context, and cross-table relationship changed."
     completion: mark_viewed
-    short_label: What you proved
+    short_label: Summary
     output_title: Step status
     config:
+      asset: lab-architecture.png
+      asset_alt: "Architecture showing the Customer Sales App and OCI Generative AI sending the same request through end-user security context to Oracle AI Database 26ai, where Deep Data Security filters each user's rows and columns."
+      asset_caption: "The application and OCI Generative AI can issue the same request, but Oracle Deep Data Security enforces the authorized result for each end user."
       query: SELECT * FROM APPLAB.customers ORDER BY revenue DESC
       result_sets:
         - title: Baseline access
@@ -1489,7 +1492,7 @@ steps:
     title: Audit Policies
     action_ids:
       - best_practice_policy_lifecycle
-    next_hint: Continue to What you proved when you are ready.
+    next_hint: Continue to Summary when you are ready.
     notes:
       - "You saw why lifecycle testing matters when the same Customer Sales App and OCI Generative AI questions produced different authorized results after each policy change."
       - "Test both sides of every policy: authorized and unauthorized users, multiple roles, role changes, pooled connections, direct access paths, and agent-assisted workflows."
@@ -1498,8 +1501,8 @@ steps:
 
   - id: what_you_proved
     badge: "1"
-    label: What you proved
-    title: What you proved
+    label: Summary
+    title: Summary
     action_ids:
       - what_you_proved
     next_hint: Use Admin to validate or reset the lab when you are ready.
@@ -1638,8 +1641,8 @@ pages:
       - best_practice_policy_lifecycle
 
   - id: what_you_proved
-    path: /what-you-proved
-    label: What you proved
+    path: /summary
+    label: Summary
     step_ids:
       - what_you_proved
 

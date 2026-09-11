@@ -13,16 +13,16 @@
           <dl id="context" class="context"></dl>
         </section>
         <details class="lab-details" open><summary>SQL Query <span>Sent to Oracle</span></summary><code>{{ query }}</code></details>
-        <div class="table-wrap"><table><thead><tr>
+        <p class="table-legend"><span class="cell-denied" aria-hidden="true">&mdash;</span> Column not authorized for your current role. Hover for details.</p>
+        <div class="table-wrap"><table class="results-table"><thead><tr>
           <th class="sortable" data-sort-key="customer_id" data-sort-type="number">ID</th>
           <th class="sortable" data-sort-key="customer_name" data-sort-type="text">Customer</th>
           <th class="sortable" data-sort-key="sales_rep" data-sort-type="text">Sales Rep</th>
-          <th class="sortable" data-sort-key="manager_id" data-sort-type="number">Manager ID</th>
           <th class="sortable" data-sort-key="region" data-sort-type="text">Region</th>
           <th class="sortable" data-sort-key="revenue" data-sort-type="number">Revenue</th>
           <th class="sortable" data-sort-key="credit_limit" data-sort-type="number">Credit Limit</th>
           <th class="sortable" data-sort-key="sensitive_identifier" data-sort-type="text">Sensitive Identifier</th>
-        </tr></thead><tbody id="results"><tr class="empty"><td colspan="8">Load customer accounts to view available records.</td></tr></tbody></table></div>
+        </tr></thead><tbody id="results"><tr class="empty"><td colspan="7">Load customer accounts to view available records.</td></tr></tbody></table></div>
       </section>
       <section class="card order-history-section" aria-labelledby="order-history-title">
         <div class="card-heading"><div><h2 id="order-history-title">Order History</h2><p>Load the recent orders your current database identity is authorized to view.</p></div></div>
@@ -32,6 +32,7 @@
           <dl id="order-history-context-details" class="context"></dl>
         </section>
         <details class="lab-details" open><summary>SQL Query <span>Sent to Oracle</span></summary><code>{{ order_history_query }}</code></details>
+        <p class="table-legend"><span class="cell-denied" aria-hidden="true">&mdash;</span> Column not authorized for your current role. Hover for details.</p>
         <div id="order-history-result" aria-live="polite"></div>
       </section>
       <div id="authorization-popover" class="authorization-popover" role="dialog" aria-labelledby="authorization-popover-title" hidden></div>

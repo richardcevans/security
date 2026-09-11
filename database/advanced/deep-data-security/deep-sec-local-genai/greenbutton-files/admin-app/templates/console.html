@@ -94,9 +94,11 @@
               <details class="action-output grant-output" hidden><summary>{{ action.output_title or "SQL*Plus output" }}</summary><pre></pre></details>
               </div>
             {% elif action.explain_step %}
+              {% if action.config.asset %}
               <figure class="explanation-figure"><img src="{{ url_for('static', filename='images/' ~ action.config.asset) }}" alt="{{ action.config.asset_alt or 'Deep Data Security explanation diagram' }}"><figcaption>{{ action.config.asset_caption or 'Deep Data Security explanation.' }}</figcaption></figure>
+              {% endif %}
               {% if action.config.query and action.config.result_sets %}
-              <section class="proof-grid" aria-label="What the lab proved">
+              <section class="proof-grid" aria-label="Summary">
                 <article class="proof-card proof-query"><h3>Same query</h3><pre><code>{{ action.config.query }}</code></pre></article>
                 {% for result in action.config.result_sets %}<article class="proof-card"><h3>{{ result.title }}</h3><p>{{ result.description }}</p></article>{% endfor %}
               </section>

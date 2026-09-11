@@ -159,6 +159,7 @@ function renderOrderHistoryTable(rows, contextData, rowCount, authorization) {
   const columns = Object.keys(rows[0]);
   const columnLabels = {order_id: "Order ID", customer_id: "Customer ID"};
   const table = document.createElement("table");
+  table.className = "results-table";
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
   for (const column of columns) {
@@ -173,7 +174,7 @@ function renderOrderHistoryTable(rows, contextData, rowCount, authorization) {
     for (const column of columns) {
       const numericColumn = ["order_id", "customer_id", "amount"].includes(column);
       const formatValue = column === "amount" ? formatNumber : (value) => value;
-      tableRow.append(makeDataCell(row[column], column, authorization, numericColumn ? "number" : "", formatValue));
+      tableRow.append(makeDataCell(row[column], column, authorization, numericColumn ? "number" : "", formatValue, row));
     }
     body.append(tableRow);
   }
@@ -228,6 +229,7 @@ function renderDynamicReportTable(target, rows) {
   }
   const columns = Object.keys(rows[0]);
   const table = document.createElement("table");
+  table.className = "results-table";
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
   for (const column of columns) {
@@ -239,7 +241,11 @@ function renderDynamicReportTable(target, rows) {
   const body = document.createElement("tbody");
   for (const row of rows) {
     const tableRow = document.createElement("tr");
-    for (const column of columns) tableRow.append(makeCell(row[column] == null ? "Not authorized" : row[column]));
+    for (const column of columns) {
+      tableRow.append(row[column] == null
+        ? makeUnauthorizedCell(column, null)
+        : makeCell(row[column]));
+    }
     body.append(tableRow);
   }
   table.append(head, body);
@@ -327,6 +333,39 @@ function humanizeColumn(column) {
     .join(" ");
 }
 
+function grantName(grant) {
+  return grant?.grant_name || grant?.name || "the applicable data grant";
+}
+
+function grantPageLabel(grant) {
+  return grant?.page_label || "Data Grants";
+}
+
+function grantCoversColumn(grant, column) {
+  const normalizedColumn = String(column || "").toUpperCase();
+  const columns = (grant?.columns || []).map((item) => String(item).toUpperCase());
+  if (columns.length) return columns.includes(normalizedColumn);
+  const excludedColumns = (grant?.excluded_columns || []).map((item) => String(item).toUpperCase());
+  return !excludedColumns.includes(normalizedColumn);
+}
+
+function authorizationForCell(row, column, authorization) {
+  const columnDetails = authorization?.available ? authorization.columns?.[column] : null;
+  const rowKey = authorization?.row_key;
+  const rowGrants = rowKey && row
+    ? authorization?.row_grants?.[String(row[rowKey])] || []
+    : [];
+  if (!rowGrants.length) return columnDetails;
+
+  if (rowGrants.some((grant) => grantCoversColumn(grant, column))) return columnDetails;
+  const deniedGrant = rowGrants.find((grant) => !grantCoversColumn(grant, column));
+  if (!deniedGrant) return columnDetails;
+  const otherGrant = (columnDetails?.other_grants || []).find(
+    (grant) => grantName(grant) !== grantName(deniedGrant)
+  );
+  return {...columnDetails, authorized: false, row_grant: deniedGrant, other_grant: otherGrant};
+}
+
 function closeAuthorizationPopover(restoreFocus = true) {
   const popover = document.querySelector("#authorization-popover");
   if (popover) {
@@ -361,22 +400,64 @@ function showAuthorizationPopover(trigger, column, details) {
   heading.append(title, close);
 
   const explanation = document.createElement("p");
-  explanation.textContent = "Oracle returned NULL because no applicable SELECT data grant authorizes this column for the active data roles.";
-  const list = document.createElement("ul");
-  for (const reason of details?.reasons || []) {
-    const item = document.createElement("li");
-    const grant = document.createElement("strong");
-    grant.textContent = "Grant: ";
-    const grantName = document.createElement("code");
-    grantName.textContent = reason.grant || "Not available";
-    const role = document.createElement("strong");
-    role.textContent = "Role: ";
-    const rule = document.createElement("strong");
-    rule.textContent = "Rule: ";
-    item.append(grant, grantName, document.createElement("br"), role, document.createTextNode(reason.role || "Not available"), document.createElement("br"), rule, document.createTextNode(reason.rule || "Not available"));
-    list.append(item);
+  const columnLabel = humanizeColumn(column);
+  if (column === "manager_id") {
+    explanation.textContent = "Manager ID is a join column the manager rule uses internally. No data grant includes it, and none needs to.";
+  } else if (details?.row_grant) {
+    const grant = details.row_grant;
+    const firstLine = document.createElement("p");
+    const columnName = document.createElement("strong");
+    columnName.textContent = columnLabel;
+    firstLine.append(columnName, document.createTextNode(" isn't in this row's grant."));
+
+    const secondLine = document.createElement("p");
+    const rowGrant = document.createElement("strong");
+    rowGrant.textContent = grantName(grant);
+    const excludedColumn = document.createElement("strong");
+    excludedColumn.textContent = columnLabel;
+    const page = document.createElement("strong");
+    page.textContent = grantPageLabel(grant);
+    secondLine.append(
+      document.createTextNode("You see this row through "),
+      rowGrant,
+      document.createTextNode(", and that grant's SELECT list leaves out "),
+      excludedColumn,
+      document.createTextNode(". You excluded it on the "),
+      page,
+      document.createTextNode(" page.")
+    );
+
+    popover.append(heading, firstLine, secondLine);
+    if (details.other_grant) {
+      const otherLine = document.createElement("p");
+      const otherGrant = document.createElement("strong");
+      otherGrant.textContent = grantName(details.other_grant);
+      const otherColumn = document.createElement("strong");
+      otherColumn.textContent = columnLabel;
+      otherLine.append(
+        document.createTextNode("Other rows may show "),
+        otherColumn,
+        document.createTextNode(" because they reach you through "),
+        otherGrant,
+        document.createTextNode(", which includes it.")
+      );
+      popover.append(otherLine);
+    }
+  } else {
+    const reason = details?.reasons?.[0];
+    const reasonGrant = reason ? document.createElement("strong") : null;
+    if (reasonGrant) {
+      reasonGrant.textContent = grantName(reason);
+      explanation.append(
+        document.createTextNode(columnLabel + " is not included in "),
+        reasonGrant,
+        document.createTextNode("'s SELECT list.")
+      );
+    } else {
+      explanation.textContent = `${columnLabel} is not included in an applicable SELECT data grant.`;
+    }
+    popover.append(heading, explanation);
   }
-  popover.append(heading, explanation, list);
   popover.hidden = false;
 
   const triggerBox = trigger.getBoundingClientRect();
@@ -393,21 +474,31 @@ function showAuthorizationPopover(trigger, column, details) {
 function makeUnauthorizedCell(column, details, className = "") {
   const cell = document.createElement("td");
   if (className) cell.className = className;
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "authorization-help";
-  trigger.textContent = "Not authorized";
+  const trigger = document.createElement("span");
+  trigger.className = "cell-denied";
+  trigger.textContent = "—";
+  const excludedGrant = details?.row_grant || details?.reasons?.[0];
+  const grantSuffix = excludedGrant ? ` (${grantName(excludedGrant)})` : "";
+  trigger.title = `Not authorized: this column is excluded by the data grant for your current role${grantSuffix}`;
+  trigger.setAttribute("role", "button");
+  trigger.tabIndex = 0;
   trigger.setAttribute("aria-label", `Why is ${humanizeColumn(column)} not authorized?`);
   trigger.setAttribute("aria-controls", "authorization-popover");
   trigger.setAttribute("aria-expanded", "false");
   trigger.addEventListener("click", () => showAuthorizationPopover(trigger, column, details));
+  trigger.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      showAuthorizationPopover(trigger, column, details);
+    }
+  });
   cell.append(trigger);
   return cell;
 }
 
-function makeDataCell(value, column, authorization, className = "", formatValue = (item) => item) {
+function makeDataCell(value, column, authorization, className = "", formatValue = (item) => item, row = null) {
   if (value == null) {
-    const details = authorization?.available ? authorization.columns?.[column] : null;
+    const details = authorizationForCell(row, column, authorization);
     if (details?.authorized === false) return makeUnauthorizedCell(column, details, className);
     return makeCell("—", className);
   }
@@ -415,7 +506,7 @@ function makeDataCell(value, column, authorization, className = "", formatValue 
 }
 
 document.addEventListener("click", (event) => {
-  if (!event.target.closest(".authorization-help, #authorization-popover")) closeAuthorizationPopover(false);
+  if (!event.target.closest(".cell-denied, #authorization-popover")) closeAuthorizationPopover(false);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -451,7 +542,7 @@ function renderCustomers(rows, authorization = currentAuthorization) {
     const row = document.createElement("tr");
     row.className = "empty";
     const cell = document.createElement("td");
-    cell.colSpan = 8;
+    cell.colSpan = 7;
     cell.textContent = "No customers were returned.";
     row.append(cell);
     results.append(row);
@@ -460,14 +551,13 @@ function renderCustomers(rows, authorization = currentAuthorization) {
   for (const customer of rows) {
     const row = document.createElement("tr");
     row.append(
-      makeDataCell(customer.customer_id, "customer_id", authorization, "number", formatNumber),
-      makeDataCell(customer.customer_name, "customer_name", authorization),
-      makeDataCell(customer.sales_rep, "sales_rep", authorization),
-      makeDataCell(customer.manager_id, "manager_id", authorization, "number", formatNumber),
-      makeDataCell(customer.region, "region", authorization),
-      makeDataCell(customer.revenue, "revenue", authorization, "number", formatNumber),
-      makeDataCell(customer.credit_limit, "credit_limit", authorization, "number", formatNumber),
-      makeDataCell(customer.sensitive_identifier, "sensitive_identifier", authorization)
+      makeDataCell(customer.customer_id, "customer_id", authorization, "number", formatNumber, customer),
+      makeDataCell(customer.customer_name, "customer_name", authorization, "", (value) => value, customer),
+      makeDataCell(customer.sales_rep, "sales_rep", authorization, "", (value) => value, customer),
+      makeDataCell(customer.region, "region", authorization, "", (value) => value, customer),
+      makeDataCell(customer.revenue, "revenue", authorization, "number", formatNumber, customer),
+      makeDataCell(customer.credit_limit, "credit_limit", authorization, "number", formatNumber, customer),
+      makeDataCell(customer.sensitive_identifier, "sensitive_identifier", authorization, "", (value) => value, customer)
     );
     results.append(row);
   }

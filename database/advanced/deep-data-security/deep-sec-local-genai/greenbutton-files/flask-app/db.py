@@ -102,11 +102,68 @@ def _is_true(value: object) -> bool:
     return value is True or _normalise_identifier(value) in {"TRUE", "YES", "Y"}
 
 
+GRANT_PAGE_LABELS = {
+    "EMPLOYEE_CUSTOMER_ACCESS": "Customize Grant",
+    "MANAGER_CUSTOMER_ACCESS": "End User Context",
+    "ORDER_HISTORY_ACCESS": "Order History",
+    "ORDER_HISTORY_BY_CUSTOMER_ACCESS": "Order History",
+}
+
+
+def _grant_page_label(grant_name: str) -> str:
+    normalized_name = _normalise_identifier(grant_name).rsplit(".", 1)[-1]
+    return GRANT_PAGE_LABELS.get(normalized_name, "Data Grants")
+
+
+def _grant_covers_column(grant: dict, column: str) -> bool:
+    normalized_column = _normalise_identifier(column)
+    if grant["columns"]:
+        return normalized_column in grant["columns"]
+    if grant["excluded_columns"]:
+        return normalized_column not in grant["excluded_columns"]
+    return True
+
+
+def _grant_summary(grant: dict) -> dict:
+    """Return only the grant facts needed to explain a cell in the browser."""
+    return {
+        "grant_name": grant["name"],
+        "page_label": _grant_page_label(grant["name"]),
+        "columns": sorted(grant["columns"]),
+        "excluded_columns": sorted(grant["excluded_columns"]),
+        "cross_table": grant["cross_table"],
+    }
+
+
+def _grant_matches_row(grant: dict, row: dict, persona: str) -> Optional[bool]:
+    """Match the lab's published predicates without evaluating arbitrary SQL."""
+    if grant["cross_table"]:
+        return True
+    if not grant["predicate"]:
+        return True
+
+    predicate = _normalise_identifier(grant["predicate"])
+    grant_name = _normalise_identifier(grant["name"]).rsplit(".", 1)[-1]
+    if grant_name == "EMPLOYEE_CUSTOMER_ACCESS" or (
+        "SALES_REP" in predicate and "ORA_END_USER_CONTEXT.USERNAME" in predicate
+    ):
+        return _normalise_identifier(row.get("sales_rep")) == _normalise_identifier(persona)
+    if grant_name == "MANAGER_CUSTOMER_ACCESS" or (
+        "MANAGER_ID" in predicate and "MGR_CTX" in predicate
+    ):
+        # manager_id is required by the manager grant in this lab. Employee
+        # rows therefore have NULL here, while manager-context rows do not.
+        return row.get("manager_id") is not None
+    return None
+
+
 def build_authorization_metadata(
     grant_rows: list[dict],
     active_roles: list[str],
     persona: str,
     columns: list[str],
+    rows: Optional[list[dict]] = None,
+    row_key: Optional[str] = None,
 ) -> dict:
     """Describe the Deep Sec grants that explain each returned column value."""
     applicable_grantees = {_normalise_identifier(persona), "PUBLIC"}
@@ -145,43 +202,28 @@ def build_authorization_metadata(
     metadata = {"available": True, "columns": {}}
     for column in columns:
         normalized_column = _normalise_identifier(column)
-        covering_grants = []
-        excluded_reasons = []
-        for grant in grouped.values():
-            if grant["columns"]:
-                covers = normalized_column in grant["columns"]
-            elif grant["excluded_columns"]:
-                covers = normalized_column not in grant["excluded_columns"]
-                if not covers:
-                    excluded_reasons.append(grant)
-            else:
-                covers = True
-            if covers:
-                covering_grants.append(grant)
-
-        reasons = []
-        if not covering_grants:
-            for grant in excluded_reasons:
-                excluded = ", ".join(sorted(grant["excluded_columns"]))
-                reasons.append(
-                    {
-                        "grant": grant["name"],
-                        "role": grant["grantee"] or "Cross-table data grant",
-                        "rule": f"ALL COLUMNS EXCEPT {excluded}",
-                    }
-                )
-            if not reasons:
-                reasons.append(
-                    {
-                        "grant": "No applicable SELECT data grant",
-                        "role": ", ".join(sorted(value for value in applicable_grantees if value != "PUBLIC")) or "Current user",
-                        "rule": f"The effective grants do not include {normalized_column}",
-                    }
-                )
+        covering_grants = [
+            grant for grant in grouped.values() if _grant_covers_column(grant, normalized_column)
+        ]
+        excluded_grants = [
+            grant for grant in grouped.values() if not _grant_covers_column(grant, normalized_column)
+        ]
         metadata["columns"][column.lower()] = {
             "authorized": bool(covering_grants),
-            "reasons": reasons,
+            "reasons": [_grant_summary(grant) for grant in excluded_grants],
+            "other_grants": [_grant_summary(grant) for grant in covering_grants],
         }
+
+    if rows is not None and row_key:
+        metadata["row_key"] = row_key
+        metadata["row_grants"] = {}
+        for row in rows:
+            matched_grants = [
+                _grant_summary(grant)
+                for grant in grouped.values()
+                if _grant_matches_row(grant, row, persona) is True
+            ]
+            metadata["row_grants"][str(row.get(row_key, ""))] = matched_grants
     return metadata
 
 
@@ -191,13 +233,15 @@ def _fetch_authorization_metadata(
     active_roles: list[str],
     persona: str,
     columns: list[str],
+    rows: Optional[list[dict]] = None,
+    row_key: Optional[str] = None,
 ) -> dict:
     """Read only the current end user's accessible Deep Sec grant metadata."""
     try:
         cursor.execute(AUTHORIZATION_GRANTS_QUERY, object_name=object_name)
         names = [column[0].lower() for column in cursor.description]
         grant_rows = [dict(zip(names, row)) for row in cursor]
-        return build_authorization_metadata(grant_rows, active_roles, persona, columns)
+        return build_authorization_metadata(grant_rows, active_roles, persona, columns, rows, row_key)
     except oracledb.DatabaseError:
         # The report remains usable on environments where the end user cannot
         # query ALL_DATA_GRANTS; it simply does not make an authorization claim.
@@ -225,7 +269,15 @@ def fetch_authorized_customers(
             active_roles = [row[0] for row in cursor]
             data_roles = ", ".join(active_roles) or "No active data role"
             authorization = (
-                _fetch_authorization_metadata(cursor, "CUSTOMERS", active_roles, end_user or persona, names)
+                _fetch_authorization_metadata(
+                    cursor,
+                    "CUSTOMERS",
+                    active_roles,
+                    end_user or persona,
+                    names,
+                    rows,
+                    "customer_id",
+                )
                 if include_authorization
                 else {"available": False, "columns": {}}
             )
@@ -253,7 +305,13 @@ def fetch_order_history(
             active_roles = [row[0] for row in cursor]
             data_roles = ", ".join(active_roles) or "No active data role"
             authorization = _fetch_authorization_metadata(
-                cursor, "ORDER_HISTORY", active_roles, end_user or persona, columns
+                cursor,
+                "ORDER_HISTORY",
+                active_roles,
+                end_user or persona,
+                columns,
+                rows,
+                "order_id",
             )
     return rows, row_count, {"end_user": end_user, "data_role": data_roles}, authorization
 

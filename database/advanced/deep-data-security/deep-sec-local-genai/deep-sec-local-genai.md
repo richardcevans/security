@@ -4,6 +4,8 @@
 
 In this lab, you build a customer-sales application. Oracle AI Database, not application code or an AI prompt, decides which rows and columns each user can see. You then test the same boundary with OCI Generative AI and with data outside the database.
 
+![Deep Data Security lab architecture](images/lab-architecture.png)
+
 Complete the lab inside a guided web console. Each page has numbered steps, a **Run Action** button, DeeBee notes, and a short check-your-understanding quiz. You do not need to return to this document after you enter the console. The console provides the remaining instructions.
 
 Estimated time: 60 minutes once the Stack is ready. The console's Overview page also describes a twenty-minute fast path.

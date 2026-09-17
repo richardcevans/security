@@ -9,6 +9,7 @@ from decimal import Decimal
 from threading import Lock
 from typing import Optional
 
+import oci
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 from flask_bootstrap import Bootstrap5
@@ -45,6 +46,16 @@ csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 app.logger.setLevel(getattr(logging, os.getenv("FLASK_LOG_LEVEL", "INFO").upper(), logging.INFO))
+
+AI_INSIGHTS_FAILURE = {
+    "summary": "Customer Insights couldn't reach OCI Generative AI. Here's how to check why.",
+    "commands": [
+        {"label": "Recent service log", "command": "sudo journalctl -u deep-sec-customer-sales.service -b -n 200 --no-pager -o short-iso"},
+        {"label": "Watch live errors", "command": "sudo journalctl -fu deep-sec-customer-sales.service -o short-iso"},
+        {"label": "Bootstrap log, if the service never started", "command": "cat /var/log/deep-sec-bootstrap.log"},
+    ],
+    "note": "Also verify OCI_REGION, GENAI_COMPARTMENT_OCID, and GENAI_MODEL_ID in /home/opc/.deep-sec-genai-defaults, the app reads that path from GENAI_DEFAULTS_FILE in /etc/deep-sec/customer-sales.env.",
+}
 
 # Passwords remain only in this process's memory, keyed by an opaque browser
 # session ID. They are never placed in a cookie, written to disk, or logged.
@@ -139,7 +150,7 @@ def _oracle_access_error(error: Exception, object_label: str) -> Optional[str]:
         return (
             f"Oracle can see {object_label}, but DATA_PUMP_DIR is not accessible to "
             "your database identity. Verify READ on DATA_PUMP_DIR was granted to the "
-            "Order History database role, that role was granted to the employee data "
+            "Iceberg database role, that role was granted to the employee data "
             "role, and the employee data role is active for this user. A missing or "
             "non-matching data grant normally appears instead as 'table or view does "
             "not exist.'"
@@ -269,9 +280,9 @@ def order_history():
         return jsonify(error=str(exc)), 400
     except Exception as exc:
         app.logger.exception("Order history query failed for persona=%s", current_user.persona)
-        if access_error := _oracle_access_error(exc, "Order History"):
+        if access_error := _oracle_access_error(exc, "Iceberg"):
             return jsonify(error=access_error), 403
-        return jsonify(error="Order history is unavailable. Check the server log and configuration."), 502
+        return jsonify(error="Iceberg is unavailable. Check the server log and configuration."), 502
     return jsonify(
         rows=[{key: _json_value(value) for key, value in row.items()} for row in rows],
         row_count=row_count,
@@ -316,22 +327,38 @@ def vibe_report(report_id: str):
 def ai_insight():
     payload = request.get_json(silent=True) or {}
     question = str(payload.get("question", "")).strip()
+    prompt_mode = str(payload.get("prompt_mode", "protected")).strip().lower()
     if not question:
         return jsonify(error="Enter a question for Customer Insights."), 400
     if len(question) > 1_000:
         return jsonify(error="Keep the question to 1,000 characters or fewer."), 400
+    if prompt_mode not in {"protected", "red-team"}:
+        return jsonify(error="Unknown Customer Insights prompt mode."), 400
     try:
         persona, password = _login_credentials()
         rows, context, _ = fetch_authorized_customers(settings, persona, password)
-        answer = answer_customer_question(settings, question, rows)
+        answer_result = answer_customer_question(settings, question, rows, prompt_mode=prompt_mode)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
+    except oci.exceptions.TransientServiceError as exc:
+        if exc.status == 429:
+            app.logger.warning("GenAI rate limit hit for persona=%s", current_user.persona)
+            return jsonify(
+                error="AI Insights is getting a lot of requests right now. Wait a few seconds and try again."
+            ), 429
+        app.logger.exception("Customer Insights transient failure for persona=%s", current_user.persona)
+        return jsonify(error=AI_INSIGHTS_FAILURE), 502
     except Exception as exc:
         app.logger.exception("Customer Insights request failed for persona=%s", current_user.persona)
         if access_error := _oracle_access_error(exc, "Customer Accounts"):
             return jsonify(error=access_error), 403
-        return jsonify(error="Customer Insights is unavailable. Check the server log and OCI Generative AI configuration."), 502
-    return jsonify(answer=answer, context=context, row_count=len(rows))
+        return jsonify(error=AI_INSIGHTS_FAILURE), 502
+    return jsonify(
+        answer=answer_result["answer"],
+        ai_exchange=answer_result["ai_exchange"],
+        context=context,
+        row_count=len(rows),
+    )
 
 
 @app.get("/healthz")

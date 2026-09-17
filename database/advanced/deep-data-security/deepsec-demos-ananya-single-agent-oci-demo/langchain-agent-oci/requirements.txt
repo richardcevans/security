@@ -1,0 +1,8 @@
+# Copyright (c) 2026, Oracle and/or its affiliates.
+# Dependencies required for LangChain Agent Sample HR application
+
+langchain
+langchain-core
+langchain-oci
+oracledb
+python-dotenv

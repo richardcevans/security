@@ -1,0 +1,52 @@
+{
+  "workshoptitle": "DB Security - Deep Data Security AI Demo Labs",
+  "help": "livelabs-help-db_us@oracle.com",
+  "tutorials": [
+    {
+      "title": "Introduction",
+      "description": "Review the independent AI demo labs, prerequisites, and suggested comparison order.",
+      "type": "livelabs",
+      "filename": "../../introduction/introduction.md"
+    },
+    {
+      "title": "Get Started",
+      "description": "Open and orient yourself in the Desktop environment.",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/remote-desktop/using-novnc-remote-desktop.md"
+    },
+    {
+      "title": "Lab 1: Run a LangChain HR Agent with OCI IAM and Deep Data Security",
+      "description": "Create or reuse the OCI IAM and ADB setup, then compare LangChain results for two end users.",
+      "filename": "../../langchain-agent-oci/langchain-agent-oci.md",
+      "publisheddate": "09/10/2026"
+    },
+    {
+      "title": "Lab 2: Run an OCI IAM-Protected Oracle SQL MCP Server",
+      "description": "Run the local Streamable HTTP MCP server and validate token-aware, read-only Oracle tools.",
+      "filename": "../../mcp-oci-script/mcp-oci-script.md",
+      "publisheddate": "09/10/2026"
+    },
+    {
+      "title": "Lab 3: Configure the Reusable Python Oracle SQL MCP Server",
+      "description": "Configure an application-only MCP resource server against existing IAM, wallet, and Deep Data Security resources.",
+      "filename": "../../python-mcp-server/python-mcp-server.md",
+      "publisheddate": "09/10/2026"
+    },
+    {
+      "title": "Lab 4: Run a Select AI Agent Team with Deep Data Security",
+      "description": "Create a Select AI profile and Agent Team, then run it through a token-attached database session.",
+      "filename": "../../select-ai-agent/select-ai-agent.md",
+      "publisheddate": "09/10/2026"
+    },
+    {
+      "title": "Lab 5: Run LangChain HR and Compensation Agents with Microsoft Entra ID",
+      "description": "Compare Entra application-role and Oracle application-identity authorization paths in two LangChain agents.",
+      "filename": "../../ananya-langchain/ananya-langchain.md",
+      "publisheddate": "09/10/2026"
+    },
+    {
+      "title": "Need Help?",
+      "description": "Solutions to common problems and directions for receiving live help.",
+      "filename": "https://livelabs.oracle.com/cdn/common/labs/need-help/need-help-livelabs.md"
+    }
+  ]
+}

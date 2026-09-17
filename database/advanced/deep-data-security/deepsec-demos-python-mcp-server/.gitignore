@@ -1,0 +1,8 @@
+# Copyright (c) 2026, Oracle and/or its affiliates.
+# Excludes local credentials, virtual environments, Python bytecode, and test caches.
+
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/

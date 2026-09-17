@@ -101,20 +101,20 @@ variable "adb_is_mtls_connection_required" {
 }
 
 variable "adb_compute_model" {
-  description = "Autonomous Database compute model."
+  description = "Autonomous Database ECPU compute model."
   type        = string
   default     = "ECPU"
 
   validation {
-    condition     = contains(["ECPU", "OCPU"], var.adb_compute_model)
-    error_message = "adb_compute_model must be ECPU or OCPU."
+    condition     = var.adb_compute_model == "ECPU"
+    error_message = "adb_compute_model must be ECPU."
   }
 }
 
 variable "adb_compute_count" {
-  description = "Autonomous Database compute count."
+  description = "Autonomous Database ECPU count."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "adb_data_storage_size_in_tbs" {

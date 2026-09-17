@@ -1,0 +1,7 @@
+# Copyright (c) 2026, Oracle and/or its affiliates.
+# Python runtime dependencies for the Select AI Deep Sec CLI.
+
+oracledb>=2.5.0
+python-dotenv>=1.0.1
+certifi>=2024.0.0
+oci>=2.0.0

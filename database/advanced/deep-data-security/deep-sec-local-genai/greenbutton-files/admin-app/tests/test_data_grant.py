@@ -85,6 +85,20 @@ class DataGrantHandlerTests(unittest.TestCase):
             "  where APPLAB.order_history.customer_id = APPLAB.customers.customer_id;",
         )
 
+    def test_order_history_without_exclusions_uses_plain_select(self) -> None:
+        sql = build_data_grant_sql(
+            self.order_history,
+            {"excluded_columns": []},
+        )
+        self.assertEqual(
+            sql,
+            "create or replace data grant APPLAB.order_history_by_customer_access\n"
+            "  as select\n"
+            "  on APPLAB.order_history\n"
+            "  when select (customer_id) granted on APPLAB.customers\n"
+            "  where APPLAB.order_history.customer_id = APPLAB.customers.customer_id;",
+        )
+
     def test_update_requires_selected_column(self) -> None:
         with self.assertRaisesRegex(ValueError, "must be selected"):
             build_data_grant_sql(

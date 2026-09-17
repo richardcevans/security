@@ -1,0 +1,18 @@
+# Copyright (c) 2026, Oracle and/or its affiliates.
+# Excludes local credentials, virtual environments, Python bytecode, and test caches.
+
+.env
+.adb-oci-iam.*
+.oci-iam-setup/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+*.pem
+*.p12
+*.sso
+ewallet.*
+cwallet.*
+tnsnames.ora
+sqlnet.ora

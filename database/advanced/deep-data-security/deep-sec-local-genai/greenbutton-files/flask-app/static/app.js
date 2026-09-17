@@ -7,9 +7,45 @@ let authorizationState = {
 };
 let currentAuthorization = authorizationState.customers;
 let authorizationTrigger = null;
+let aiPromptMode = "protected";
 
 function showError(message) {
   if (error) error.textContent = message || "";
+}
+
+function copyToClipboard(text, button) {
+  navigator.clipboard.writeText(text).then(() => {
+    const original = button.textContent;
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = original; }, 1500);
+  });
+}
+
+function renderErrorCard(error) {
+  const card = document.querySelector("#error-card");
+  if (!card) return;
+  if (!error || typeof error === "string") {
+    card.hidden = !error;
+    card.textContent = error || "";
+    return;
+  }
+  card.hidden = false;
+  card.innerHTML = `
+    <p class="error-summary">${error.summary}</p>
+    ${error.commands.map((c) => `
+      <div class="error-command">
+        <span class="error-command-label">${c.label}</span>
+        <div class="error-command-row">
+          <pre><code>${c.command}</code></pre>
+          <button type="button" class="copy-button" data-command="${c.command.replace(/"/g, '&quot;')}">Copy</button>
+        </div>
+      </div>
+    `).join("")}
+    ${error.note ? `<p class="error-note">${error.note}</p>` : ""}
+  `;
+  card.querySelectorAll(".copy-button").forEach((btn) => {
+    btn.addEventListener("click", () => copyToClipboard(btn.dataset.command, btn));
+  });
 }
 
 function formatNumber(value) {
@@ -106,23 +142,23 @@ if (loadOrderHistory) {
     const status = document.querySelector("#order-history-status");
     result.replaceChildren(makeMessage("Loading…", "muted"));
     loadOrderHistory.disabled = true;
-    loadOrderHistory.textContent = "Loading Order History…";
-    status.textContent = "Loading Order History…";
+    loadOrderHistory.textContent = "Loading Iceberg…";
+    status.textContent = "Loading Iceberg…";
     try {
       const {response, payload} = await jsonRequest("/api/order-history", {method: "POST", headers: requestHeaders});
       if (!response.ok) {
-        renderOrderHistoryMessage(payload.error || "Order history is unavailable.", "warning-banner");
+        renderOrderHistoryMessage(payload.error || "Iceberg is unavailable.", "warning-banner");
       } else if (Array.isArray(payload.rows)) {
         authorizationState.orderHistory = payload.authorization || {available: false, columns: {}};
         renderOrderHistoryTable(payload.rows || [], payload.context, payload.row_count, authorizationState.orderHistory);
       } else {
-        renderOrderHistoryMessage(payload.error || "Order history is unavailable.", "warning-banner");
+        renderOrderHistoryMessage(payload.error || "Iceberg is unavailable.", "warning-banner");
       }
     } catch (_) {
       renderOrderHistoryMessage("Could not contact the server.", "warning-banner");
     } finally {
       loadOrderHistory.disabled = false;
-      loadOrderHistory.textContent = "Order History Report";
+      loadOrderHistory.textContent = "Iceberg Report";
       status.textContent = "";
     }
   });
@@ -153,7 +189,7 @@ function renderOrderHistoryTable(rows, contextData, rowCount, authorization) {
   appendContextItem(details, "Rows Returned by Oracle", rowCount ?? rows.length);
   context.hidden = false;
   if (!rows.length) {
-    result.replaceChildren(makeMessage("No order history rows are authorized for this account.", "muted"));
+    result.replaceChildren(makeMessage("No Iceberg rows are authorized for this account.", "muted"));
     return;
   }
   const columns = Object.keys(rows[0]);
@@ -273,6 +309,198 @@ function renderSecurityContext(context, rowCount, countLabel = "Rows Returned by
   panel.hidden = false;
 }
 
+function appendInsightInline(container, text) {
+  const tokenPattern = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\n]+\*)/g;
+  let cursor = 0;
+  for (const match of text.matchAll(tokenPattern)) {
+    const token = match[0];
+    const index = match.index ?? 0;
+    if (index > cursor) container.append(document.createTextNode(text.slice(cursor, index)));
+    const element = document.createElement(token.startsWith("`") ? "code" : token.startsWith("**") ? "strong" : "em");
+    element.textContent = token.replace(/^\*\*?|\*\*?$|^`|`$/g, "");
+    container.append(element);
+    cursor = index + token.length;
+  }
+  if (cursor < text.length) container.append(document.createTextNode(text.slice(cursor)));
+}
+
+function parseInsightCustomerRecord(line) {
+  const source = line.replace(/^\s*[*-]\s+/, "").trim();
+  const fields = [];
+  const markers = [...source.matchAll(/\*\*([^*]+?)\*\*\s*/g)];
+  for (let index = 0; index < markers.length; index += 1) {
+    const marker = markers[index];
+    const valueStart = (marker.index ?? 0) + marker[0].length;
+    const valueEnd = index + 1 < markers.length ? markers[index + 1].index ?? source.length : source.length;
+    const label = marker[1].replace(/:\s*$/, "").trim();
+    const value = source.slice(valueStart, valueEnd).replace(/,\s*$/, "").trim();
+    fields.push({label, value});
+  }
+  return fields.length >= 3 && fields.some(({label}) => label.toLowerCase() === "customer id") ? fields : null;
+}
+
+function makeInsightCustomerTable(records) {
+  const preferredOrder = [
+    "Customer ID", "Customer Name", "Region", "Sales Rep", "Manager ID",
+    "Revenue", "Credit Limit", "Sensitive Identifier"
+  ];
+  const labels = [];
+  for (const record of records) {
+    for (const {label} of record) {
+      if (!labels.some((item) => item.toLowerCase() === label.toLowerCase())) labels.push(label);
+    }
+  }
+  labels.sort((left, right) => {
+    const leftIndex = preferredOrder.findIndex((item) => item.toLowerCase() === left.toLowerCase());
+    const rightIndex = preferredOrder.findIndex((item) => item.toLowerCase() === right.toLowerCase());
+    return (leftIndex < 0 ? preferredOrder.length : leftIndex) - (rightIndex < 0 ? preferredOrder.length : rightIndex);
+  });
+  const table = document.createElement("table");
+  table.className = "results-table insight-table";
+  const caption = document.createElement("caption");
+  caption.className = "visually-hidden";
+  caption.textContent = "Customer records returned by Oracle";
+  const head = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  for (const label of labels) {
+    const cell = document.createElement("th");
+    cell.scope = "col";
+    cell.textContent = label;
+    headRow.append(cell);
+  }
+  head.append(headRow);
+  const body = document.createElement("tbody");
+  for (const record of records) {
+    const values = new Map(record.map(({label, value}) => [label.toLowerCase(), value]));
+    const row = document.createElement("tr");
+    for (const label of labels) {
+      const cell = document.createElement("td");
+      cell.textContent = values.get(label.toLowerCase()) || "Not available";
+      row.append(cell);
+    }
+    body.append(row);
+  }
+  table.append(caption, head, body);
+  const wrap = document.createElement("div");
+  wrap.className = "table-wrap insight-table-wrap";
+  wrap.append(table);
+  return wrap;
+}
+
+function renderInsightAnswer(answer) {
+  const target = document.querySelector("#ai-answer");
+  target.replaceChildren();
+  const lines = String(answer || "").split(/\r?\n/);
+  let records = [];
+  let paragraphLines = [];
+  let bulletItems = [];
+
+  const flushRecords = () => {
+    if (records.length) target.append(makeInsightCustomerTable(records));
+    records = [];
+  };
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    const paragraph = document.createElement("p");
+    appendInsightInline(paragraph, paragraphLines.join(" "));
+    target.append(paragraph);
+    paragraphLines = [];
+  };
+  const flushBullets = () => {
+    if (!bulletItems.length) return;
+    const list = document.createElement("ul");
+    for (const item of bulletItems) {
+      const listItem = document.createElement("li");
+      appendInsightInline(listItem, item);
+      list.append(listItem);
+    }
+    target.append(list);
+    bulletItems = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const record = line ? parseInsightCustomerRecord(line) : null;
+    if (record) {
+      flushParagraph();
+      flushBullets();
+      records.push(record);
+      continue;
+    }
+    if (records.length) flushRecords();
+    if (!line) {
+      flushParagraph();
+      flushBullets();
+      continue;
+    }
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushBullets();
+      const title = document.createElement("h4");
+      appendInsightInline(title, heading[1]);
+      target.append(title);
+      continue;
+    }
+    const bullet = line.match(/^(?:[*-]|\d+[.)])\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      bulletItems.push(bullet[1]);
+      continue;
+    }
+    flushBullets();
+    paragraphLines.push(line);
+  }
+  flushRecords();
+  flushParagraph();
+  flushBullets();
+}
+
+function renderAiExchange(question, payload, promptMode = "protected") {
+  const panel = document.querySelector("#ai-exchange");
+  if (!panel) return;
+  const exchange = payload.ai_exchange || {};
+  const setText = (selector, text) => {
+    const element = panel.querySelector(selector);
+    if (element) element.textContent = text;
+  };
+  const shorten = (text, limit = 160) => {
+    const value = String(text || "").replace(/\s+/g, " ").trim();
+    return value.length > limit ? `${value.slice(0, limit)}…` : value;
+  };
+  const writeJson = (selector, value) => {
+    const target = panel.querySelector(selector);
+    if (target) target.textContent = JSON.stringify(value ?? {}, null, 2);
+  };
+  writeJson("#ai-browser-request", {method: "POST", path: "/api/ai", body: {question, prompt_mode: promptMode}});
+  setText("#ai-browser-request-summary", `You asked: "${shorten(question)}"`);
+
+  writeJson("#ai-oci-request", exchange.request);
+  const requestMessage = exchange.request?.payload?.messages?.find((message) => message.role === "USER");
+  const requestText = requestMessage?.content?.find((content) => content.type === "TEXT")?.text || "";
+  const authorizedRowCount = exchange.request?.authorized_row_count;
+  const rowLabel = Number.isFinite(authorizedRowCount) ? `${authorizedRowCount} Oracle-authorized customer rows` : "Oracle-authorized customer rows";
+  const systemText = requestText.split("\n\nUser request:", 1)[0].trim();
+  setText(
+    "#ai-oci-request-summary",
+    systemText ? `${shorten(systemText, 140)} ${rowLabel} attached.` : "Authorized rows and your question were sent to OCI GenAI."
+  );
+
+  writeJson("#ai-oci-response", exchange.response);
+  const modelAnswer = exchange.response?.payload?.message?.content?.find((content) => content.type === "TEXT")?.text || "(see raw payload)";
+  setText("#ai-oci-response-summary", `OCI GenAI answered: "${shorten(modelAnswer)}"`);
+
+  writeJson("#ai-browser-response", {
+    answer: payload.answer,
+    context: payload.context,
+    row_count: payload.row_count,
+  });
+  setText("#ai-browser-response-summary", "Same answer, unchanged, passed back to your browser.");
+  const details = panel.querySelector("details");
+  if (details) details.open = false;
+  panel.hidden = false;
+}
+
 const aiForm = document.querySelector("#ai-form");
 if (aiForm) {
   aiForm.addEventListener("submit", async (event) => {
@@ -280,9 +508,10 @@ if (aiForm) {
     const ask = document.querySelector("#ask-ai");
     const status = document.querySelector("#ai-status");
     const question = document.querySelector("#ai-question").value.trim();
-    showError("");
+    const promptMode = aiPromptMode;
+    renderErrorCard(null);
     if (!question) {
-      showError("Enter a question for Customer Insights.");
+      renderErrorCard("Enter a question for Customer Insights.");
       return;
     }
     ask.disabled = true;
@@ -290,17 +519,22 @@ if (aiForm) {
     status.textContent = "Loading Oracle-authorized customer data…";
     try {
       const {response, payload} = await jsonRequest("/api/ai", {
-        method: "POST", headers: requestHeaders, body: JSON.stringify({question})
+        method: "POST", headers: requestHeaders, body: JSON.stringify({question, prompt_mode: promptMode})
       });
-      if (!response.ok) {
-        showError(payload.error || "Customer Insights is unavailable.");
+      if (response.status === 429) {
+        renderErrorCard(payload.error || "AI Insights is getting a lot of requests right now. Wait a few seconds and try again.");
         return;
       }
-      document.querySelector("#ai-answer").textContent = payload.answer;
+      if (!response.ok) {
+        renderErrorCard(payload.error || "Customer Insights request failed.");
+        return;
+      }
+      renderInsightAnswer(payload.answer);
+      renderAiExchange(question, payload, promptMode);
       document.querySelector("#ai-result").hidden = false;
       renderSecurityContext(payload.context, payload.row_count);
     } catch (_) {
-      showError("Customer Insights is unavailable. Please try again.");
+      renderErrorCard("Could not contact the Customer Sales App. Please try again.");
     } finally {
       ask.disabled = false;
       ask.textContent = "Generate Insights";
@@ -314,10 +548,14 @@ for (const prompt of document.querySelectorAll("[data-insight-question]")) {
     const question = document.querySelector("#ai-question");
     if (!question) return;
     question.value = prompt.dataset.insightQuestion || "";
-    showError("");
+    aiPromptMode = prompt.dataset.insightMode === "red-team" ? "red-team" : "protected";
+    renderErrorCard(null);
     question.focus();
   });
 }
+
+const aiQuestion = document.querySelector("#ai-question");
+if (aiQuestion) aiQuestion.addEventListener("input", () => { aiPromptMode = "protected"; });
 
 function makeCell(value, className = "") {
   const cell = document.createElement("td");

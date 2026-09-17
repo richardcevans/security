@@ -10,6 +10,8 @@ dist/*.zip
 dist/*.sha256
 !dist/deep-data-security-flask-app-GreenButton.zip
 !dist/deep-data-security-flask-app-GreenButton.zip.sha256
+!dist/deep-data-security-flask-app-Marketplace.zip
+!dist/deep-data-security-flask-app-Marketplace.zip.sha256
 terraform/.deep-sec-generated-wallet.zip
 
 # Local/editor and downloaded-file artifacts.
@@ -23,3 +25,6 @@ archive/**/*.zip
 
 # Recreated by build_greenbutton_terraform_zip.sh.
 terraform-greenbutton/artifacts/
+
+# Recreated by build_marketplace_terraform_zip.sh.
+terraform-marketplace/artifacts/

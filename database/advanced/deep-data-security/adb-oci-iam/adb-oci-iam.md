@@ -27,6 +27,10 @@ Estimated Time: 55 minutes
 - Configures SQL*Plus to use an OCI IAM OAuth2 access token.
 - Verifies the same SQL returns different rows and columns for Marvin and Emma.
 
+![Infographic showing OCI IAM authentication, OAuth2 token-based SQL*Plus connections, IAM group-to-database-role mapping, and Oracle Deep Data Security enforcing different row and column access for Marvin and Emma.](images/oci-iam-deep-data-security-overview.png)
+
+*OCI IAM authenticates the user; Oracle Deep Data Security authorizes the data.*
+
 ## Assumptions
 
 - You are running from OCI Cloud Shell. If you run outside Cloud Shell, use Bash
@@ -36,6 +40,7 @@ Estimated Time: 55 minutes
 - Your OCI user can create Autonomous AI Databases in the target compartment.
 - Your OCI user can create OCI IAM domain users and groups, or reuse existing
   Marvin and Emma users and `EMPLOYEES` / `MANAGERS` groups.
+- An Oracle AI Database 26ai April 2026 Release Update (RU) instance (or newer).
 - The target database is Autonomous AI Database 26ai. Deep Data Security end-user
   context privileges used by this lab are not supported on 19c.
 - You know the compartment name where the Autonomous AI Database instance should
@@ -122,6 +127,10 @@ export ADB_LICENSE_MODEL=BRING_YOUR_OWN_LICENSE
 export ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY
 </copy>
 ```
+
+For a paid database, the setup script uses the ECPU compute model with two ECPUs.
+For an Always Free database, it omits the scalable compute options because the
+Always Free shape has fixed CPU and memory.
 
 Set `ADB_MAINTENANCE_SCHEDULE_TYPE=EARLY` only when you want the Autonomous AI
 Database to receive early maintenance patches; leave it unset for the regular
@@ -332,6 +341,45 @@ The script creates:
 - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
 - HR row and column data grants
 
+### How Task 4 works
+
+Task 4 runs as `ADMIN`, the provisioning identity. `ADMIN` creates the objects;
+Marvin and Emma later authenticate through OCI IAM. Neither user logs in as
+`HR`, which owns the table, context, and package.
+
+Here is the permission path:
+
+```text
+OCI IAM group -> Deep Data Security data role -> data grant -> allowed data
+```
+
+- `CREATE DATA ROLE ... MAPPED TO 'IAM_OAUTH_GROUP=...'` maps an IAM token group
+  to a data role. When the group is in the token, the database activates that
+  matching data role.
+- `GRANT direct_logon_role TO HRAPP_*` grants the ordinary database role that
+  provides `CREATE SESSION`. It is not a `GRANT DATA ROLE` statement.
+- The `HR` definer-rights context handler fills `HR.EMP_CTX.ID` with the current
+  employee ID. `UPDATE ANY END USER CONTEXT` is granted to `HR` because Oracle
+  requires it for this type of handler. It is not a runtime user privilege.
+- `EMPLOYEE_CONTEXT_GRANT` gives both data roles `SELECT` on the matching row in
+  `SYS.END_USER_CONTEXT`. That allows the custom context to be instantiated and
+  read when the manager predicate uses it.
+- The employee grant filters rows to the current user and allows updates only to
+  `phone_number` and `first_name`. The manager grant filters rows to direct
+  reports, allows `ALL COLUMNS EXCEPT ssn`, and permits updates to `salary`,
+  `department_id`, and `first_name`.
+
+Data grants are additive: Marvin has both IAM groups and receives both policies;
+Emma has only `EMPLOYEES` and receives only her own row. The verification scripts
+run the same query for both users and use `ORA_IS_COLUMN_AUTHORIZED` to show the
+effective `ssn` decision.
+
+If you replace `ADMIN` with a named provisioning account, it needs the relevant
+creation privileges, including `CREATE DATA ROLE`, `CREATE ANY DATA GRANT`,
+`ADMINISTER ANY DATA GRANT`, and `CREATE ANY END USER CONTEXT`. The runtime data
+roles need `CREATE SESSION`, package execution, and the data grants—not broad
+`SELECT` or `UPDATE` privileges on `HR.EMPLOYEES`.
+
 ## Task 5. Verify the ADMIN-Side Setup
 
 ```bash
@@ -352,6 +400,34 @@ HR_EMPLOYEE_ROWS                    7
 OCI_IAM_DOMAIN_DB_CRED$             <OCI_DB_CLIENT_ID>
 HRAPP_EMPLOYEES                     iam_oauth_group=EMPLOYEES
 HRAPP_MANAGERS                      iam_oauth_group=MANAGERS
+```
+
+To inspect the objects created by Task 4, run these read-only queries as `ADMIN`:
+
+```sql
+<copy>
+SELECT data_role, mapped_to
+FROM dba_data_roles
+WHERE data_role IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+ORDER BY data_role;
+
+SELECT data_role, role_type, grantee, grantee_type
+FROM dba_data_role_grants
+WHERE grantee IN ('HRAPP_EMPLOYEES', 'HRAPP_MANAGERS')
+   OR data_role IN ('DIRECT_LOGON_ROLE', 'EMPLOYEE_CONTEXT_ADMIN')
+ORDER BY data_role, grantee;
+
+SELECT owner, grant_name, object_owner, object_name, privilege, column_name
+FROM dba_data_grants
+WHERE owner = 'HR'
+ORDER BY grant_name, privilege, column_name;
+
+SELECT context_owner, context_name, handler_owner, handler_package,
+       handler_procedure, handler_status
+FROM dba_end_user_context_definitions
+WHERE context_owner = 'HR'
+  AND context_name = 'EMP_CTX';
+</copy>
 ```
 
 ## Task 6. Get an OCI IAM OAuth2 Access Token
@@ -662,6 +738,11 @@ them, because they may be reused by other labs or policies.
 - [Enable OCI IAM authentication on Autonomous AI Database](https://docs.public.content.oci.oraclecloud.com/en-us/iaas/autonomous-database-serverless/doc/enable-iam-authentication.html)
 - [Connect to Autonomous AI Database with OCI IAM authentication](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html)
 - [Oracle Deep Data Security Guide](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/index.html)
+- [Create Data Roles](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/create-data-role.html)
+- [Create Data Grants](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/create-data-grants.html)
+- [Modify Custom End-User Context Attributes](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/modify-custom-end-user-context-attributes.html)
+- [Data Authorization Views](https://docs.oracle.com/en/database/oracle/oracle-database/26/ddscg/data-authorization-views.html)
+- [Building Trusted Generative AI Experiences with Oracle Deep Data Security](https://blogs.oracle.com/database/building-trusted-genai-experiences-with-oracle-deep-data-security)
 
 ## Acknowledgements
 

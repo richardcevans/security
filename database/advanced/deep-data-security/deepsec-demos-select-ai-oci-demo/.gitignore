@@ -1,0 +1,27 @@
+# Excludes local credentials, generated artifacts, and editor files from Git.
+
+# Runtime configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.sso
+ewallet.*
+cwallet.*
+tnsnames.ora
+sqlnet.ora
+
+# Python artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+*.log
+
+# Local editor and OS files
+.DS_Store
+.idea/
+.vscode/

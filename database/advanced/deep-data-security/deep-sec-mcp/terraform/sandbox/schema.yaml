@@ -170,17 +170,16 @@ variables:
   adb_compute_model:
     type: enum
     required: true
-    title: ADB Compute Model
+    title: ADB ECPU Compute Model
     default: ECPU
     enum:
       - ECPU
-      - OCPU
 
   adb_compute_count:
     type: number
     required: true
-    title: ADB Compute Count
-    default: 1
+    title: ADB ECPU Count
+    default: 2
     minimum: 1
 
   adb_data_storage_size_in_tbs:

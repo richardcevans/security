@@ -1,0 +1,21 @@
+# Copyright (c) 2026, Oracle and/or its affiliates.
+# Keep credentials, wallets, local environments, and runtime output out of Git.
+
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+*.pem
+*.p12
+*.sso
+ewallet.*
+cwallet.*
+tnsnames.ora
+sqlnet.ora
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+.idea/
+.vscode/

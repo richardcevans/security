@@ -233,7 +233,6 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --db-version "$DB_VERSION" \
     --is-free-tier true \
     --admin-password '<hidden>' \
-    --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
     --wait-for-state AVAILABLE
   oci db autonomous-database create \
@@ -243,7 +242,6 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --db-version "$DB_VERSION" \
     --is-free-tier true \
     --admin-password "$ADMIN_PWD" \
-    --cpu-core-count 1 \
     --data-storage-size-in-tbs 1 \
     --wait-for-state AVAILABLE \
     "${oci_global_args[@]}" \

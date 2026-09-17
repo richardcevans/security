@@ -52,3 +52,27 @@ The GreenButton path creates a private Stack-owned bucket and publishes the
 checked-in Iceberg sample during bootstrap. It does not require a user-owned
 bucket, Customer Secret Keys, manual Iceberg uploads, Spark, Data Flow, or a
 Hadoop catalog.
+
+## Deploy the Marketplace Stack
+
+The Marketplace path uses the published Deep Sec machine image listing. It
+keeps the same offline-safe application and database deployment, but its
+Terraform configuration accepts the Marketplace agreement, creates the image
+subscription in the target tenancy, and launches the application VM from the
+published Marketplace image.
+
+```bash
+bash build_marketplace_app_zip.sh
+bash build_marketplace_terraform_zip.sh
+```
+
+The deployable package is
+`deep-sec-local-genai-terraform-Marketplace.zip`. Upload it to OCI Resource
+Manager with `terraform` as the working directory. The target tenancy must be
+allowed on the private Marketplace listing. Provide the package version
+reference (`1.0` for the initial package); the stack resolves the consumer
+image OCID (`mp_listing_resource_id`) after it creates the subscription. Do not
+use the publisher artifact OCID.
+
+See [terraform-marketplace/README.md](terraform-marketplace/README.md) for the
+Marketplace subscription inputs and deployment procedure.

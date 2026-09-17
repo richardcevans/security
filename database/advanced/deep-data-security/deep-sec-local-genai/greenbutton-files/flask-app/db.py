@@ -105,8 +105,8 @@ def _is_true(value: object) -> bool:
 GRANT_PAGE_LABELS = {
     "EMPLOYEE_CUSTOMER_ACCESS": "Customize Grant",
     "MANAGER_CUSTOMER_ACCESS": "End User Context",
-    "ORDER_HISTORY_ACCESS": "Order History",
-    "ORDER_HISTORY_BY_CUSTOMER_ACCESS": "Order History",
+    "ORDER_HISTORY_ACCESS": "Iceberg",
+    "ORDER_HISTORY_BY_CUSTOMER_ACCESS": "Iceberg",
 }
 
 

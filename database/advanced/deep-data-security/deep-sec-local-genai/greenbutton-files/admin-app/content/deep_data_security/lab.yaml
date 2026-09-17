@@ -36,7 +36,7 @@ overview:
     - label: "Context"
       description: "Build the manager context and define manager-level access."
       estimated_minutes: 10
-    - label: "Order History"
+    - label: "Iceberg"
       description: "Inspect Iceberg files in Object Storage, create the external table, and extend the data grant."
       estimated_minutes: 10
     - label: "Exercises"
@@ -66,7 +66,7 @@ tour:
     title: "End User Context"
     text: "The most advanced page: a manager lookup, a session-scoped context, and Marvin's promotion to manager."
   - selector: '.header-link[href="/order-history"]'
-    title: "Order History"
+    title: "Iceberg"
     text: "See an Apache Iceberg table from three angles: raw Object Storage files, an Oracle external table over its metadata, and a cross-table data grant that limits which order rows each user can see."
   - selector: '.header-link[href="/exercises"]'
     title: "Exercises"
@@ -185,7 +185,7 @@ actions:
     title: Review
     description: Confirms the employee data grant after you customize it, including the selected rows, columns, and privileges.
     scripts:
-      - end_user_status.sql
+      - end_user_status_light.sql
     short_label: Review
     output_title: Complete SQL*Plus output
 
@@ -533,7 +533,7 @@ actions:
   exercise_order_history_before_after:
     type: link
     title: Order history, before and after
-    description: Check order history for Marvin. If you haven't already built the data grant connecting order history back to CUSTOMERS, do that now on the Order History page, then check again.
+    description: Check order history for Marvin. If you haven't already built the data grant connecting order history back to CUSTOMERS, do that now on the Iceberg page, then check again.
     link_button_label: Mark as viewed
     completion: mark_viewed
     short_label: Order history before/after
@@ -824,7 +824,7 @@ actions:
           description: 3 rows, 6 authorized columns.
         - title: Manager access
           description: 9 rows after the employee and manager grants union together.
-        - title: Order History
+        - title: Iceberg
           description: 618 authorized Iceberg rows through the cross-table data grant.
       takeaways:
         - The application sends ordinary SQL; Oracle decides which rows and columns the user can receive.
@@ -869,6 +869,8 @@ actions:
     short_label: Restore DB Setup
     button_label: Restore to DB Setup
     output_title: Complete SQL*Plus output
+    config:
+      scripts_open: false
 
   restore_deep_sec_setup:
     type: sql
@@ -901,6 +903,8 @@ actions:
     short_label: Restore Deep Sec Setup
     button_label: Restore to Deep Sec Setup
     output_title: Complete SQL*Plus output
+    config:
+      scripts_open: false
 
   download_lab_files:
     type: download
@@ -1194,7 +1198,7 @@ steps:
         - key: zero
           label: "0"
       correct_answer: nine
-      explanation: "Correct. His employee grant authorizes his own 3 rows, his manager grant separately authorizes his own row plus his team's, 9 total. The two grants union together rather than adding on top of each other, it happens to land on 9 either way here since neither set overlaps the other beyond Marvin's own row, but the mechanism is a union, not addition."
+      explanation: "Correct. His employee grant authorizes his own 3 rows, and his manager grant separately authorizes his own row plus his team's 6 rows. Because the grants are combined as a union, Marvin's row is counted only once, for 9 rows total."
 
   - id: review_context
     badge: "6"
@@ -1202,7 +1206,7 @@ steps:
     title: Review & Quiz
     action_ids:
       - review_context
-    next_hint: Continue to Order History to extend the existing customer authorization to Iceberg-backed data.
+    next_hint: Continue to Iceberg to extend the existing customer authorization to Iceberg-backed data.
     quiz:
       question: What does the manager data grant use to determine which customer rows a manager can access?
       options:
@@ -1277,7 +1281,7 @@ steps:
       - "That means whatever rows you can see in CUSTOMERS, you can see the matching rows in ORDER_HISTORY, and nothing more. Do you remember how many rows Marvin could see as an employee? How many once he became Emma's manager? That is exactly how this narrows down too."
       - "One more thing worth noticing, Deep Sec data grants support an EXCEPT clause. For this grant, exclude the amount column. Check that box and watch the Generated SQL change to match."
     quiz:
-      question: "In the Customer Sales App, scroll down past the Customer Report and run the Order History Report. How many rows are returned?"
+      question: "In the Customer Sales App, scroll down past the Customer Report and run the Iceberg Report. How many rows are returned?"
       options:
         - key: fifteen_hundred
           label: "1500"
@@ -1364,7 +1368,7 @@ steps:
     label: Order history before/after
     title: Order history, before and after
     notes:
-      - "Feel free to navigate back through the lab at any point, Order History especially, to jog your memory before answering."
+      - "Feel free to navigate back through the lab at any point, Iceberg especially, to jog your memory before answering."
       - "Look closely at what you actually get before the grant exists, not just whether a row count is low. What Oracle tells you matters."
     action_ids:
       - exercise_order_history_before_after
@@ -1508,7 +1512,7 @@ steps:
     next_hint: Use Admin to validate or reset the lab when you are ready.
     notes:
       - "The query did not become more trusted because it came from an application or an AI prompt. The result changed because Oracle evaluated the signed-in end user, active data roles, data grants, and end user context."
-      - "The four result sets are the evidence to take home: broad baseline access, least-privilege employee access, the manager union, and cross-table Order History access."
+      - "The four result sets are the evidence to take home: broad baseline access, least-privilege employee access, the manager union, and cross-table Iceberg access."
 
   - id: validate_as_marvin
     badge: V
@@ -1537,7 +1541,7 @@ steps:
     label: Restore to Deep Sec Setup
     title: Restore to Deep Sec Setup
     notes:
-      - "This goes one step further than Restore to DB Setup, it rebuilds the schema and also recreates the baseline employee data role, its wide-open grant, and both Marvin and Emma. Use it if you want to redo Customize Grant, End User Context, or Order History from a known-good starting point, without repeating Deep Sec Setup itself."
+      - "This goes one step further than Restore to DB Setup, it rebuilds the schema and also recreates the baseline employee data role, its wide-open grant, and both Marvin and Emma. Use it if you want to redo Customize Grant, End User Context, or Iceberg from a known-good starting point, without repeating Deep Sec Setup itself."
       - "Whatever you customized past this point, excluded columns, the manager grant, order history access, is gone after this runs. That is the point, it is a genuine do-over, not a partial one."
     action_ids:
       - restore_deep_sec_setup
@@ -1610,7 +1614,7 @@ pages:
 
   - id: order_history
     path: /order-history
-    label: Order History
+    label: Iceberg
     step_ids:
       - explain_iceberg_architecture
       - show_iceberg_files

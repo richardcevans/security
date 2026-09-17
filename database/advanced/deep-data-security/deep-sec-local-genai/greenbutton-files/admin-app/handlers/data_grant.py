@@ -78,7 +78,7 @@ def _build_all_except(config: Mapping[str, Any], payload: Mapping[str, Any]) -> 
     select_clause = (
         f"select (all columns except {', '.join(ordered_exclude)})"
         if ordered_exclude
-        else "select (all columns)"
+        else "select"
     )
     grant_name = _required_config_string(config, "grant_name")
     table = _required_config_string(config, "table")

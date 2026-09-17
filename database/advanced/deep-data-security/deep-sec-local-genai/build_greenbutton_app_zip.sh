@@ -12,6 +12,11 @@ mkdir -p "$script_dir/dist"
 cp -a "$script_dir/greenbutton-files/flask-app" "$stage_dir/flask-app"
 cp -a "$script_dir/greenbutton-files/admin-app" "$stage_dir/admin-app"
 cp -a "$script_dir/greenbutton-files/setup" "$stage_dir/setup"
+[[ -s "$script_dir/vibe-cli.zip" ]] || {
+  echo 'ERROR: missing tracked Vibe CLI archive: vibe-cli.zip' >&2
+  exit 1
+}
+cp -a "$script_dir/vibe-cli.zip" "$stage_dir/vibe-cli.zip"
 
 rm -rf "$stage_dir/flask-app/.venv" "$stage_dir/flask-app/__pycache__" "$stage_dir/flask-app/logs" \
   "$stage_dir/admin-app/.venv" "$stage_dir/admin-app/__pycache__" "$stage_dir/admin-app/logs"
@@ -25,7 +30,7 @@ find "$stage_dir" -type f \( -name '*~' -o -name '*.un~' \) -delete
 
 archive="$script_dir/dist/deep-data-security-flask-app-GreenButton.zip"
 rm -f "$archive" "$archive.sha256"
-(cd "$stage_dir" && zip -qr "$archive" flask-app admin-app setup)
+(cd "$stage_dir" && zip -qr "$archive" flask-app admin-app setup vibe-cli.zip)
 unzip -tq "$archive"
 sha256sum "$archive" > "$archive.sha256"
 echo "Created dist/deep-data-security-flask-app-GreenButton.zip and its SHA-256 file."

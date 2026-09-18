@@ -136,7 +136,7 @@ download the lab archive:
 <copy>
 mkdir -vp $DBSEC_LABS/deep-data-security
 cd $DBSEC_LABS/deep-data-security
-wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
+wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/DBEB8D7s4HYvwnwZkIwu3LmXPo0PcX0CegJm5xpsM3R37bKy8lj7Rbs_A8s5I91_/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
 </copy>
 ```
 
@@ -194,7 +194,7 @@ script:
 <copy>
 mkdir -vp ~/adb-entra-id-lab
 cd ~/adb-entra-id-lab
-wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/X-TmpjlwHTI2DWNBGAha58H-SFMol_iE5FZz7kEIPe1MKGVMFNyCHlfOwBtJgZwt/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
+wget -O adb-entra-id.zip https://objectstorage.us-ashburn-1.oraclecloud.com/p/DBEB8D7s4HYvwnwZkIwu3LmXPo0PcX0CegJm5xpsM3R37bKy8lj7Rbs_A8s5I91_/n/oradbclouducm/b/dbsec_public/o/adb-entra-id.zip
 unzip -o adb-entra-id.zip
 cd adb-entra-id
 ./00_create_entra_apps_azure_cloud_shell.sh

@@ -14,9 +14,9 @@
       <section class="card sign-in-card" aria-labelledby="sign-in-title">
         <h2 id="sign-in-title">ADMIN database credentials</h2>
         <p class="muted">The password is verified directly by Oracle Database and remains only in this console process for the active session.</p>
-        <form id="login-form">
+        <form id="login-form" autocomplete="off">
           <label for="password">ADMIN password</label>
-          <input id="password" type="password" autocomplete="current-password" placeholder="Enter the Stack-generated password" required>
+          <input id="password" type="password" autocomplete="off" placeholder="Enter the Stack-generated password" required>
           <button id="login" class="primary" type="submit">Sign in to Admin Console</button>
           <p id="error" class="error" role="alert" aria-live="polite"></p>
         </form>

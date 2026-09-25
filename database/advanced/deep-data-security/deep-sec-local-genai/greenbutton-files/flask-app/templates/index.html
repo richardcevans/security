@@ -13,9 +13,9 @@
       <section class="page-heading compact-heading"><div><p class="eyebrow">Customer Sales App</p><h1>Sign in</h1><p class="lead">Sign in to review customer accounts available to your database identity.</p></div><div class="security-badge"><span aria-hidden="true">✓</span> Protected by Oracle Database</div></section>
       <section class="card sign-in-card" aria-labelledby="sign-in-title">
         <div class="card-heading"><div><h2 id="sign-in-title">Database credentials</h2><p>Your database password is verified directly by Oracle Database.</p></div></div>
-        <form id="login-form" class="sign-in-fields">
+        <form id="login-form" class="sign-in-fields" autocomplete="off">
           <div class="field"><label for="persona">Database user</label><select id="persona"><option value="MARVIN">Marvin — Sales</option><option value="EMMA">Emma — Sales</option></select></div>
-          <div class="field"><label for="password">Database password</label><input id="password" type="password" autocomplete="current-password" placeholder="Enter password"></div>
+          <div class="field"><label for="password">Database password</label><input id="password" type="password" autocomplete="off" placeholder="Enter password"></div>
           <div class="field action-field"><button id="login" class="primary" type="submit">Sign in</button></div>
         </form>
         <p id="error" class="login-status error-text" aria-live="polite"></p>

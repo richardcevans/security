@@ -74,6 +74,9 @@ tour:
   - selector: '.header-link[href="/best-practices"]'
     title: "Best Practices"
     text: "See how the patterns in this lab extend to enterprise applications: trusted identity, minimally privileged connections, precise grants, controlled context, and policy lifecycle management."
+  - selector: '.header-link[href="/summary"]'
+    title: "Summary"
+    text: "Finish here. Compare the same SQL query across the four authorization states and take away the core result: the application asks for data, but Oracle decides which rows and columns each end user receives."
   - selector: '.header-link[href="/admin"]'
     title: "Admin"
     text: "Run validation queries, or reset the whole lab back to nothing and start over."

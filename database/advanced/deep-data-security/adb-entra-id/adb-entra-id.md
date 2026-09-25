@@ -122,6 +122,10 @@ export ADB_LICENSE_MODEL=LICENSE_INCLUDED
 </copy>
 ```
 
+For a paid database, the setup script uses the ECPU compute model with two ECPUs.
+For an Always Free database, it omits the scalable compute options because the
+Always Free shape has fixed CPU and memory.
+
 By default, `00_create_entra_apps_azure_cloud_shell.sh` generates a lab instance
 ID and writes it to `.adb-entra-id.azure.env`. Copy that file into Oracle Cloud
 Shell before running `01_setup_adb_entra_id.sh`. The default `DB_NAME` is

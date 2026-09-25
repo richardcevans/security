@@ -202,6 +202,11 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     adb_license_args=(--license-model "$ADB_LICENSE_MODEL")
   fi
 
+  adb_compute_args=()
+  if [ "$ADB_IS_FREE_TIER" = "false" ]; then
+    adb_compute_args=(--compute-model ECPU --compute-count 2)
+  fi
+
   oci db autonomous-database create \
     --compartment-id "$ROOT_COMP_ID" \
     --db-name "$DB_NAME" \
@@ -209,8 +214,7 @@ if [ -z "$ADB_OCID" ] || [ "$ADB_OCID" = "null" ]; then
     --admin-password "$ADMIN_PWD" \
     --db-version "$DB_VERSION" \
     --is-free-tier "$ADB_IS_FREE_TIER" \
-    --compute-model ECPU \
-    --compute-count 2 \
+    "${adb_compute_args[@]}" \
     --data-storage-size-in-tbs 1 \
     "${adb_license_args[@]}" \
     --wait-for-state AVAILABLE \

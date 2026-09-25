@@ -125,6 +125,30 @@ The status must be `COMPLETE`. The application endpoints are:
 - Customer Sales App: `http://<compute-public-ip>:7777/`
 - JupyterLab: `http://<compute-public-ip>:8888/`
 
+## Deployment readiness and retry behavior
+
+The Stack does not use a fixed bucket-creation delay. After OCI reports both
+private buckets created, Terraform polls `oci os bucket get` for each bucket for
+up to five minutes. PAR creation and VM bootstrap remain blocked until both
+bucket APIs succeed. A terminal failure stops Apply with the affected bucket
+name and the latest OCI CLI error.
+
+Both OCI provider configurations use `oci-retries.json`. Recoverable 409, 429,
+500, 502, 503, and 504 responses receive bounded retries with delayed first
+retry. Application and Iceberg bundle downloads also retry transient transfer
+failures, and bootstrap status uploads retry before the Resource Manager health
+gate evaluates them.
+
+The VM publishes phase-specific `RUNNING`, `FAILED`, and `COMPLETE` markers to
+an exact-object status PAR. Apply waits up to 20 minutes for the current VM's
+terminal marker. JupyterLab must return its remediated login page, both Flask
+services must pass `/healthz`, and the Iceberg external-table row-read probe
+must pass before the marker becomes `COMPLETE`.
+
+For high-volume events, monitor each Resource Manager job through the job API
+and launch a new plan before retrying a partially applied stack. Do not reuse a
+plan after a failed partial apply because its state assumptions can be stale.
+
 ## Updating the application
 
 From the parent `deep-sec-local-genai` directory, rebuild and publish only the
@@ -175,7 +199,7 @@ local tfvars file, then run Terraform from the `terraform` directory. Do not
 store PAR URLs, Auth Tokens, private keys, or database passwords in the
 repository.
 
-Oracle references: [Creating a Stack from a ZIP
+Oracle references: [OCI Terraform provider retries](https://docs.oracle.com/en-us/iaas/Content/dev/terraform/troubleshooting.htm), [Managing Resource Manager jobs](https://docs.oracle.com/en-us/iaas/Content/ResourceManager/Tasks/jobs.htm), [Creating a Stack from a ZIP
 File](https://docs.oracle.com/en-us/iaas/Content/ResourceManager/Tasks/create-stack-local.htm),
 [Terraform Marketplace image
 subscriptions](https://docs.oracle.com/en-us/iaas/Content/Marketplace/Tasks/subscribe-terraform-configurations.htm),

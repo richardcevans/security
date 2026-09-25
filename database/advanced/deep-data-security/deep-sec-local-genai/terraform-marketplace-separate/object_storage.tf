@@ -145,6 +145,8 @@ resource "oci_objectstorage_preauthrequest" "order_history_bundle_object_read" {
 resource "terraform_data" "order_history_bucket_cleanup" {
   count = 1
 
+  depends_on = [terraform_data.object_storage_readiness]
+
   input = {
     bucket_name = oci_objectstorage_bucket.order_history[0].name
     namespace   = data.oci_objectstorage_namespace.current.namespace
@@ -190,6 +192,8 @@ resource "terraform_data" "order_history_bucket_cleanup" {
 # name is unique to this Stack, so deleting every remaining PAR here is scoped
 # to the Stack rather than to a shared bucket.
 resource "terraform_data" "wallet_bucket_cleanup" {
+  depends_on = [terraform_data.object_storage_readiness]
+
   input = {
     bucket_name = oci_objectstorage_bucket.wallet.name
     namespace   = data.oci_objectstorage_namespace.current.namespace
@@ -260,16 +264,16 @@ resource "terraform_data" "bootstrap_verification" {
       set -Eeuo pipefail
       status_url='${self.input.status_read_url}'
       jupyter_url='${self.input.jupyter_url}'
-      deadline=$(( $(date +%s) + 600 ))
+      deadline=$(( $(date +%s) + 1200 ))
       baseline_run=''
       baseline_terminal='false'
       echo "JupyterLab URL: $jupyter_url"
-      echo 'Waiting up to 10 minutes for the Deep Sec VM bootstrap health gate.'
+      echo 'Waiting up to 20 minutes for the Deep Sec VM bootstrap health gate.'
 
       while (( $(date +%s) < deadline )); do
         status_file=$(mktemp)
         trap 'rm -f "$status_file"' EXIT
-        http_code=$(curl --silent --output "$status_file" --write-out '%%{http_code}' "$status_url" || true)
+        http_code=$(curl --silent --connect-timeout 5 --max-time 15 --output "$status_file" --write-out '%%{http_code}' "$status_url" || true)
 
         if [[ "$http_code" == '200' ]]; then
           cat "$status_file"

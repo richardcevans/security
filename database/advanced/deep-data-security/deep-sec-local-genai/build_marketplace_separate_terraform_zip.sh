@@ -8,6 +8,7 @@ trap 'rm -rf "$stage_dir"' EXIT
 mkdir -p "$stage_dir/terraform"
 for file in \
   providers.tf variables.tf network.tf adb.tf compute.tf iam.tf object_storage.tf \
+  object_storage_readiness.tf oci-retries.json \
   jupyter.tf locals.tf outputs.tf versions.tf terraform.tfvars.example schema.yaml \
   README.md .gitignore .terraform.lock.hcl marketplace-image.tf; do
   cp -a "$script_dir/terraform-marketplace-separate/$file" "$stage_dir/terraform/$file"

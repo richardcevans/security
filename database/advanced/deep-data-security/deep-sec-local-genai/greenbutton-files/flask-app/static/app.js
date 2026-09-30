@@ -490,6 +490,20 @@ function renderAiExchange(question, payload, promptMode = "protected") {
   const modelAnswer = exchange.response?.payload?.message?.content?.find((content) => content.type === "TEXT")?.text || "(see raw payload)";
   setText("#ai-oci-response-summary", `OCI GenAI answered: "${shorten(modelAnswer)}"`);
 
+  const toolTrace = exchange.response?.payload?.tool_calls || [];
+  const toolTracePanel = panel.querySelector("#ai-tool-trace");
+  if (toolTracePanel) toolTracePanel.hidden = toolTrace.length === 0;
+  if (toolTrace.length) {
+    const summary = toolTrace.map((call) => {
+      const result = call.result || {};
+      const oracleError = result.oracle_error ? ` (${result.oracle_error})` : "";
+      return `${call.name || "database tool"} as ${result.executed_as || "current end user"} → ${result.status || "unknown"}${oracleError}`;
+    }).join("\n");
+    setText("#ai-tool-trace-content", `${summary}\n\n${JSON.stringify(toolTrace, null, 2)}`);
+  } else {
+    setText("#ai-tool-trace-content", "");
+  }
+
   writeJson("#ai-browser-response", {
     answer: payload.answer,
     context: payload.context,

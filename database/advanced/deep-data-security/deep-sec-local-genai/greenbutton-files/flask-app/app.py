@@ -27,6 +27,7 @@ from db import (
     fetch_authorized_customers,
     fetch_order_history,
     execute_vibe_statement,
+    execute_red_team_sql,
     oracle_error_code,
     oracle_queries,
     verify_persona_credentials,
@@ -337,7 +338,16 @@ def ai_insight():
     try:
         persona, password = _login_credentials()
         rows, context, _ = fetch_authorized_customers(settings, persona, password)
-        answer_result = answer_customer_question(settings, question, rows, prompt_mode=prompt_mode)
+        tool_executor = None
+        if prompt_mode == "red-team":
+            tool_executor = lambda sql: execute_red_team_sql(settings, persona, password, sql)
+        answer_result = answer_customer_question(
+            settings,
+            question,
+            rows,
+            prompt_mode=prompt_mode,
+            tool_executor=tool_executor,
+        )
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
     except oci.exceptions.TransientServiceError as exc:

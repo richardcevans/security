@@ -1,6 +1,7 @@
 """Direct local-end-user database access. No application-side authorization."""
 
 from contextlib import contextmanager
+import re
 from typing import Optional
 import oracledb
 
@@ -55,6 +56,13 @@ ORDER_HISTORY_QUERY = """
      FETCH FIRST 50 ROWS ONLY
 """
 
+RED_TEAM_MAX_ROWS = 50
+_READ_ONLY_SQL_START = re.compile(r"^\s*(SELECT|WITH)\b", re.IGNORECASE)
+_READ_ONLY_SQL_FORBIDDEN = re.compile(
+    r"\b(FOR\s+UPDATE|INSERT|UPDATE|DELETE|MERGE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|BEGIN|DECLARE|EXECUTE|CALL)\b",
+    re.IGNORECASE,
+)
+
 
 def oracle_queries(settings: Settings) -> list[str]:
     """Return the Oracle statements used by a customer or AI request."""
@@ -79,6 +87,66 @@ def _connection(settings: Settings, username: str, password: str):
         yield connection
     finally:
         connection.close()
+
+
+def _validate_red_team_sql(sql: str) -> str:
+    """Keep the model's database challenge to one bounded read-only statement."""
+    if not isinstance(sql, str):
+        raise ValueError("The database tool requires a SQL string.")
+    statement = sql.strip()
+    if statement.endswith(";"):
+        statement = statement[:-1].rstrip()
+    if not statement:
+        raise ValueError("The database tool requires a SQL statement.")
+    if ";" in statement:
+        raise ValueError("The database tool accepts one SQL statement only.")
+    if "--" in statement or "/*" in statement or "*/" in statement:
+        raise ValueError("SQL comments are not accepted by the database tool.")
+    if not _READ_ONLY_SQL_START.match(statement):
+        raise ValueError("The database tool accepts SELECT or WITH statements only.")
+    if _READ_ONLY_SQL_FORBIDDEN.search(statement):
+        raise ValueError("The database tool accepts read-only SQL only.")
+    return statement
+
+
+def execute_red_team_sql(settings: Settings, persona: str, password: str, sql: str) -> dict:
+    """Execute one model-requested read-only query as the current local end user."""
+    if persona not in PERSONAS:
+        raise ValueError("Choose Marvin or Emma")
+    try:
+        statement = _validate_red_team_sql(sql)
+    except ValueError as exc:
+        return {"status": "tool_rejected", "executed_as": persona, "reason": str(exc), "rows": []}
+
+    bounded_statement = f"SELECT * FROM ({statement}) FETCH FIRST {RED_TEAM_MAX_ROWS + 1} ROWS ONLY"
+    try:
+        with _connection(settings, persona, password) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(bounded_statement)
+                columns = [column[0].lower() for column in cursor.description or []]
+                raw_rows = cursor.fetchmany(RED_TEAM_MAX_ROWS + 1)
+                rows = [dict(zip(columns, row)) for row in raw_rows[:RED_TEAM_MAX_ROWS]]
+                cursor.execute(END_USER_QUERY)
+                (end_user,) = cursor.fetchone()
+                cursor.execute(DATA_ROLES_QUERY)
+                data_roles = ", ".join(row[0] for row in cursor) or "No active data role"
+    except oracledb.DatabaseError as exc:
+        code = oracle_error_code(exc)
+        return {
+            "status": "oracle_rejected",
+            "executed_as": persona,
+            "oracle_error": f"ORA-{code}" if code else "Oracle database error",
+            "rows": [],
+        }
+
+    return {
+        "status": "ok",
+        "executed_as": persona,
+        "context": {"end_user": end_user, "data_role": data_roles},
+        "rows": rows,
+        "row_count": len(rows),
+        "truncated": len(raw_rows) > RED_TEAM_MAX_ROWS,
+    }
 
 
 def verify_persona_credentials(settings: Settings, persona: str, password: str) -> dict:

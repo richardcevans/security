@@ -93,7 +93,7 @@ suffix.
 ## Task 0: Download The Lab Files
 
 1. Open a terminal as OS user `oracle`, move to your Deep Data Security labs directory,
-   download the ZIP, and unzip it.
+    download the ZIP, and unzip it.
 
     ```bash
     <copy>
@@ -106,25 +106,25 @@ suffix.
     </copy>
     ```
 
-Use `unzip -o` when refreshing the lab files. Do not use `unzip -f` for lab
-updates because it will not add new files.
+    Use `unzip -o` when refreshing the lab files. Do not use `unzip -f` for lab
+    updates because it will not add new files.
 
-Important files:
+    Important files:
 
-| File | Purpose |
-| --- | --- |
-| `02_setup_entra_id.sh` | Creates or reuses Entra apps, roles, permissions, and assignments |
-| `02_verify_entra_id_setup.sh` | Verifies Entra app objects and role setup |
-| `03_preflight.sh` | Checks local database, listener tools, and browser readiness |
-| `04_configure_db_identity_provider.sh` | Configures database Entra ID parameters |
-| `05_configure_network.sh` | Configures TCPS listener, wallet, `sqlnet.ora`, and `tnsnames.ora` |
-| `06_create_hr_schema.sh` | Creates the HR schema and employee rows |
-| `07_create_data_roles_and_grants.sh` | Creates data roles, data grants, and end user context |
-| `08_verify_db_setup.sh` | Verifies database-side setup |
-| `09_verify_as_marvin.sh` | Verifies Marvin manager access |
-| `10_verify_as_emma.sh` | Verifies Emma employee access |
-| `11_cleanup.sh` | Cleans up database objects and network changes |
-| `11_cleanup_entra_id.sh` | Deletes lab-created Entra app registrations and enterprise apps |
+    | File | Purpose |
+    | --- | --- |
+    | `02_setup_entra_id.sh` | Creates or reuses Entra apps, roles, permissions, and assignments |
+    | `02_verify_entra_id_setup.sh` | Verifies Entra app objects and role setup |
+    | `03_preflight.sh` | Checks local database, listener tools, and browser readiness |
+    | `04_configure_db_identity_provider.sh` | Configures database Entra ID parameters |
+    | `05_configure_network.sh` | Configures TCPS listener, wallet, `sqlnet.ora`, and `tnsnames.ora` |
+    | `06_create_hr_schema.sh` | Creates the HR schema and employee rows |
+    | `07_create_data_roles_and_grants.sh` | Creates data roles, data grants, and end user context |
+    | `08_verify_db_setup.sh` | Verifies database-side setup |
+    | `09_verify_as_marvin.sh` | Verifies Marvin manager access |
+    | `10_verify_as_emma.sh` | Verifies Emma employee access |
+    | `11_cleanup.sh` | Cleans up database objects and network changes |
+    | `11_cleanup_entra_id.sh` | Deletes lab-created Entra app registrations and enterprise apps |
 
 ## Task 1: Install Azure CLI And Sign In
 
@@ -182,10 +182,10 @@ Important files:
 ## Task 2: Configure Microsoft Entra ID
 
 1. Create or reuse the Entra DB resource application, browser client application,
-   enterprise apps, app roles, scopes, and role assignments.
+    enterprise apps, app roles, scopes, and role assignments.
 
 2. Load the Oracle AI Database 26ai Free environment so the generated Entra app
-   names use `FREEPDB1` plus this lab directory's unique instance ID.
+    names use `FREEPDB1` plus this lab directory's unique instance ID.
 
     ```bash
     <copy>
@@ -228,16 +228,16 @@ Important files:
     </copy>
     ```
 
-Expected setup:
+    Expected setup:
 
-| User | App roles |
-| --- | --- |
-| Marvin | `EMPLOYEES`, `MANAGERS` |
-| Emma | `EMPLOYEES` |
+    | User | App roles |
+    | --- | --- |
+    | Marvin | `EMPLOYEES`, `MANAGERS` |
+    | Emma | `EMPLOYEES` |
 
-If your tenant policies prevent automated app creation or assignment, use the
-manual portal fallback in
-[`entra-id-data-grants-reference.md`](./entra-id-data-grants-reference.md).
+    If your tenant policies prevent automated app creation or assignment, use the
+    manual portal fallback in
+    [`entra-id-data-grants-reference.md`](./entra-id-data-grants-reference.md).
 
 ## Task 3: Run Database Preflight
 
@@ -249,8 +249,8 @@ manual portal fallback in
     </copy>
     ```
 
-The preflight confirms the local database, PDB, SQL*Plus, listener utilities,
-and browser-related environment are ready for the lab.
+    The preflight confirms the local database, PDB, SQL*Plus, listener utilities,
+    and browser-related environment are ready for the lab.
 
 ## Task 4: Configure The Database Identity Provider
 
@@ -262,13 +262,13 @@ and browser-related environment are ready for the lab.
     </copy>
     ```
 
-This task sets the database identity provider parameters from
-`.entra-id-data-grants.env`. It must be run before browser-based login can work.
+    This task sets the database identity provider parameters from
+    `.entra-id-data-grants.env`. It must be run before browser-based login can work.
 
 ## Task 5: Configure TCPS Network Access
 
 1. Configure the local wallet, listener, `sqlnet.ora`, and `tnsnames.ora` entry used
-   by browser-based Entra ID authentication.
+    by browser-based Entra ID authentication.
 
     ```bash
     <copy>
@@ -294,9 +294,9 @@ This task sets the database identity provider parameters from
     </copy>
     ```
 
-`HR` is created with `NO AUTHENTICATION`; end users do not log in as `HR`.
-The `user_name` values are set to Entra ID user names such as
-`marvin@<DOMAIN_NAME>` and `emma@<DOMAIN_NAME>`.
+    `HR` is created with `NO AUTHENTICATION`; end users do not log in as `HR`.
+    The `user_name` values are set to Entra ID user names such as
+    `marvin@<DOMAIN_NAME>` and `emma@<DOMAIN_NAME>`.
 
 ## Task 7: Create Data Roles And Data Grants
 
@@ -308,18 +308,18 @@ The `user_name` values are set to Entra ID user names such as
     </copy>
     ```
 
-The script creates:
+    The script creates:
 
-- `HRAPP_EMPLOYEES`, mapped to Entra app role `EMPLOYEES`
-- `HRAPP_MANAGERS`, mapped to Entra app role `MANAGERS`
-- `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
-- Row and column data grants on `HR.EMPLOYEES`
-- End user context used to identify a manager's direct reports
+    - `HRAPP_EMPLOYEES`, mapped to Entra app role `EMPLOYEES`
+    - `HRAPP_MANAGERS`, mapped to Entra app role `MANAGERS`
+    - `DIRECT_LOGON_ROLE`, carrying `CREATE SESSION`
+    - Row and column data grants on `HR.EMPLOYEES`
+    - End user context used to identify a manager's direct reports
 
 ## Task 8: Verify Database Setup
 
 1. Confirm the identity provider, network alias, HR rows, data roles, and data
-   grants are in place.
+    grants are in place.
 
     ```bash
     <copy>
@@ -348,17 +348,17 @@ The script creates:
 
 2. Review the expected Marvin result:
 
-- Token identity is Marvin.
-- Active data roles include `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`.
-- Marvin sees 4 rows: Marvin, Emma, Charlie, and Dana.
-- Marvin can see his own SSN.
-- SSN is hidden for direct reports.
+    - Token identity is Marvin.
+    - Active data roles include `HRAPP_EMPLOYEES` and `HRAPP_MANAGERS`.
+    - Marvin sees 4 rows: Marvin, Emma, Charlie, and Dana.
+    - Marvin can see his own SSN.
+    - SSN is hidden for direct reports.
 
 ## Task 10: Verify Emma
 
 1. Prepare a separate browser session for Emma. If the browser reuses Marvin's
-   session, close browser windows, sign out, or use a private/incognito browser
-   session.
+    session, close browser windows, sign out, or use a private/incognito browser
+    session.
 
 2. Run the Emma verification script. When the browser opens, sign in as Emma.
 
@@ -370,11 +370,11 @@ The script creates:
 
 3. Review the expected Emma result:
 
-- Token identity is Emma.
-- Active data roles include `HRAPP_EMPLOYEES` only.
-- Emma sees 1 row: Emma.
-- Emma can view her own SSN and salary.
-- Emma can update only her phone number.
+    - Token identity is Emma.
+    - Active data roles include `HRAPP_EMPLOYEES` only.
+    - Emma sees 1 row: Emma.
+    - Emma can view her own SSN and salary.
+    - Emma can update only her phone number.
 
 ## Task 11: Clean Up
 

@@ -15,6 +15,7 @@ Estimated time: 60 minutes once the Stack is ready. The console's Overview page 
 - Create database end users, data roles, data grants, cross-table data grants, and end user context.
 - Walk through Oracle Deep Data Security's core authorization capabilities and observe how each one changes the authorized result.
 - Use OCI Generative AI to test natural-language queries against the data already authorized for the signed-in user.
+- Use the #11 red-team challenge to let GenAI request a read-only SQL check; the application runs it as the current local end user, so Oracle still makes the access decision.
 - Verify that GenAI queries cannot override or bypass database authorizations.
 
 ### Who this lab is for

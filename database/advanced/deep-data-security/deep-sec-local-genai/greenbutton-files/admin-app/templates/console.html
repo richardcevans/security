@@ -13,7 +13,7 @@
       <section class="stepper" aria-label="{{ lesson.title }} actions">
         <ol class="stepper-list{% if not current_page_ordered %} stepper-list-unordered{% endif %}">
         {% for step in steps %}
-          <li class="step-item{% if step.badge == 'D' %} step-item-download{% endif %}" data-action-step="{{ step.key }}" data-action-keys="{{ step.action_keys|join(',') }}">
+          <li class="step-item{% if step.badge == 'D' %} step-item-download{% endif %}" data-action-step="{{ step.key }}" data-action-keys="{{ step.action_keys|join(',') }}" data-completion-groups='{{ step.completion_groups|tojson }}'>
             <button class="step-badge" data-select-action="{{ step.key }}" aria-controls="action-{{ step.key }}" type="button">
               <span class="step-number">{{ step.badge or loop.index }}</span>
               <span class="step-label">{{ step.title }}</span>
@@ -120,12 +120,12 @@
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" type="button">{{ action.button_label or action.config.button_label or "Mark as viewed" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% elif action.type == "object_storage" %}
-              <p class="script-label">Reads the generated Iceberg metadata directly from Object Storage; no SQL or Oracle object is involved.</p>
+              <p class="script-label">Reads the generated Iceberg metadata directly from Object Storage; no database query is involved.</p>
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" type="button">{{ action.button_label or "See the raw data" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Object Storage output" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% elif action.type == "download" %}
               <p>Each archive is generated fresh from the files currently installed on this VM.</p>
-              <p class="download-actions"><a class="download-button" href="/api/download/sql-scripts">{{ action.config.sql_download_label or "Download SQL Scripts" }}</a><a class="download-button" href="/api/download/application">{{ action.config.application_download_label or "Download Application" }}</a></p>
+              <p class="download-actions"><a class="download-button" data-download-name="deep-sec-sql-scripts.zip" href="/api/download/sql-scripts">{{ action.config.sql_download_label or "Download SQL Scripts" }}</a><a class="download-button" data-download-name="deep-sec-application.zip" href="/api/download/application">{{ action.config.application_download_label or "Download Application" }}</a></p><span class="action-status" aria-live="polite"></span>
             {% elif not action.link_step %}
               {% if action.config.validation_comparison %}
               <section id="validation-comparison" class="validation-comparison" aria-live="polite">
@@ -137,12 +137,12 @@
               </section>
               {% endif %}
               <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
-              <details{% if action.config.scripts_open is not defined or action.config.scripts_open %} open{% endif %}><summary>View exact script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
+              <details{% if action.config.scripts_open is not defined or action.config.scripts_open %} open{% endif %}><summary>View SQL script{% if action.scripts|length > 1 %}s{% endif %}</summary>{% for script in action.scripts %}<h3>{{ script.name }}</h3><pre>{{ script.sql }}</pre>{% endfor %}</details>
               <button class="primary run-action step-action-btn" data-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}" data-validation-comparison="{{ 'true' if action.config.validation_comparison else 'false' }}" data-resets-setup="{{ 'true' if action.resets_setup else 'false' }}" type="button">{{ action.button_label or "Run Action" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Complete SQL*Plus output" }}</summary><pre>{{ action.output or '' }}</pre></details>
             {% else %}
               {% if action.link_url %}<p><a class="primary step-action-btn customer-sales-link" href="{{ action.link_url }}" target="_blank" rel="noopener" data-complete-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}">{{ action.button_label or "Open Customer Sales App" }}</a></p>{% endif %}
-              {% if not action.link_target %}<button class="primary run-action step-action-btn link-step-button" data-action="{{ action.key }}" type="button">{{ action.link_button_label or "Continue" }}</button>{% endif %}<span class="action-status" aria-live="polite"></span>
+              <button class="primary run-action step-action-btn link-step-button" data-action="{{ action.key }}" type="button">{{ action.link_button_label or "Mark as viewed" }}</button><span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
               {% if action.link_url and action.config.additional_link %}
               {% set additional_link = action.config.additional_link %}
@@ -159,7 +159,7 @@
               <div class="toggle-half">
                 <h3>{{ action.title }}</h3>
                 <p class="script-label">{% for script in action.scripts %}<code>{{ script.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
-                <details class="toggle-script" open><summary>View exact script</summary>{% for script in action.scripts %}<pre>{{ script.sql }}</pre>{% endfor %}</details>
+                <details class="toggle-script" open><summary>View SQL script</summary>{% for script in action.scripts %}<pre>{{ script.sql }}</pre>{% endfor %}</details>
                 <div class="toggle-action"><button class="primary run-action" data-action="{{ action.key }}" type="button">{{ action.title }}</button><span class="action-status" aria-live="polite"></span></div>
                 <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Complete SQL*Plus output" }}</summary><pre>{{ action.output or '' }}</pre></details>
               </div>
@@ -167,7 +167,7 @@
             </div>
           {% endif %}
           {% if step.quiz %}
-          <section class="review-quiz" aria-labelledby="quiz-{{ step.key }}-title" data-correct-answer="{{ step.quiz.correct_answer }}" data-correct-explanation="{{ step.quiz.explanation }}">
+          <section class="review-quiz" aria-labelledby="quiz-{{ step.key }}-title" data-step-key="{{ step.key }}">
             <h3 id="quiz-{{ step.key }}-title">Check your understanding</h3>
             <p>{{ step.quiz.question }}</p>
             <fieldset>

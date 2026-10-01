@@ -30,7 +30,7 @@ host tools used by the bootstrap (`unzip`, `curl`, `wget`, `openssl`, and
 SQL*Plus with Oracle Instant Client).
 
 The Stack uses an Autonomous AI Database private endpoint and an Object
-Storage service gateway. The application subnet has a public IP and an
+Storage service gateway. The application VM has a public IP, and its subnet has an
 Internet Gateway route for inbound review access, but its security list has no
 general Internet egress rule. The VM can reach the private ADB endpoint,
 Object Storage, and HTTPS endpoints in the regional Oracle Services Network;
@@ -44,9 +44,8 @@ In OCI Resource Manager:
 1. Select **Create stack**, choose **My configuration**, and upload
    `deep-sec-local-genai-terraform-GreenButton.zip`.
 2. Set **Working directory** to `terraform`.
-3. Select the target tenancy compartment and region. `us-ashburn-1` and
-   `DBSec_Rich` are the known-good values for the RICH lab, but use the
-   compartment and region where the supplied compute image is available.
+3. Select the target compartment and the region where the supplied Compute
+   image is available. Use the inputs assigned by the lab owner.
 4. Provide an SSH public key and an OCI Auth Token for the ADB Iceberg reader:
    `order_history_oci_username` must be in
    `<identity-domain>/<username>` form, and
@@ -60,7 +59,7 @@ Apply provisions the database, public-IP application VM with no general
 Internet egress, private Object Storage, and the
 Stack-owned Iceberg bucket. It waits for the VM bootstrap health gate before
 returning success. In **Application Information**, select **Unlock** and copy
-the generated password for ADB ADMIN, JupyterLab, and Marvin. The application
+the generated password for ADB ADMIN, JupyterLab, Marvin, and Emma. The application
 and SSH URL outputs use the generated public IP:
 
 - Admin Console: port `7778`
@@ -82,7 +81,7 @@ For a GreenButton deployment, enter these values in Resource Manager:
 | Variable | Value |
 | --- | --- |
 | `tenancy_ocid` | Your OCI tenancy OCID. |
-| `compartment_ocid` | The target compartment OCID; use `DBSec_Rich` when that is the intended lab compartment. |
+| `compartment_ocid` | The OCID of the compartment assigned for this deployment. |
 | `ssh_public_key` | The public SSH key for the person who will operate this stack. |
 | `order_history_oci_username` | The Iceberg reader identity in `<identity-domain>/<username>` form. |
 | `order_history_oci_auth_token` | An Auth Token for that same identity-domain user; enter it as a sensitive value. |
@@ -163,8 +162,9 @@ ORDER BY order_date, order_id;
 The checked-in sample contains 1,500 rows. The external table reads those
 files in Object Storage; it does not copy them into ADB.
 
-For a reset, use **Restore to DB Setup** or **Prepare App** in the Admin
-Console. Confirm the bootstrap/database log shows `create_schema.sql` and its
+For a reset, use **Restore to DB Setup** in the Admin Console, then repeat
+the subsequent setup pages. **Prepare App** alone prepares APPLAB and reloads
+the sample customer data; it does not perform the full reset. Confirm the bootstrap/database log shows `create_schema.sql` and its
 Object Storage ACL grant, then rerun the normal Order History table action if
 the reset workflow has not already done so.
 

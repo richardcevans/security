@@ -22,7 +22,7 @@ select t.table_name,
    and t.table_name = 'CUSTOMERS';
 
 prompt
-prompt Confirming the role created on this page, and its system privileges.
+prompt Confirming the login role created on this page and its system privileges.
 column database_role format a20
 column system_privilege format a20
 select r.role as database_role,
@@ -32,5 +32,5 @@ select r.role as database_role,
  where r.role = 'HOL_DBROLE_CONNECT';
 
 prompt
-prompt Review complete. Nothing above is Deep Data Security, that starts on
+prompt Review complete. Deep Data Security configuration starts on
 prompt the Deep Sec Setup page next.

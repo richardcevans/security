@@ -19,8 +19,8 @@ the wheels with:
   ./stage_greenbutton_offline_wheelhouse.sh
 ```
 
-The package build refuses to create a GreenButton archive until at least one
-Python 3.9 wheel is present. The deployment still needs the custom image's
+The application ZIP does not include the wheelhouse. Verify that the custom
+image contains the required wheels before deployment. The deployment also needs the custom image's
 system-provided Python 3.9 `venv`, `unzip`, `curl`, `wget`, `openssl`,
-SQL*Plus, and Oracle Instant Client. Python packages are the part delivered by
-this archive; OCI Object Storage and the database remain runtime services.
+SQL*Plus, and Oracle Instant Client. The image supplies Python dependencies; the application ZIP supplies source
+code. OCI Object Storage and the database remain runtime services.

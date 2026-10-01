@@ -2,34 +2,36 @@
 
 ## Introduction
 
-This workshop uses the JupyterLab service already installed on the Deep Sec application server. Terraform generates the database wallet and cloud-init installs it before you begin. Use terminal sessions for the lab commands.
+JupyterLab is already installed on the Deep Sec application server. The Customer Sales App and Admin Console also run automatically after deployment. Use JupyterLab Terminal tabs for diagnostic commands; no terminal setup is needed to begin the walkthrough.
 
 Estimated Time: 5 minutes
 
 ### Objectives
 
-- Open JupyterLab from the Resource Manager Stack output.
-- Confirm the Stack-provided wallet is ready without downloading or uploading it.
-- The Customer Sales App and Admin Console services already run from Terraform. The Customer Sales App's AI Insights page uses OCI Generative AI to test questions against rows authorized for the signed-in user, so no terminal setup is required.
+- Open JupyterLab from the stack's **Application Information** tab.
+- Locate the two Terminal tabs already open by default.
+- Understand where to run diagnostic commands.
 
 ### Prerequisites
 
-- A completed Resource Manager Apply job with a `jupyter_url` output.
-- Terraform has completed the compute-instance cloud-init setup.
+- A completed Resource Manager Apply job.
+- The JupyterLab URL and generated password from **Application Information**.
 
-## Task 1: Orient Yourself in JupyterLab
+## Task 1: Open a JupyterLab terminal
 
-1. Open the `jupyter_url` output from the completed Resource Manager Apply job.
+1. Open **JupyterLab** from the stack's **Application Information** tab and sign in with the generated password.
 
-2. Select **+**, then select **Other** and **Terminal**. This opens the first terminal session.
+2. Select either of the two **Terminal** tabs already open by default. These terminals run commands on the Compute VM that hosts the applications.
 
-3. The generated wallet is already protected at `/home/opc/deep-sec-wallet/tns_admin`. Do not download or upload a wallet.
+3. If both Terminal tabs are closed, select **File → New → Terminal**.
 
-4. You can open a terminal later for diagnostics if needed. The Stack labels terminals in opening order.
+4. Run diagnostic commands, such as `journalctl`, in a Terminal tab. Do not run them in a Python notebook cell or a terminal on your own computer.
+
+5. The current deployment uses TLS connections without a database wallet. The `deepsec_low` SQL*Plus alias is already configured; you do not need to download or upload a wallet.
 
 You may now proceed to the next lab.
 
 ## Acknowledgements
 
 - **Author** - Richard Evans
-- **Last Updated By/Date** - Richard Evans, July 2026
+- **Last Updated** - October 2026

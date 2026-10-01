@@ -94,6 +94,8 @@ def _runtime_step(step) -> dict[str, Any]:
         "label": step.label,
         "title": step.title,
         "action_keys": step.action_ids,
+        # Any alternative action completes its group; every group is required.
+        "completion_groups": [list(step.action_ids)] + ([[f"quiz:{step.id}"]] if step.quiz else []),
         "next_hint": step.next_hint,
         "notes": step.notes,
         "quiz": quiz,

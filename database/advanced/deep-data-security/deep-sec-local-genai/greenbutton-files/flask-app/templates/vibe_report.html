@@ -9,7 +9,7 @@
         <div class="card-heading"><div><h2 id="report-title">Requested statement</h2><p>{{ report.request }}</p></div></div>
         <div class="query-actions"><button id="load-vibe-report" class="primary" type="button" data-report-id="{{ report.id }}">Run statement</button><span id="vibe-report-status" class="loading-status" aria-live="polite"></span><span id="error" role="alert"></span></div>
         <section id="security-context" class="security-context" aria-labelledby="security-context-title" hidden><h3 id="security-context-title">Database Security Context</h3><dl id="context" class="context"></dl></section>
-        <details class="lab-details" open><summary>SQL Query <span>Sent to Oracle</span></summary><code>{{ report.sql }}</code></details>
+        <details class="lab-details" open><summary>SQL Statement <span>Sent to Oracle</span></summary><code>{{ report.sql }}</code></details>
         <div id="vibe-report-result" aria-live="polite"></div>
       </section>
     </main>

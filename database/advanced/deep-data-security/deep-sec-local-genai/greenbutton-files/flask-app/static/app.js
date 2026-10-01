@@ -722,7 +722,8 @@ function showAuthorizationPopover(trigger, column, details) {
   const explanation = document.createElement("p");
   const columnLabel = humanizeColumn(column);
   if (column === "manager_id") {
-    explanation.textContent = "Manager ID is a join column the manager rule uses internally. No data grant includes it, and none needs to.";
+    explanation.textContent = "Manager ID is used by the manager predicate. Its value is available only on rows where an applicable SELECT data grant includes manager_id.";
+    popover.append(heading, explanation);
   } else if (details?.row_grant) {
     const grant = details.row_grant;
     const firstLine = document.createElement("p");

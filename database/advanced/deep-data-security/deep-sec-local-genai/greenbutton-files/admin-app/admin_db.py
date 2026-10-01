@@ -48,10 +48,10 @@ def verify_admin(settings: AdminSettings, password: str) -> str:
 
 
 def completed_setup_actions(settings: AdminSettings, password: str) -> set[str]:
-    """Infer the guided setup position from durable Oracle state.
+    """Inspect durable Oracle state for data-grant wizard prerequisites.
 
-    Browser sessions are deliberately short-lived, so setup progress must never
-    depend on a Flask login surviving.
+    Existing objects establish readiness, not proof that a learner ran a step.
+    Workflow completion is recorded separately in the Admin Console session.
     """
     completed: set[str] = set()
     with database_connection(settings, "ADMIN", password) as connection:

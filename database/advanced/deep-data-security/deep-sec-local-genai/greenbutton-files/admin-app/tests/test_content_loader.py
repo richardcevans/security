@@ -45,7 +45,7 @@ class ContentLoaderTests(unittest.TestCase):
         self.assertEqual(
             [lesson.step_by_id[step_id].title for step_id in lesson.pages[-3].step_ids],
             [
-                "Authorization Mode",
+                "Authorization Model",
                 "End User Context",
                 "Application Connections",
                 "Least Privilege",
@@ -79,7 +79,7 @@ class ContentLoaderTests(unittest.TestCase):
             [stage["estimated_minutes"] for stage in lesson.overview["stages"]],
             [5, 10, 5, 10, 10, 10, 5, 5],
         )
-        self.assertEqual(lesson.actions["what_you_proved"].config["result_sets"][2]["description"], "9 rows after the employee and manager grants union together.")
+        self.assertEqual(lesson.actions["what_you_proved"].config["result_sets"][2]["description"], "9 rows: Marvin's 3 employee rows and Emma's 6 rows through his manager grant.")
 
     def test_runtime_content_preserves_configured_pages_and_wizards(self) -> None:
         lesson = load_lesson(MANIFEST)

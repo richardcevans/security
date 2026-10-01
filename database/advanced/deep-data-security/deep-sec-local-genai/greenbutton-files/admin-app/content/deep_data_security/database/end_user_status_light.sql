@@ -40,4 +40,4 @@ column handler_procedure format a24
 column handler_status format a14
 select context_owner, context_name, handler_package, handler_procedure, handler_status from dba_end_user_context_definitions where context_owner = 'APPLAB';
 
-prompt Review complete. The detailed column matrix appears on later Review pages.
+prompt Review complete. Rerun after a policy change to inspect the updated grants.

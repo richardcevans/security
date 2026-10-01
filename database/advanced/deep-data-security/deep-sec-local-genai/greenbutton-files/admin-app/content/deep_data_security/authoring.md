@@ -47,8 +47,9 @@ From the admin-app directory, run:
 The validator checks the schema, duplicate IDs, page and action references,
 action dependency cycles, handler requirements, and every configured SQL file.
 
-Do not add Python imports, shell commands, passwords, wallet contents, or
-inline SQL statements to the manifest. New interactive behavior must be added
+Do not add Python imports, executable shell commands, passwords, or wallet
+contents to the manifest. Keep executable SQL in the database directory.
+Illustrative SQL in config.examples is displayed to learners but is not executed. New interactive behavior must be added
 as a reviewed handler in the application and then referenced by its registered
 name. The handler registry is intentionally small and explicit: content can
 select a reviewed capability, but cannot execute arbitrary code.

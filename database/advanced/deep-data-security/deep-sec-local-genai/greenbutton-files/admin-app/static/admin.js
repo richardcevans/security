@@ -12,7 +12,8 @@ let completedSetupActions = loadSetupProgress();
 let selectedActionKey = null;
 
 function stepIsCompleted(step) {
-  return (step.dataset.actionKeys || "").split(",").some((actionKey) => completedSetupActions.has(actionKey));
+  const groups = JSON.parse(step.dataset.completionGroups || "[]");
+  return groups.length > 0 && groups.every((group) => group.some((key) => completedSetupActions.has(key)));
 }
 
 function updateNavigationProgress() {
@@ -349,9 +350,6 @@ document.querySelectorAll(".run-action").forEach((button) => {
         updateActionAvailability();
       }
       if (response.ok && button.dataset.validationComparison === "true") await refreshValidationComparison();
-      if (response.ok && button.dataset.linkTarget === "customer_sales_app") {
-        window.location.href = "/build-grant";
-      }
     } catch (_) {
       status.textContent = "Action failed";
       outputText.textContent = "Could not contact the administrator console.";
@@ -395,22 +393,63 @@ document.querySelectorAll(".customer-sales-link[data-complete-action]").forEach(
 });
 
 document.querySelectorAll(".review-quiz").forEach((quiz) => {
-  quiz.querySelector(".check-review-quiz").addEventListener("click", () => {
+  const button = quiz.querySelector(".check-review-quiz");
+  button.addEventListener("click", async () => {
     const selected = quiz.querySelector("input[type='radio']:checked");
     const feedback = quiz.querySelector(".review-quiz-feedback");
     feedback.hidden = false;
+    feedback.className = "review-quiz-feedback error";
     if (!selected) {
-      feedback.className = "review-quiz-feedback error";
       feedback.textContent = "Choose an answer first.";
       return;
     }
-    if (selected.value === quiz.dataset.correctAnswer) {
-      feedback.className = "review-quiz-feedback correct";
-      feedback.textContent = quiz.dataset.correctExplanation;
-      return;
+    button.disabled = true;
+    try {
+      const {response, payload} = await requestJson(`/api/steps/${quiz.dataset.stepKey}/quiz`, {
+        method: "POST", headers: jsonHeaders, body: JSON.stringify({answer: selected.value}),
+      });
+      feedback.textContent = payload.feedback || payload.error || "Could not check the answer.";
+      if (response.ok && payload.correct) feedback.className = "review-quiz-feedback correct";
+      if (Array.isArray(payload.completed_actions)) {
+        completedSetupActions = new Set(payload.completed_actions);
+        updateActionAvailability();
+      }
+    } catch (_) {
+      feedback.textContent = "Could not contact the administrator console. Try checking your answer again.";
+    } finally {
+      button.disabled = false;
     }
-    feedback.className = "review-quiz-feedback error";
-    feedback.textContent = "Not quite. Review the SQL output and try again.";
+  });
+});
+
+document.querySelectorAll(".download-button[data-download-name]").forEach((link) => {
+  link.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (link.dataset.downloading === "true") return;
+    const status = link.closest(".action-card").querySelector(".action-status");
+    link.dataset.downloading = "true";
+    status.textContent = "Preparing download…";
+    try {
+      const response = await fetch(link.href);
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const download = document.createElement("a");
+      download.href = url;
+      download.download = link.dataset.downloadName;
+      document.body.append(download);
+      download.click();
+      download.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const completed = JSON.parse(response.headers.get("X-Completed-Actions") || "null");
+      if (Array.isArray(completed)) completedSetupActions = new Set(completed);
+      status.textContent = "Download ready.";
+      updateActionAvailability();
+    } catch (_) {
+      status.textContent = "Could not download the archive. Try again.";
+    } finally {
+      delete link.dataset.downloading;
+    }
   });
 });
 
@@ -571,71 +610,149 @@ function loadTourSteps() {
 }
 
 const TOUR_STEPS = loadTourSteps();
+let endActiveTour = null;
+let closeActiveGreeting = null;
+let guideTimer = null;
+
+function scheduleGuide(callback, delay) {
+  window.clearTimeout(guideTimer);
+  guideTimer = window.setTimeout(callback, delay);
+}
 
 function startTour() {
+  window.clearTimeout(guideTimer);
+  closeActiveGreeting?.(false);
+  endActiveTour?.(false);
   if (!TOUR_STEPS.length) return;
-  document.querySelector(".tour-backdrop")?.remove();
-  document.querySelector(".tour-tooltip")?.remove();
   let index = 0;
+  let target = null;
+  let frame = null;
+  const previousFocus = document.activeElement;
   const backdrop = document.createElement("div");
   backdrop.className = "tour-backdrop";
   const tooltip = document.createElement("div");
   tooltip.className = "tour-tooltip";
+  tooltip.setAttribute("role", "dialog");
+  tooltip.setAttribute("aria-modal", "true");
+  tooltip.setAttribute("aria-labelledby", "tour-title");
+  tooltip.setAttribute("aria-describedby", "tour-description");
   document.body.append(backdrop, tooltip);
 
-  function end() {
+  function end(restoreFocus = true) {
+    window.cancelAnimationFrame(frame);
+    window.removeEventListener("scroll", queuePosition, true);
+    window.removeEventListener("resize", queuePosition);
+    window.removeEventListener("pagehide", onPageHide);
+    document.removeEventListener("pointerdown", onOutside, true);
+    document.removeEventListener("keydown", onKeyDown, true);
     backdrop.remove();
     tooltip.remove();
-    document.cookie = "hol_tour_seen=1; path=/; max-age=31536000";
+    endActiveTour = null;
+    document.cookie = "hol_tour_seen=1; path=/; max-age=31536000; samesite=Lax";
+    if (restoreFocus && previousFocus?.isConnected) previousFocus.focus({preventScroll: true});
+  }
+
+  function position() {
+    frame = null;
+    if (!target?.isConnected) return end();
+    const rect = target.getBoundingClientRect();
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const visible = rect.bottom > 0 && rect.top < height && rect.right > 0 && rect.left < width;
+    backdrop.style.clipPath = visible ? "" : "none";
+    backdrop.style.setProperty("--spot-top", `${Math.max(0, rect.top - 4)}px`);
+    backdrop.style.setProperty("--spot-left", `${Math.max(0, rect.left - 4)}px`);
+    backdrop.style.setProperty("--spot-width", `${Math.min(width, rect.right + 4) - Math.max(0, rect.left - 4)}px`);
+    backdrop.style.setProperty("--spot-height", `${Math.min(height, rect.bottom + 4) - Math.max(0, rect.top - 4)}px`);
+    const box = tooltip.getBoundingClientRect();
+    let top = visible ? rect.bottom + 12 : 12;
+    if (top + box.height > height - 12 && rect.top - box.height - 12 >= 12) top = rect.top - box.height - 12;
+    tooltip.style.top = `${Math.max(12, Math.min(top, height - box.height - 12))}px`;
+    tooltip.style.left = `${Math.max(12, Math.min(rect.left, width - box.width - 12))}px`;
+  }
+
+  function queuePosition() {
+    if (frame === null) frame = window.requestAnimationFrame(position);
+  }
+
+  function onOutside(event) {
+    if (!tooltip.contains(event.target)) end(false);
+  }
+
+  function onPageHide() { end(false); }
+
+  function onKeyDown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      end();
+    } else if (event.key === "Tab") {
+      const buttons = Array.from(tooltip.querySelectorAll("button"));
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!tooltip.contains(document.activeElement) || (!event.shiftKey && document.activeElement === last)) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
   }
 
   function render() {
-    const step = TOUR_STEPS[index];
-    const target = document.querySelector(step.selector);
-    if (!target) {
+    while (index < TOUR_STEPS.length) {
+      target = document.querySelector(TOUR_STEPS[index].selector);
+      if (target) break;
       index += 1;
-      if (index < TOUR_STEPS.length) return render();
-      return end();
     }
-    const rect = target.getBoundingClientRect();
-    backdrop.style.setProperty("--spot-top", `${rect.top - 4}px`);
-    backdrop.style.setProperty("--spot-left", `${rect.left - 4}px`);
-    backdrop.style.setProperty("--spot-width", `${rect.width + 8}px`);
-    backdrop.style.setProperty("--spot-height", `${rect.height + 8}px`);
-    tooltip.style.top = `${Math.min(window.innerHeight - 180, rect.bottom + 12)}px`;
-    tooltip.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - 292))}px`;
+    if (!target || index >= TOUR_STEPS.length) return end();
+    const step = TOUR_STEPS[index];
+    target.scrollIntoView({block: "nearest", inline: "nearest"});
     tooltip.replaceChildren();
     const heading = document.createElement("h3");
+    heading.id = "tour-title";
     heading.textContent = step.title;
     const text = document.createElement("p");
+    text.id = "tour-description";
     text.textContent = step.text;
     const actions = document.createElement("div");
     actions.className = "tour-actions";
     actions.innerHTML = '<button class="secondary small tour-skip" type="button">Skip tour</button><button class="primary small tour-next" type="button"></button>';
     actions.querySelector(".tour-next").textContent = index === TOUR_STEPS.length - 1 ? "Done" : "Next";
     tooltip.append(heading, text, actions);
-    tooltip.querySelector(".tour-skip").addEventListener("click", end);
-    tooltip.querySelector(".tour-next").addEventListener("click", () => {
+    actions.querySelector(".tour-skip").addEventListener("click", () => end());
+    actions.querySelector(".tour-next").addEventListener("click", () => {
       index += 1;
       if (index < TOUR_STEPS.length) render(); else end();
     });
+    position();
+    actions.querySelector(".tour-next").focus({preventScroll: true});
   }
 
+  endActiveTour = end;
+  window.addEventListener("scroll", queuePosition, {capture: true, passive: true});
+  window.addEventListener("resize", queuePosition);
+  window.addEventListener("pagehide", onPageHide);
+  document.addEventListener("pointerdown", onOutside, true);
+  document.addEventListener("keydown", onKeyDown, true);
   render();
 }
 
 document.querySelector("#tour-replay")?.addEventListener("click", startTour);
-if (!document.cookie.includes("hol_tour_seen=1")) {
-  window.addEventListener("load", () => setTimeout(() => {
-    if (!document.querySelector(".deebee-popup")) startTour();
-  }, 400));
-}
 
 function showDeebeePopup() {
+  window.clearTimeout(guideTimer);
+  endActiveTour?.(false);
+  closeActiveGreeting?.(false);
+  const previousFocus = document.activeElement;
   const backdrop = document.createElement("div");
   backdrop.className = "deebee-popup-backdrop";
   const popup = document.createElement("div");
   popup.className = "deebee-popup";
+  popup.setAttribute("role", "dialog");
+  popup.setAttribute("aria-modal", "true");
+  popup.setAttribute("aria-label", "Welcome from DeeBee");
   popup.innerHTML = `
     <img src="/static/images/deebee.png" alt="DeeBee" class="deebee-icon deebee-icon-large">
     <div>
@@ -645,17 +762,39 @@ function showDeebeePopup() {
   `;
   document.body.append(backdrop, popup);
 
-  function close() {
+  function close(continueTour = false) {
+    window.clearTimeout(guideTimer);
     backdrop.remove();
     popup.remove();
-    document.cookie = "hol_deebee_greeted=1; path=/; max-age=31536000";
-    if (!document.cookie.includes("hol_tour_seen=1")) setTimeout(startTour, 150);
+    document.removeEventListener("keydown", onKeyDown, true);
+    closeActiveGreeting = null;
+    document.cookie = "hol_deebee_greeted=1; path=/; max-age=31536000; samesite=Lax";
+    if (previousFocus?.isConnected) previousFocus.focus({preventScroll: true});
+    if (continueTour && !document.cookie.includes("hol_tour_seen=1")) scheduleGuide(startTour, 150);
+    else document.cookie = "hol_tour_seen=1; path=/; max-age=31536000; samesite=Lax";
   }
 
-  backdrop.addEventListener("click", close);
-  popup.querySelector(".deebee-popup-dismiss").addEventListener("click", close);
+  function onKeyDown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close(false);
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      popup.querySelector("button").focus();
+    }
+  }
+
+  closeActiveGreeting = close;
+  backdrop.addEventListener("click", () => close(false));
+  popup.querySelector(".deebee-popup-dismiss").addEventListener("click", () => close(true));
+  document.addEventListener("keydown", onKeyDown, true);
+  popup.querySelector("button").focus({preventScroll: true});
 }
 
-if (document.querySelector(".overview-card") && !document.cookie.includes("hol_deebee_greeted=1")) {
-  window.addEventListener("load", () => setTimeout(showDeebeePopup, 300));
-}
+window.addEventListener("load", () => {
+  if (document.querySelector(".overview-card") && !document.cookie.includes("hol_deebee_greeted=1")) {
+    scheduleGuide(showDeebeePopup, 300);
+  } else if (!document.cookie.includes("hol_tour_seen=1")) {
+    scheduleGuide(startTour, 400);
+  }
+});

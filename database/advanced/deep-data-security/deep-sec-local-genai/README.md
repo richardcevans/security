@@ -2,6 +2,13 @@
 
 GreenButton is the canonical Deep Sec deployment and development path.
 
+Taking over **WMS 12146 — Can Application Code or GenAI Bypass Oracle Deep Data
+Security?** Start with [HANDOFF.md](HANDOFF.md) for VS Code and Codex setup, the
+application edit map, testing, and the LiveLabs release path. It also identifies
+the tracked LiveLabs wrapper source/builders and the runtime publication checks.
+The standalone GreenButton build instructions below do not establish which
+package WMS currently uses.
+
 ## Build
 
 ```bash
@@ -18,6 +25,12 @@ The active sources are:
 
 - `greenbutton-files/` — isolated Flask, lesson-driven Admin Console, and setup files. Each lesson owns its SQL under `admin-app/content/<lesson>/database/`.
 - `terraform-greenbutton/` — walletless-TLS OCI Resource Manager Stack.
+
+For maintainers and a fresh Codex installation, start with
+[HANDOFF.md](HANDOFF.md), [AGENTS.md](AGENTS.md), and
+[IMAGE-CONTRACT.md](IMAGE-CONTRACT.md). They describe the runtime contract,
+edit boundaries, validation gates, package freshness checks, and the external
+Compute image dependency.
 
 The former wallet-based, regular, NO-IAM, and FREE paths are preserved under
 `archive/non-greenbutton-20260827/`. They are historical reference material,

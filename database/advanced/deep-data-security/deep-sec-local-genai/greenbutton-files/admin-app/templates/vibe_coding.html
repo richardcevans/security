@@ -11,7 +11,7 @@
     <header class="app-header app-header-stacked"><div class="app-header-top"><a class="brand" href="/console"><span class="oracle-mark" aria-hidden="true">O</span><span>{{ lesson.branding.header }}</span></a><div class="app-header-top-actions"><button id="logout" class="secondary small">Sign out</button></div><nav class="header-nav header-nav-row" aria-label="Application">{% for page in pages %}<a class="header-link{% if page.key == current_page_key %} active{% endif %}" href="{{ page.path }}">{{ page.nav_label }}</a>{% endfor %}<button id="tour-replay" class="secondary small" type="button" title="Replay the tour">?</button></nav></header>
     <main class="page">
       <section class="heading"><div><p>Describe a request in plain English. Vibe Coding creates a new Customer Sales App report page without editing or restarting the application.</p></div></section>
-      <section class="instructions vibe-coding-safety"><strong>What this demonstrates:</strong> The new report runs its generated read-only SQL as the local database user who opens it. Oracle Deep Data Security remains the authorization boundary.</section>
+      <section class="instructions vibe-coding-safety"><strong>What this demonstrates:</strong> The new page runs its generated SQL as the local database end user who opens it. Review the statement before running it: an authorized INSERT, UPDATE, or DELETE can change data and is committed. Oracle Deep Data Security enforces the permitted operations, rows, and columns.</section>
       <article class="action-card vibe-coding-card">
         <label for="vibe-coding-request">Request</label>
         <textarea id="vibe-coding-request" maxlength="2000" rows="6" placeholder="e.g. Show me every customer's sensitive identifier."></textarea>

@@ -212,12 +212,13 @@ def _record_completed_action(action: dict) -> list[str]:
             raise ValueError("Sign in as ADMIN first")
         if action["resets_setup"]:
             login["completed_actions"] = set()
+            login["action_outputs"] = {}
             login.pop("customize_before", None)
         if action["restored_actions"]:
             login["completed_actions"].update(action["restored_actions"])
             login.pop("customize_before", None)
-        elif not action["resets_setup"]:
-            login.setdefault("completed_actions", set()).add(action["key"])
+        # Reset/restore are actions too: mark the operation that actually ran.
+        login.setdefault("completed_actions", set()).add(action["key"])
         return sorted(login["completed_actions"])
 
 
@@ -250,15 +251,10 @@ def _navigation_state(completed_actions: set[str]) -> tuple[list[dict], dict[str
         progress_steps = []
         for step_key in page["step_keys"]:
             step = steps_by_key[step_key]
-            action_keys = [
-                action_key
-                for action_key in step["action_keys"]
-                if ACTIONS[action_key]["type"] != "download"
-            ]
-            if action_keys:
-                progress_steps.append(action_keys)
-        excluded = page["key"] == "best_practices"
-        is_completed = bool(progress_steps) and all(
+            progress_steps.extend(step["completion_groups"])
+        # Administrative utilities are alternatives, not a lesson to complete.
+        excluded = not page["ordered"]
+        is_completed = not excluded and bool(progress_steps) and all(
             any(action_key in completed_actions for action_key in action_keys)
             for action_keys in progress_steps
         )
@@ -278,11 +274,11 @@ def _navigation_state(completed_actions: set[str]) -> tuple[list[dict], dict[str
 
 
 def _database_completed_actions() -> set[str]:
-    """Use durable Oracle state to restore setup progress after a re-login."""
+    """Check database prerequisites, independently of learner completion."""
     try:
         return completed_setup_actions(settings, _admin_password())
     except Exception as exc:
-        app.logger.warning("Could not infer setup progress from Oracle: %s", exc)
+        app.logger.warning("Could not check database prerequisites: %s", exc)
         return set()
 
 
@@ -370,7 +366,7 @@ def index():
 
 
 def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Optional[str]):
-    completed_actions = _completed_actions() | _database_completed_actions()
+    completed_actions = _completed_actions()
     navigation_pages, progress = _navigation_state(completed_actions)
     action_outputs = _action_outputs()
     customer_sales_url = f"{request.scheme}://{request.host.split(':', 1)[0]}:7777/"
@@ -430,7 +426,7 @@ def _render_stepper_page(page_key: str, step_keys: tuple, next_page_path: Option
 @app.get("/console")
 @login_required
 def console():
-    completed_actions = _completed_actions() | _database_completed_actions()
+    completed_actions = _completed_actions()
     navigation_pages, progress = _navigation_state(completed_actions)
     return render_template(
         "overview.html",
@@ -481,12 +477,21 @@ def _register_configured_pages() -> None:
 _register_configured_pages()
 
 
+def _download_response(output_path: Path, filename: str, artifact: str):
+    response = send_file(output_path, as_attachment=True, download_name=filename)
+    for action in ACTIONS.values():
+        if action["type"] == "download" and artifact in action["config"].get("artifacts", ()):
+            _record_completed_action(action)
+    response.headers["X-Completed-Actions"] = json.dumps(sorted(_completed_actions()))
+    return response
+
+
 @app.get("/api/download/sql-scripts")
 @login_required
 def download_sql_scripts():
     output_path = Path(tempfile.gettempdir()) / "deep-sec-sql-scripts.zip"
     build_sql_scripts_zip(DATABASE_DOWNLOAD_DIR, output_path)
-    return send_file(output_path, as_attachment=True, download_name="deep-sec-sql-scripts.zip")
+    return _download_response(output_path, "deep-sec-sql-scripts.zip", "sql_scripts")
 
 
 @app.get("/api/download/application")
@@ -494,7 +499,7 @@ def download_sql_scripts():
 def download_application():
     output_path = Path(tempfile.gettempdir()) / "deep-sec-application.zip"
     build_application_zip(ADMIN_APP_DIR, CUSTOMER_APP_DIR, output_path)
-    return send_file(output_path, as_attachment=True, download_name="deep-sec-application.zip")
+    return _download_response(output_path, "deep-sec-application.zip", "application")
 
 
 @app.post("/api/login")
@@ -683,11 +688,33 @@ def action(action_key: str):
         app.logger.exception("Administrator action failed before SQL*Plus completed: %s", action_key)
         return jsonify(error="Could not run the configured administrator action. Check the server log."), 502
     status = 200 if result["exit_code"] == 0 else 422
+    completed_actions = _record_completed_action(selected_action) if status == 200 else sorted(_completed_actions())
     _record_action_output(action_key, result["output"])
-    completed_actions = _record_completed_action(selected_action) if status == 200 else sorted(
-        _completed_actions() | _database_completed_actions()
-    )
     return jsonify(action=selected_action["title"], completed_actions=completed_actions, **result), status
+
+
+@app.post("/api/steps/<step_key>/quiz")
+@login_required
+def check_step_quiz(step_key: str):
+    step = next((step for step in STEPS if step["key"] == step_key), None)
+    if not step or not step["quiz"]:
+        return jsonify(error="Unknown review quiz."), 404
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("answer"), str):
+        return jsonify(error="Choose an answer first."), 400
+    completed = _completed_actions()
+    if not any(key in completed for key in step["action_keys"]):
+        return jsonify(error="Complete this step's action before checking the answer."), 409
+    correct = payload["answer"] == step["quiz"]["correct_answer"]
+    if correct:
+        completed = _record_completed_action({
+            "key": f"quiz:{step_key}", "resets_setup": False, "restored_actions": (),
+        })
+    return jsonify(
+        correct=correct,
+        feedback=step["quiz"]["explanation"] if correct else "Not quite. Review the SQL output and try again.",
+        completed_actions=sorted(completed),
+    )
 
 
 def _configured_wizard(action_key: str) -> dict:
@@ -740,9 +767,7 @@ def apply_configured_grant(action_key: str):
         return jsonify(error="Could not apply the customized grant. Check the server log."), 502
     status = 200 if result["exit_code"] == 0 else 422
     _record_action_output(selected_action["key"], result["output"])
-    completed_actions = _record_completed_action(selected_action) if status == 200 else sorted(
-        _completed_actions() | _database_completed_actions()
-    )
+    completed_actions = _record_completed_action(selected_action) if status == 200 else sorted(_completed_actions())
     return jsonify(action=selected_action["title"], completed_actions=completed_actions, sql=sql, **result), status
 
 

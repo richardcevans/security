@@ -20,6 +20,7 @@ class AdminSettings:
     secret_key: str
     dsn: str
     wallet_location: str
+    oci_region: str
     genai_region: str
     genai_compartment_ocid: str
     genai_model_id: str
@@ -70,7 +71,15 @@ def load_admin_settings() -> AdminSettings:
         # Empty selects python-oracledb Thin mode with a walletless TLS DSN.
         # The existing wallet deployment continues to set this value.
         wallet_location=os.getenv("ADMIN_WALLET_LOCATION", ""),
-        genai_region=os.getenv("OCI_REGION", genai_defaults.get("OCI_REGION", "")),
+        oci_region=os.getenv("OCI_REGION", genai_defaults.get("OCI_REGION", "")),
+        # LiveLabs can assign GenAI to a different region from Compute/ADB.
+        # A dedicated GenAI setting takes precedence over the resource region.
+        genai_region=(
+            os.getenv("GENAI_REGION", "").strip()
+            or genai_defaults.get("GENAI_REGION", "").strip()
+            or os.getenv("OCI_REGION", "").strip()
+            or genai_defaults.get("OCI_REGION", "").strip()
+        ),
         genai_compartment_ocid=os.getenv("GENAI_COMPARTMENT_OCID", genai_defaults.get("GENAI_COMPARTMENT_OCID", "")),
         genai_model_id=os.getenv("GENAI_MODEL_ID", genai_defaults.get("GENAI_MODEL_ID", "")),
         order_history_bucket=_required("ORDER_HISTORY_BUCKET"),

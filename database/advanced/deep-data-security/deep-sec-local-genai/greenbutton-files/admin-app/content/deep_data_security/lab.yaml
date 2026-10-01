@@ -173,6 +173,15 @@ actions:
     link_target: customer_sales_app
     completion: mark_viewed
     short_label: Customer Sales App
+    config:
+      additional_link:
+        title: Customer Sales App as Emma
+        description: >-
+          Right-click the link below and open it in an Incognito (Chrome),
+          InPrivate (Edge), or private browsing window. Sign in as Emma using
+          the same lab password, then run Customer Report. Keep Marvin's
+          original window open so you can compare their access.
+        button_label: Right-click for Emma
 
   review_light:
     type: sql

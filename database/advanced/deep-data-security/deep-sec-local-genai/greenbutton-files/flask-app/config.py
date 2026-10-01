@@ -56,7 +56,14 @@ def load_settings() -> Settings:
         db_schema=db_schema,
         wallet_location=os.getenv("DB_WALLET_LOCATION", ""),
         wallet_password=os.getenv("DB_WALLET_PASSWORD", ""),
-        genai_region=os.getenv("OCI_REGION", genai_defaults.get("OCI_REGION", "")),
+        # LiveLabs can assign GenAI to a different region from Compute/ADB.
+        # A dedicated GenAI setting takes precedence over the resource region.
+        genai_region=(
+            os.getenv("GENAI_REGION", "").strip()
+            or genai_defaults.get("GENAI_REGION", "").strip()
+            or os.getenv("OCI_REGION", "").strip()
+            or genai_defaults.get("OCI_REGION", "").strip()
+        ),
         genai_compartment_ocid=os.getenv("GENAI_COMPARTMENT_OCID", genai_defaults.get("GENAI_COMPARTMENT_OCID", "")),
         genai_model_id=os.getenv("GENAI_MODEL_ID", genai_defaults.get("GENAI_MODEL_ID", "")),
     )

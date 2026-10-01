@@ -13,39 +13,109 @@ function showError(message) {
   if (error) error.textContent = message || "";
 }
 
-function copyToClipboard(text, button) {
-  navigator.clipboard.writeText(text).then(() => {
-    const original = button.textContent;
+async function copyToClipboard(text, button) {
+  const original = button.textContent;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // The workshop may use HTTP, where the Clipboard API is unavailable.
+      const input = document.createElement("textarea");
+      input.value = text;
+      input.className = "visually-hidden";
+      document.body.append(input);
+      input.select();
+      try {
+        if (!document.execCommand("copy")) throw new Error("Clipboard unavailable");
+      } finally {
+        input.remove();
+        button.focus();
+      }
+    }
     button.textContent = "Copied";
-    setTimeout(() => { button.textContent = original; }, 1500);
-  });
+  } catch (_) {
+    button.textContent = "Copy manually";
+  }
+  setTimeout(() => { button.textContent = original; }, 2000);
 }
 
 function renderErrorCard(error) {
   const card = document.querySelector("#error-card");
   if (!card) return;
-  if (!error || typeof error === "string") {
-    card.hidden = !error;
-    card.textContent = error || "";
+  card.replaceChildren();
+  card.hidden = !error;
+  if (!error) return;
+  if (typeof error === "string") {
+    card.textContent = error;
     return;
   }
-  card.hidden = false;
-  card.innerHTML = `
-    <p class="error-summary">${error.summary}</p>
-    ${error.commands.map((c) => `
-      <div class="error-command">
-        <span class="error-command-label">${c.label}</span>
-        <div class="error-command-row">
-          <pre><code>${c.command}</code></pre>
-          <button type="button" class="copy-button" data-command="${c.command.replace(/"/g, '&quot;')}">Copy</button>
-        </div>
-      </div>
-    `).join("")}
-    ${error.note ? `<p class="error-note">${error.note}</p>` : ""}
-  `;
-  card.querySelectorAll(".copy-button").forEach((btn) => {
-    btn.addEventListener("click", () => copyToClipboard(btn.dataset.command, btn));
-  });
+  // Exception metadata is text, never HTML. Links are restricted to Oracle docs.
+  const appendText = (parent, tag, text, className = "") => {
+    const element = document.createElement(tag);
+    element.textContent = text;
+    element.className = className;
+    parent.append(element);
+    return element;
+  };
+  appendText(card, "p", error.summary, "error-summary");
+  if (error.next_step) appendText(card, "p", error.next_step, "error-next-step");
+  if (error.reference) appendText(card, "p", `Diagnostic reference: ${error.reference}`, "error-reference");
+
+  const details = document.createElement("details");
+  details.className = "error-details";
+  appendText(details, "summary", "Troubleshooting");
+  card.append(details);
+  appendText(details, "h4", "Diagnostic details");
+  const diagnostics = error.diagnostics || [];
+  const list = document.createElement("dl");
+  list.className = "error-diagnostics";
+  for (const item of diagnostics) {
+    appendText(list, "dt", item.label);
+    appendText(list, "dd", item.value);
+  }
+  details.append(list);
+  const copyDetails = appendText(details, "button", "Copy diagnostic details", "copy-button");
+  copyDetails.type = "button";
+  copyDetails.addEventListener("click", () => copyToClipboard(
+    [error.summary, ...diagnostics.map((item) => `${item.label}: ${item.value}`)].join("\n"), copyDetails
+  ));
+
+  appendText(details, "h4", "Use a JupyterLab Terminal");
+  const steps = document.createElement("ol");
+  for (const step of error.terminal_steps || []) appendText(steps, "li", step);
+  details.append(steps);
+  for (const command of error.commands || []) {
+    const block = document.createElement("div");
+    block.className = "error-command";
+    appendText(block, "span", command.label, "error-command-label");
+    const row = document.createElement("div");
+    row.className = "error-command-row";
+    const pre = document.createElement("pre");
+    appendText(pre, "code", command.command);
+    row.append(pre);
+    const copy = appendText(row, "button", "Copy", "copy-button");
+    copy.type = "button";
+    copy.setAttribute("aria-label", `Copy command: ${command.label}`);
+    copy.addEventListener("click", () => copyToClipboard(command.command, copy));
+    block.append(row);
+    details.append(block);
+  }
+  if (error.note) appendText(details, "p", error.note, "error-note");
+  appendText(details, "h4", "Oracle logging guidance");
+  if (error.logging_note) appendText(details, "p", error.logging_note, "error-note");
+  const links = document.createElement("ul");
+  for (const link of error.links || []) {
+    let url;
+    try { url = new URL(link.url); } catch (_) { continue; }
+    if (url.origin !== "https://docs.oracle.com" || url.username || url.password) continue;
+    const item = document.createElement("li");
+    const anchor = appendText(item, "a", link.label);
+    anchor.href = url.href;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    links.append(item);
+  }
+  details.append(links);
 }
 
 function formatNumber(value) {
@@ -490,6 +560,20 @@ function renderAiExchange(question, payload, promptMode = "protected") {
   const modelAnswer = exchange.response?.payload?.message?.content?.find((content) => content.type === "TEXT")?.text || "(see raw payload)";
   setText("#ai-oci-response-summary", `OCI GenAI answered: "${shorten(modelAnswer)}"`);
 
+  const toolTrace = exchange.response?.payload?.tool_calls || [];
+  const toolTracePanel = panel.querySelector("#ai-tool-trace");
+  if (toolTracePanel) toolTracePanel.hidden = toolTrace.length === 0;
+  if (toolTrace.length) {
+    const summary = toolTrace.map((call) => {
+      const result = call.result || {};
+      const oracleError = result.oracle_error ? ` (${result.oracle_error})` : "";
+      return `${call.name || "database tool"} as ${result.executed_as || "current end user"} → ${result.status || "unknown"}${oracleError}`;
+    }).join("\n");
+    setText("#ai-tool-trace-content", `${summary}\n\n${JSON.stringify(toolTrace, null, 2)}`);
+  } else {
+    setText("#ai-tool-trace-content", "");
+  }
+
   writeJson("#ai-browser-response", {
     answer: payload.answer,
     context: payload.context,
@@ -514,6 +598,8 @@ if (aiForm) {
       renderErrorCard("Enter a question for Customer Insights.");
       return;
     }
+    document.querySelector("#ai-result").hidden = true;
+    document.querySelector("#security-context").hidden = true;
     ask.disabled = true;
     ask.textContent = "Generating insights…";
     status.textContent = "Loading Oracle-authorized customer data…";
@@ -521,10 +607,6 @@ if (aiForm) {
       const {response, payload} = await jsonRequest("/api/ai", {
         method: "POST", headers: requestHeaders, body: JSON.stringify({question, prompt_mode: promptMode})
       });
-      if (response.status === 429) {
-        renderErrorCard(payload.error || "AI Insights is getting a lot of requests right now. Wait a few seconds and try again.");
-        return;
-      }
       if (!response.ok) {
         renderErrorCard(payload.error || "Customer Insights request failed.");
         return;

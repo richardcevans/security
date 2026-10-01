@@ -9,7 +9,6 @@ from decimal import Decimal
 from threading import Lock
 from typing import Optional
 
-import oci
 from dotenv import load_dotenv
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 from flask_bootstrap import Bootstrap5
@@ -19,6 +18,7 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.exceptions import HTTPException
 
 from ai import answer_customer_question
+from ai_diagnostics import build_ai_error
 from config import load_settings
 from db import (
     PERSONAS,
@@ -27,6 +27,7 @@ from db import (
     fetch_authorized_customers,
     fetch_order_history,
     execute_vibe_statement,
+    execute_red_team_sql,
     oracle_error_code,
     oracle_queries,
     verify_persona_credentials,
@@ -46,16 +47,6 @@ csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 app.logger.setLevel(getattr(logging, os.getenv("FLASK_LOG_LEVEL", "INFO").upper(), logging.INFO))
-
-AI_INSIGHTS_FAILURE = {
-    "summary": "Customer Insights couldn't reach OCI Generative AI. Here's how to check why.",
-    "commands": [
-        {"label": "Recent service log", "command": "sudo journalctl -u deep-sec-customer-sales.service -b -n 200 --no-pager -o short-iso"},
-        {"label": "Watch live errors", "command": "sudo journalctl -fu deep-sec-customer-sales.service -o short-iso"},
-        {"label": "Bootstrap log, if the service never started", "command": "cat /var/log/deep-sec-bootstrap.log"},
-    ],
-    "note": "Also verify OCI_REGION, GENAI_COMPARTMENT_OCID, and GENAI_MODEL_ID in /home/opc/.deep-sec-genai-defaults, the app reads that path from GENAI_DEFAULTS_FILE in /etc/deep-sec/customer-sales.env.",
-}
 
 # Passwords remain only in this process's memory, keyed by an opaque browser
 # session ID. They are never placed in a cookie, written to disk, or logged.
@@ -336,23 +327,33 @@ def ai_insight():
         return jsonify(error="Unknown Customer Insights prompt mode."), 400
     try:
         persona, password = _login_credentials()
-        rows, context, _ = fetch_authorized_customers(settings, persona, password)
-        answer_result = answer_customer_question(settings, question, rows, prompt_mode=prompt_mode)
     except ValueError as exc:
         return jsonify(error=str(exc)), 400
-    except oci.exceptions.TransientServiceError as exc:
-        if exc.status == 429:
-            app.logger.warning("GenAI rate limit hit for persona=%s", current_user.persona)
-            return jsonify(
-                error="AI Insights is getting a lot of requests right now. Wait a few seconds and try again."
-            ), 429
-        app.logger.exception("Customer Insights transient failure for persona=%s", current_user.persona)
-        return jsonify(error=AI_INSIGHTS_FAILURE), 502
+    try:
+        rows, context, _ = fetch_authorized_customers(settings, persona, password)
+        tool_executor = None
+        if prompt_mode == "red-team":
+            tool_executor = lambda sql: execute_red_team_sql(settings, persona, password, sql)
+        answer_result = answer_customer_question(
+            settings,
+            question,
+            rows,
+            prompt_mode=prompt_mode,
+            tool_executor=tool_executor,
+        )
     except Exception as exc:
-        app.logger.exception("Customer Insights request failed for persona=%s", current_user.persona)
         if access_error := _oracle_access_error(exc, "Customer Accounts"):
+            app.logger.exception("Customer Insights database access failed for persona=%s", current_user.persona)
             return jsonify(error=access_error), 403
-        return jsonify(error=AI_INSIGHTS_FAILURE), 502
+        error, status, retry_seconds = build_ai_error(exc, settings)
+        app.logger.exception(
+            "Customer Insights failed reference=%s category=%s persona=%s",
+            error["reference"], error["code"], current_user.persona,
+        )
+        response = jsonify(error=error)
+        if retry_seconds is not None:
+            response.headers["Retry-After"] = str(retry_seconds)
+        return response, status
     return jsonify(
         answer=answer_result["answer"],
         ai_exchange=answer_result["ai_exchange"],

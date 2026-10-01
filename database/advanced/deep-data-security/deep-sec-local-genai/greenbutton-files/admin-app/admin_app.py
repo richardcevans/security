@@ -618,7 +618,7 @@ def run_show_iceberg_files():
     try:
         bucket = settings.order_history_bucket
         namespace = settings.order_history_namespace
-        region = settings.genai_region
+        region = settings.oci_region
         read_par_url = settings.order_history_read_par_url.rstrip("/")
         prefix = settings.order_history_prefix
         prefix_url = f"https://objectstorage.{region}.oraclecloud.com/n/{namespace}/b/{bucket}/o/{prefix}"

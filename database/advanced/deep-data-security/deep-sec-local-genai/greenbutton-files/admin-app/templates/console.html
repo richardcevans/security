@@ -144,6 +144,13 @@
               {% if action.link_url %}<p><a class="primary step-action-btn customer-sales-link" href="{{ action.link_url }}" target="_blank" rel="noopener" data-complete-action="{{ action.key }}" data-link-target="{{ action.link_target or '' }}">{{ action.button_label or "Open Customer Sales App" }}</a></p>{% endif %}
               {% if not action.link_target %}<button class="primary run-action step-action-btn link-step-button" data-action="{{ action.key }}" type="button">{{ action.link_button_label or "Continue" }}</button>{% endif %}<span class="action-status" aria-live="polite"></span>
               <details class="action-output"{% if not action.output %} hidden{% endif %}{% if action.output %} open{% endif %}><summary>{{ action.output_title or "Step status" }}</summary><pre>{{ action.output or '' }}</pre></details>
+              {% if action.link_url and action.config.additional_link %}
+              {% set additional_link = action.config.additional_link %}
+              <section class="additional-link" aria-labelledby="additional-link-{{ action.key }}-title">
+                <div class="action-heading"><div><h2 id="additional-link-{{ action.key }}-title">{{ additional_link.title }}</h2><p id="additional-link-{{ action.key }}-instructions">{{ additional_link.description }}</p></div></div>
+                <p><a class="primary step-action-btn customer-sales-link" href="{{ action.link_url }}" target="_blank" rel="noopener" aria-describedby="additional-link-{{ action.key }}-instructions">{{ additional_link.button_label }}</a></p>
+              </section>
+              {% endif %}
             {% endif %}
           {% else %}
             <div class="action-heading"><div><h2>{{ step.title }}</h2><p>{{ step.actions[0].description }}</p></div></div>
